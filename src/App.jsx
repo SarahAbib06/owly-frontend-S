@@ -1,11 +1,29 @@
-import { useState } from 'react'
+import "./i18n"; // ton i18next
+
+import Register from "./pages/Register.jsx";
+import Login from "./pages/Login.jsx";
+import Welcome from "./pages/Welcome.jsx";
+import OtpPage from "./pages/OtpPage";
+
+
+//import { useState } from "react";
+//import TestButton from "./pages/TestButton";
+
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
 
 export default function App() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-900">
-      <h1 className="text-4xl font-bold text-yellow-600">
-        Hello Owly 🚀
-      </h1>
-    </div>
+    
+     return (
+    <Router>
+      <Routes>
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/Welcome" element={<Welcome />} /> 
+        <Route path="/OtpPage" element={<OtpPage />} /> 
+        {/* page par défaut */}
+        
+      </Routes>
+    </Router>
   );
-}
+  }
