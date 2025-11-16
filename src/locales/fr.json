@@ -1,0 +1,50 @@
+{
+  "login": {
+    "welcome": "Bienvenue à nouveau",
+    "subtitle": "Vos messages vous attendent",
+    "emailPlaceholder": "exemple@gmail.com",
+    "passwordPlaceholder": "Mot de passe",
+    "acceptTerms": "J’accepte les conditions générales",
+    "connect": "Connecter",
+    "noAccount": "Vous n'avez pas de compte ?",
+    "register": "S’inscrire",
+    "rememberMe": "Se souvenir de moi ",
+    "forgotPassword":"Mot de passe oublié ?"
+  },
+  
+  "register": {
+    "createAccount": "Créez votre compte",
+    "subtitle": "Faites partie de la révolution",
+    "username": "Nom d'utilisateur",
+    "email": "exemple@gmail.com",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmez votre mot de passe",
+    "acceptTerms": "J’accepte les conditions générales",
+    "signUp": "S’inscrire",
+    "alreadyHaveAccount": "Vous avez déjà un compte ?",
+    "login": "Se connecter"
+  },
+  "formCard": {
+    "leftText1": "Chaque conversation prend son envol",
+    "leftText2": "Connectez-vous instantanément avec vos proches, partagez vos moments et restez toujours en contact."
+  },
+
+"otp": {
+  "title": "Vérifier votre code OTP",
+  "description": "Nous avons envoyé un code de vérification à 6 chiffres à votre adresse e-mail.",
+  "code": "Code OTP",
+  "verify": "Vérifier et continuer"
+},
+
+"forgotPassword": {
+  "title": "Nouveau mot de passe",
+  "subtitle": "Veuillez entrer et confirmer votre nouveau mot de passe.",
+  "newPassword": "Entrer le nouveau mot de passe",
+  "confirmPassword": "Confirmer le mot de passe",
+  "send": "Envoyer"
+}
+ 
+}
+
+
+

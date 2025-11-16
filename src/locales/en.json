@@ -1,0 +1,44 @@
+{
+  "login": {
+    "welcome": "Welcome back",
+    "subtitle": "Your messages are waiting",
+    "emailPlaceholder": "example@gmail.com",
+    "passwordPlaceholder": "Password",
+    "acceptTerms": "I accept the terms and conditions",
+    "connect": "Login",
+    "noAccount": "Don't have an account?",
+    "register": "Register",
+    "rememberMe":"Remmember Me",
+    "forgotPassword":"forgot Password?"
+
+  },
+  "register": {
+    "createAccount": "Create your account",
+    "subtitle": "Join the revolution",
+    "username": "Username",
+    "email": "example@gmail.com",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "acceptTerms": "I accept the terms and conditions",
+    "signUp": "Sign up",
+    "alreadyHaveAccount": "Already have an account?",
+    "login": "Login"
+  },
+   "formCard": {
+    "leftText1": "Every conversation takes flight",
+    "leftText2": "Connect instantly with your friends, share your moments, and always stay in touch."
+  },
+
+  "otp": {
+  "title": "Verify your OTP code",
+  "description": "We sent a 6-digit verification code to your registered email.",
+  "code": "OTP Code",
+  "verify": "Verify and continue"
+},
+"forgotPassword": {
+  "title": "New Password",
+  "subtitle": "Please enter and confirm your new password.",
+  "newPassword": "Enter new password",
+  "confirmPassword": "Confirm password",
+  "send": "Send"
+  }}
