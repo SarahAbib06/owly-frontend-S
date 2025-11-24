@@ -6,7 +6,7 @@ import { MdLock, MdVisibility, MdVisibilityOff } from "react-icons/md";
 
 
 
-export default function ModifierMotDePasse({ setSelectedMenu}) {
+export default function ModifierMotDePasse({ setPrivacySubPage}) {
     const { t } = useTranslation();
 
   const [showOld, setShowOld] = useState(false);
@@ -23,7 +23,7 @@ export default function ModifierMotDePasse({ setSelectedMenu}) {
                <div className="flex items-center gap-2 mb-2">
                        <FaArrowLeft
                          className="w-4 h-4 text-myBlack dark:text-white cursor-pointer"
-                         onClick={() => setSelectedMenu("privacy")}
+                          onClick={() => setPrivacySubPage(null)}
                        />
         <h2 className="text-2xl font-semibold text-myBlack dark:text-white ml-3">{t("modifierMotDePasse.titre")}</h2>
         </div>

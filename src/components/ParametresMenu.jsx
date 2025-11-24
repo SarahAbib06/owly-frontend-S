@@ -1,3 +1,4 @@
+// src/components/ParametresMenu.jsx
 import { MdComputer, MdLock, MdNotifications, MdHelp, MdLogout } from "react-icons/md";
 import { useTranslation } from "react-i18next";
 
@@ -30,12 +31,9 @@ export default function ParametresMenu({ selected, setSelected }) {
           alt="profile"
           className="w-14 h-14 rounded-full object-cover border-2 border-myBlack"
         />
-         <button
-          onClick={() => setSelected("profil")}
-          className="font-medium text-myBlack dark:text-white hover:underline cursor-pointer"
-        >
+        <div className="font-medium text-myBlack dark:text-white">
           Mehdi AIT
-        </button>
+        </div>
       </div>
 
       {/* MENU */}
@@ -48,8 +46,8 @@ export default function ParametresMenu({ selected, setSelected }) {
             ${selected === "general" ? "bg-[#F9EE34]" : "hover:bg-gray-300 dark:hover:bg-gray-700"}
           `}
         >
-          <MdComputer className="w-5 h-5 text-gray-500 dark:text-gray-300" />
-          <span className="text-sm font-medium text-gray-1000 dark:text-gray-300">
+          <MdComputer className={`w-5 h-5 ${selected === "general" ? "text-[var(--color-myBlack)]" : "text-gray-500 dark:text-gray-300"}`} />
+          <span className={`text-sm font-medium ${selected === "general" ? "text-[var(--color-myBlack)]" : "text-gray-1000 dark:text-gray-300"}`}>
             {t("parametresMenu.General")}
           </span>
         </button>
@@ -61,8 +59,8 @@ export default function ParametresMenu({ selected, setSelected }) {
             ${selected === "privacy" ? "bg-[#F9EE34]" : "hover:bg-gray-300 dark:hover:bg-gray-700"}
           `}
         >
-          <MdLock className="w-5 h-5 text-gray-500 dark:text-gray-300" />
-          <span className="text-sm font-medium text-gray-1000 dark:text-gray-300">
+          <MdLock className={`w-5 h-5 ${selected === "privacy" ? "text-[var(--color-myBlack)]" : "text-gray-500 dark:text-gray-300"}`} />
+          <span className={`text-sm font-medium ${selected === "privacy" ? "text-[var(--color-myBlack)]" : "text-gray-1000 dark:text-gray-300"}`}>
             {t("parametresMenu.Confidentialite")}
           </span>
         </button>
@@ -70,10 +68,12 @@ export default function ParametresMenu({ selected, setSelected }) {
         {/* NOTIFICATIONS */}
         <button
           onClick={() => setSelected("notif")}
-          className="flex items-center gap-3 p-3 rounded-md hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+          className={`flex items-center gap-3 p-3 rounded-md transition 
+            ${selected === "notif" ? "bg-[#F9EE34]" : "hover:bg-gray-300 dark:hover:bg-gray-700"}
+          `}
         >
-          <MdNotifications className="w-5 h-5 text-gray-500 dark:text-gray-300" />
-          <span className="text-sm font-medium text-gray-1000 dark:text-gray-300">
+          <MdNotifications className={`w-5 h-5 ${selected === "notif" ? "text-[var(--color-myBlack)]" : "text-gray-500 dark:text-gray-300"}`} />
+          <span className={`text-sm font-medium ${selected === "notif" ? "text-[var(--color-myBlack)]" : "text-gray-1000 dark:text-gray-300"}`}>
             {t("parametresMenu.Notifications")}
           </span>
         </button>
@@ -81,10 +81,12 @@ export default function ParametresMenu({ selected, setSelected }) {
         {/* AIDE & SUPPORT */}
         <button
           onClick={() => setSelected("help")}
-          className="flex items-center gap-3 p-3 rounded-md hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+          className={`flex items-center gap-3 p-3 rounded-md transition 
+            ${selected === "help" ? "bg-[#F9EE34]" : "hover:bg-gray-300 dark:hover:bg-gray-700"}
+          `}
         >
-          <MdHelp className="w-5 h-5 text-gray-500 dark:text-gray-300" />
-          <span className="text-sm font-medium text-gray-1000 dark:text-gray-300">
+          <MdHelp className={`w-5 h-5 ${selected === "help" ? "text-[var(--color-myBlack)]" : "text-gray-500 dark:text-gray-300"}`} />
+          <span className={`text-sm font-medium ${selected === "help" ? "text-[var(--color-myBlack)]" : "text-gray-1000 dark:text-gray-300"}`}>
             {t("parametresMenu.Aide")}
           </span>
         </button>

@@ -7,12 +7,14 @@ import FormCard from "../components/FormCard.jsx";
 import InputField from "../components/InputField.jsx";
 import Checkbox from "../components/Chekbox.jsx";
 import Button from "../components/Button.jsx";
+import LanguageToggle from"../components/LanguageToggle.jsx";
 import { useTranslation } from "react-i18next";
 
 const Register = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { register } = useAuth();
+  
 
   const [formData, setFormData] = useState({
     username: "",
@@ -77,6 +79,7 @@ const Register = () => {
         <FormCard
           title={t("register.createAccount")}
           subtitle={t("register.subtitle")}
+            topRight={<LanguageToggle />}
         >
           <form className="w-full mx-auto" onSubmit={handleSubmit}>
             <InputField
@@ -119,6 +122,7 @@ const Register = () => {
             )}
 
             <Checkbox
+              
               label={t("register.acceptTerms")}
               checked={acceptTerms}
               onChange={(e) => setAcceptTerms(e.target.checked)}
@@ -130,9 +134,9 @@ const Register = () => {
               disabled={loading}
             />
 
-            <p className="text-[12px] text-center mt-3 text-myBlack">
+            <p className="text-[12px] text-center mt-3 text-myBlack dark:text-myWhite">
               {t("register.alreadyHaveAccount")}{" "}
-              <a href="/login" className="text-myBlack hover:text-myGray2 font-semibold">
+              <a href="/login" className="text-myBlack hover:text-myGray2 dark:text-myWhite dark:hover:text-myGray2 font-semibold">
                 {t("register.login")}
               </a>
             </p>

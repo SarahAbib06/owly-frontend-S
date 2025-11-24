@@ -9,23 +9,23 @@ import UtilisateursBloques from "../components/UtilisateursBloques";
 import ModifierMotDePasse from "../components/ModefierMotDePasse";
 
 export default function SettingsPage() {
-  
   const isDesktopInit = window.innerWidth >= 1024;
   const [isDesktop, setIsDesktop] = useState(isDesktopInit);
-
-  // MENU PRINCIPAL
   const [selectedMenu, setSelectedMenu] = useState(
-    isDesktopInit ? "general" : null
+    isDesktopInit ? "general" : null 
   );
-
-  // SOUS-MENU
-  const [selectedSubMenu, setSelectedSubMenu] = useState(null);
+  
+  // Variable séparée pour les sous-pages de confidentialité
+  const [privacySubPage, setPrivacySubPage] = useState(null);
 
   const [dernierConnexionChoice, setDernierConnexionChoice] = useState("Personne");
   const [statutChoice, setStatutChoice] = useState("Personne");
 
   useEffect(() => {
-    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -33,7 +33,6 @@ export default function SettingsPage() {
   return (
     <div className="flex min-h-screen p-6 gap-6 bg-myGray dark:bg-mydarkWhite flex-col lg:flex-row">
 
-      {/* MENU GAUCHE */}
       {isDesktop && (
         <div className="w-auto">
           <ParametresMenu selected={selectedMenu} setSelected={setSelectedMenu} />
@@ -42,12 +41,10 @@ export default function SettingsPage() {
 
       <div className="flex-1">
 
-        {/* MENU MOBILE */}
         {!isDesktop && selectedMenu === null && (
           <ParametresMenu selected={selectedMenu} setSelected={setSelectedMenu} />
         )}
 
-        {/* === MENU PRINCIPAL === */}
         {selectedMenu === "general" && (
           <ParametresGeneral setSelectedMenu={setSelectedMenu} />
         )}
@@ -56,38 +53,50 @@ export default function SettingsPage() {
           <Profile setSelectedMenu={setSelectedMenu} />
         )}
 
-        {selectedMenu === "privacy" && selectedSubMenu === null && (
-          <ParametresConfidentialite
-            setSelectedMenu={setSelectedMenu}
-            setSelectedSubMenu={setSelectedSubMenu}
-            dernierConnexionChoice={dernierConnexionChoice}
-            statutChoice={statutChoice}
-          />
-        )}
+        {/* CONFIDENTIALITÉ avec sous-pages */}
+        {selectedMenu === "privacy" && (
+          <>
+            {privacySubPage === null && (
+              <ParametresConfidentialite
+                setSelectedMenu={setSelectedMenu}
+                setPrivacySubPage={setPrivacySubPage}
+                dernierConnexionChoice={dernierConnexionChoice}
+                statutChoice={statutChoice}
+              />
+            )}
 
-        {/* === SOUS-MENU === */}
-        {selectedSubMenu === "lastLogin" && (
-          <DerniereConnexion
-            setSelectedSubMenu={setSelectedSubMenu}
-            selection={dernierConnexionChoice}
-            setSelection={setDernierConnexionChoice}
-          />
-        )}
+            {privacySubPage === "lastLogin" && (
+              <DerniereConnexion
+                setSelectedMenu={setSelectedMenu}
+                setPrivacySubPage={setPrivacySubPage}
+                selection={dernierConnexionChoice}
+                setSelection={setDernierConnexionChoice}
+              />
+            )}
 
-        {selectedSubMenu === "statut" && (
-          <Statut
-            setSelectedSubMenu={setSelectedSubMenu}
-            selection={statutChoice}
-            setSelection={setStatutChoice}
-          />
-        )}
+            {privacySubPage === "statut" && (
+              <Statut
+                setSelectedMenu={setSelectedMenu}
+                setPrivacySubPage={setPrivacySubPage}
+                selection={statutChoice}
+                setSelection={setStatutChoice}
+              />
+            )}
 
-        {selectedSubMenu === "blockedUsers" && (
-          <UtilisateursBloques setSelectedSubMenu={setSelectedSubMenu} />
-        )}
+            {privacySubPage === "ModefierMotDePasse" && (
+              <ModifierMotDePasse 
+                setSelectedMenu={setSelectedMenu}
+                setPrivacySubPage={setPrivacySubPage}
+              />
+            )}
 
-        {selectedSubMenu === "ModefierMotDePasse" && (
-          <ModifierMotDePasse setSelectedSubMenu={setSelectedSubMenu} />
+            {privacySubPage === "blockedUsers" && (
+              <UtilisateursBloques 
+                setSelectedMenu={setSelectedMenu}
+                setPrivacySubPage={setPrivacySubPage}
+              />
+            )}
+          </>
         )}
       </div>
     </div>

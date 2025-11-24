@@ -1,7 +1,7 @@
 import { FaArrowLeft, FaUserSlash } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 
-export default function UtilisateursBloques({ setSelectedMenu }) {
+export default function UtilisateursBloques({ setPrivacySubPage }) {
   const { t } = useTranslation();
 
   const users = [
@@ -26,7 +26,7 @@ export default function UtilisateursBloques({ setSelectedMenu }) {
       {/* TITRE + RETOUR */}
       <div className="flex items-center gap-3 mb-6">
         <FaArrowLeft
-          onClick={() => setSelectedMenu("privacy")}
+           onClick={() => setPrivacySubPage(null)}
           className="w-5 h-5 cursor-pointer text-myBlack dark:text-white"
         />
         <h1 className="text-xl font-semibold text-myBlack dark:text-white">

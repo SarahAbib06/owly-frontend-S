@@ -26,10 +26,7 @@ export default function WelcomeChatScreen() {
                  text-center px-10 relative
                  transition-colors duration-300 
                  bg-white dark:bg-[#121212]">
- {/* BOUTON DARK MODE EN HAUT À DROITE */}
-      <div className="absolute top-4 right-4">
-        <DarkModeToggle />
-      </div>
+
 
      <div className="w-15 h-15 rounded-2xl bg-myYellow flex items-center justify-center shadow mb-6">
         <img 

@@ -1,7 +1,7 @@
 import { FaArrowLeft } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 
-export default function Statut({ setSelectedMenu, selection, setSelection }) {
+export default function Statut({ setPrivacySubPage, selection, setSelection }) {
   const { t } = useTranslation();
 
   return (
@@ -21,7 +21,7 @@ export default function Statut({ setSelectedMenu, selection, setSelection }) {
       <div className="flex items-center gap-2 mb-2">
         <FaArrowLeft
           className="w-4 h-4 text-myBlack dark:text-white cursor-pointer"
-          onClick={() => setSelectedMenu("privacy")}
+            onClick={() => setPrivacySubPage(null)}
         />
         <h1 className="text-2xl font-semibold text-myBlack dark:text-white ml-3">
           {t("statut.Title")}

@@ -1,8 +1,19 @@
 import { FaArrowLeft } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 
-export default function DerniereConnexion({ setSelectedMenu, selection, setSelection }) {
+export default function DerniereConnexion({  setPrivacySubPage, selection, setSelection }) {
   const { t } = useTranslation();
+
+  // Fonction pour gérer le retour (mobile vs desktop)
+  const handleBack = () => {
+    if (window.innerWidth < 1024) {
+      // Mobile : retour à la page Confidentialité
+      setPrivacySubPage(null);
+    } else {
+      // Desktop : retour à la page Confidentialité aussi
+      setPrivacySubPage(null);
+    }
+  };
 
   return (
     <div
@@ -21,7 +32,7 @@ export default function DerniereConnexion({ setSelectedMenu, selection, setSelec
       <div className="flex items-center gap-2 mb-2">
         <FaArrowLeft
           className="w-4 h-4 text-myBlack dark:text-white cursor-pointer"
-          onClick={() => setSelectedMenu("privacy")}
+          onClick={handleBack}
         />
         <h1 className="text-2xl font-semibold text-myBlack dark:text-white ml-3">
           {t("derniereConnexion.Title")}

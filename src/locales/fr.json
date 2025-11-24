@@ -116,10 +116,12 @@
     "Description": "Personnalisez l'apparence et la langue de l'application",
     "Language": "Langue",
     "Theme": "Thème",
+    "English": "Anglais",
+    "French": "Français",
     "LightMode": "Mode clair",
     "DarkMode": "Mode sombre"
+    
   },
-
   "parametresConfidentialite": {
     "Title": "Confidentialité",
     "Description": "Gérez vos paramètres de confidentialité et vos données",

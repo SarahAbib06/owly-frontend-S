@@ -85,10 +85,11 @@
     "Description": "Customize the app's appearance and language",
     "Language": "Language",
     "Theme": "Theme",
-    "LightMode": "Light mode",
-    "DarkMode": "Dark mode"
+    "English": "English",
+    "French": "French",
+    "LightMode": "Light Mode",
+    "DarkMode": "Dark Mode"
   },
-
   
   "parametresConfidentialite": {
     "Title": "Privacy",

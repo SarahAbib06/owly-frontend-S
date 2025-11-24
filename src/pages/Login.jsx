@@ -98,7 +98,7 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="text-xs text-myBlack cursor-pointer mt-2 mb-8 hover:text-myGray2 transition-colors duration-300"
+              className="text-xs text-myBlack cursor-pointer mt-2 mb-8 hover:text-myGray2 dark:text-myWhite  dark:hover:text-myGray2 transition-colors duration-300"
             >
               {t("login.forgotPassword")}
             </button>
@@ -111,9 +111,9 @@ const Login = () => {
             disabled={loading}
           />
 
-          <p className="text-[12px] w-full sm:text-left text-center md:text-center mt-3 text-myBlack">
+          <p className="text-[12px] w-full sm:text-left text-center md:text-center mt-3 text-myBlack dark:text-myWhite">
             {t("login.noAccount")}{" "}
-            <a href="/register" className="text-myBlack hover:text-myGray2 font-semibold">
+            <a href="/register" className="text-myBlack hover:text-myGray2 dark:text-myWhite dark:hover:text-myGray2  font-semibold">
               {t("login.register")}
             </a>
           </p>

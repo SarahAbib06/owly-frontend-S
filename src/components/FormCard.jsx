@@ -46,7 +46,7 @@ const FormCard = ({ title, subtitle, children, topRight }) => {
           <p className="text-xs sm:text-sm text-myBlack font-medium">
             {t('formCard.leftText1')}
           </p>
-          <p className="text-xs sm:text-sm font-semibold mt-2">
+          <p className="text-xs sm:text-sm  dark:text-myBlack font-semibold mt-2">
             {t('formCard.leftText2')}
           </p>
         </div>
@@ -57,7 +57,7 @@ const FormCard = ({ title, subtitle, children, topRight }) => {
                 items-center md:items-start min-h-0
                 p-4 sm:p-6 md:p-8 relative">
         <h2 className="text-2xl sm:text-2xl font-semibold mb-2 text-center md:text-left">{title}</h2>
-        <p className="text-[14px] text-myBlack mb-6 text-center md:text-left">{subtitle}</p>
+        <p className="text-[14px] text-myBlack  dark:text-myWhite mb-6 text-center md:text-left">{subtitle}</p>
         {children} 
       </div>
 
