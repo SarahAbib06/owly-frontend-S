@@ -56,8 +56,8 @@ const FormCard = ({ title, subtitle, children, topRight }) => {
       <div className="md:w-1/2 w-full flex flex-col justify-center 
                 items-center md:items-start min-h-0
                 p-4 sm:p-6 md:p-8 relative">
-        <h2 className="text-xl sm:text-2xl font-bold mb-2 text-center md:text-left">{title}</h2>
-        <p className="text-myGray2 mb-6 text-center md:text-left">{subtitle}</p>
+        <h2 className="text-2xl sm:text-2xl font-semibold mb-2 text-center md:text-left">{title}</h2>
+        <p className="text-[14px] text-myBlack mb-6 text-center md:text-left">{subtitle}</p>
         {children} 
       </div>
 
