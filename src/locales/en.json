@@ -31,6 +31,7 @@
   "description": "We sent a 6-digit verification code to your registered email.",
   "code": "OTP Code",
   "verify": "Verify and continue"
+
 },
 "chat": {
     "today": "Today",
@@ -140,3 +141,4 @@
 
 
 }
+
