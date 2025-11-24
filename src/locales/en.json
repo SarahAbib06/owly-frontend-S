@@ -31,5 +31,112 @@
   "description": "We sent a 6-digit verification code to your registered email.",
   "code": "OTP Code",
   "verify": "Verify and continue"
-}
+},
+"chat": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "online": "Online",
+    "inputPlaceholder": "Enter a message...",
+    "reactions": "Reactions",
+    "close": "Close"
+  },
+  
+  "messages": {
+    "searchFriends": "Search among your friends..."
+  },
+  
+  "sidebar": {
+    "Owly": "Owly",
+    "Message": "Message",
+    "Groupe": "Group",
+    "Owly AI": "Owly AI",
+    "Paramètres": "Settings",
+    "Profile": "Profile"
+  },
+  "welcome": {
+    "title": "Welcome to Owly",
+    "description": "Select a conversation from the list on the left to start chatting. You can also start a new chat or create a group in just a few clicks.",
+    "encrypted": "Your personal messages are end-to-end encrypted."
+  },
+   "profile": {
+    "profile": "Profile",
+    "personalInfo": "Personal information",
+    "personalInfoDesc": "Manage your basic profile information",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "changePhoto": "Change photo",
+    "deleteAccount": "Delete account",
+    "username": "Username",
+    "email": "Email"
+  },
+  "parametresMenu": {
+    "Title": "Settings",
+    "General": "General",
+    "Confidentialite": "Privacy",
+    "Notifications": "Notifications",
+    "Aide": "Help & Support",
+    "Deconnexion": "Logout"
+  },
+
+  "parametresGeneral": {
+    "Title": "General",
+    "Description": "Customize the app's appearance and language",
+    "Language": "Language",
+    "Theme": "Theme",
+    "LightMode": "Light mode",
+    "DarkMode": "Dark mode"
+  },
+
+  
+  "parametresConfidentialite": {
+    "Title": "Privacy",
+    "Description": "Manage your privacy settings and data",
+    "LastLogin": "Last login",
+    "Status": "Status",
+    "BlockedUsers": "Blocked users",
+    "BlockedUsersCount": "user(s) blocked",
+    "ChangePassword": "Change password",
+    "ChangePasswordDesc": "Change your current password"
+  },
+  
+  "derniereConnexion": {
+    "Title": "Last login",
+    "Description": "Check your recent account logins",
+    "Everyone": "Everyone",
+    "NoOne": "No one"
+  },
+
+  "statut": {
+    "Title": "Status",
+    "Description": "Manage your visibility status",
+    "Everyone": "Everyone",
+    "NoOne": "No one"
+  },
+
+
+  "privacy": {
+    "BlockedUsersTitle": "Blocked Users",
+    "NoBlockedUsers": "No blocked users",
+    "BlockedUsersDescription": "Blocked users will no longer be able to call or message you.",
+    "Unblock": "Unblock"
+  },
+  "forgotPassword": {
+    "title": "New Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "send": "Send",
+     "subtitle":"Choose a secure password with at least 8 characters, including letters, numbers, and symbols, to effectively protect your account."
+  },
+ 
+  "modifierMotDePasse": {
+    "titre": "Change password",
+    "sousTitre": "Change your current password",
+    "motDePasseActuel": "Current password",
+    "nouveauMotDePasse": "New password",
+    "confirmerMotDePasse": "Confirm your password",
+    "enregistrer": "Save"
+  }
+
+
 }

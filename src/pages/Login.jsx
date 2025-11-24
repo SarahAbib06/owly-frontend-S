@@ -5,7 +5,7 @@ import InputField from "../components/InputField.jsx";
 import Checkbox from "../components/Chekbox.jsx";
 import Button from "../components/Button.jsx";
 import DarkModeToggle from "../components/DarkModeToggle.jsx";
-import LanguageToggle from "../components/LanguageToggle.jsx"; // nouveau
+import LanguageToggle from "../components/LanguageToggle.jsx"; 
 import { useTranslation } from "react-i18next";
 
 const Login = () => {
