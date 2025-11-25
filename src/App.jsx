@@ -13,16 +13,16 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 
 export default function App() {
-    
+
      return (
     <Router>
       <Routes>
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/Welcome" element={<Welcome />} /> 
-        <Route path="/OtpPage" element={<OtpPage />} /> 
+        <Route path="/Welcome" element={<Welcome />} />
+        <Route path="/OtpPage" element={<OtpPage />} />
         {/* page par défaut */}
-        
+
         <Route path="/video-call" element={<VideoCall roomId="room123" />} />
 
       </Routes>
