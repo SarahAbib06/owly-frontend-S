@@ -6,8 +6,7 @@ import Welcome from "./pages/Welcome.jsx";
 import OtpPage from "./pages/OtpPage";
 import VideoCall from './components/VideoCall';
 
-//import { useState } from "react";
-//import TestButton from "./pages/TestButton";
+;
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
@@ -21,7 +20,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/Welcome" element={<Welcome />} />
         <Route path="/OtpPage" element={<OtpPage />} />
-        {/* page par défaut */}
+     
 
         <Route path="/video-call" element={<VideoCall roomId="room123" />} />
 
