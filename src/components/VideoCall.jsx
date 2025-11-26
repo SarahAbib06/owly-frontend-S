@@ -1,13 +1,17 @@
+// src/components/VideoCall.jsx
 import { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
+import { useSearchParams } from "react-router-dom";
 
 const SIGNALING_SERVER = "http://localhost:5000";
-//const SIGNALING_SERVER = "http://192.168.0.64:5000";
 
+export default function VideoCall(props) {
+  const [searchParams] = useSearchParams();
+  const initialUserId = props.userId || searchParams.get("userId") || "";
+  const initialConversationId = props.conversationId || searchParams.get("conversationId") || "";
 
-export default function VideoCall() {
-  const [myId, setMyId] = useState("");
-  const [targetId, setTargetId] = useState("");
+  const [myUserId, setMyUserId] = useState(initialUserId);
+  const [targetUserId, setTargetUserId] = useState(""); // now userId not socket id
   const [status, setStatus] = useState("Idle");
   const [incomingCall, setIncomingCall] = useState(null);
   const [inCall, setInCall] = useState(false);
@@ -20,20 +24,23 @@ export default function VideoCall() {
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
 
-  // ========================
-  // Socket.io
-  // ========================
   useEffect(() => {
     socketRef.current = io(SIGNALING_SERVER);
 
-    socketRef.current.on("connect", () => setMyId(socketRef.current.id));
+    socketRef.current.on("connect", () => {
+      setStatus("Connected to signaling server");
+      if (myUserId) {
+        socketRef.current.emit("register-user", myUserId);
+      }
+    });
 
-    socketRef.current.on("offer", async ({ from, sdp }) => {
-      setIncomingCall({ from, sdp });
+    // If server relays offer, it sends { fromUserId, sdp }
+    socketRef.current.on("offer", async ({ fromUserId, sdp }) => {
+      setIncomingCall({ fromUserId, sdp });
       setStatus("Incoming call...");
     });
 
-    socketRef.current.on("answer", async ({ sdp }) => {
+    socketRef.current.on("answer", async ({ fromUserId, sdp }) => {
       if (pcRef.current) {
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
         setStatus("Call connected ✅");
@@ -41,7 +48,7 @@ export default function VideoCall() {
       }
     });
 
-    socketRef.current.on("ice-candidate", async ({ candidate }) => {
+    socketRef.current.on("ice-candidate", async ({ candidate, fromUserId }) => {
       if (candidate && pcRef.current) {
         try {
           await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -51,20 +58,37 @@ export default function VideoCall() {
       }
     });
 
-    socketRef.current.on("hang-up", () => {
+    socketRef.current.on("hang-up", ({ fromUserId }) => {
       endCall();
+    });
+
+    socketRef.current.on("call-rejected", ({ fromUserId }) => {
+      setStatus("Call rejected");
+      // cleanup maybe
+    });
+
+    socketRef.current.on("call-error", ({ message }) => {
+      setStatus(`Error: ${message}`);
     });
 
     return () => {
       if (pcRef.current) pcRef.current.close();
       socketRef.current.disconnect();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Si myUserId est fourni plus tard, enregistrer
+  useEffect(() => {
+    if (socketRef.current && myUserId) {
+      socketRef.current.emit("register-user", myUserId);
+    }
+  }, [myUserId]);
 
   // ========================
   // PeerConnection
   // ========================
-  const createPeerConnection = async (otherId) => {
+  const createPeerConnection = async (otherUserId) => {
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
@@ -86,36 +110,40 @@ export default function VideoCall() {
 
     // ICE candidates
     pc.onicecandidate = (event) => {
-      if (event.candidate && otherId) {
-        socketRef.current.emit("ice-candidate", { to: otherId, candidate: event.candidate });
+      if (event.candidate && otherUserId) {
+        socketRef.current.emit("ice-candidate", {
+          toUserId: otherUserId,
+          candidate: event.candidate,
+          fromUserId: myUserId,
+        });
       }
     };
   };
 
-  // ========================
-  // Start Call
-  // ========================
+  // Start Call - now using userId target
   const startCall = async () => {
-    if (!targetId.trim() || targetId === myId) return alert("Enter a valid target ID");
+    if (!targetUserId.trim() || targetUserId === myUserId) return alert("Enter a valid target userId");
 
     setStatus("Calling…");
-    await createPeerConnection(targetId);
+    await createPeerConnection(targetUserId);
 
     const offer = await pcRef.current.createOffer();
     await pcRef.current.setLocalDescription(offer);
 
-    socketRef.current.emit("offer", { to: targetId, sdp: offer });
+    socketRef.current.emit("offer", {
+      toUserId: targetUserId,
+      sdp: offer,
+      fromUserId: myUserId,
+    });
   };
 
-  // ========================
   // Accept Call
-  // ========================
   const acceptCall = async () => {
     if (!incomingCall) return;
 
-    setTargetId(incomingCall.from);
+    setTargetUserId(incomingCall.fromUserId);
     setStatus("Call accepted ✅");
-    await createPeerConnection(incomingCall.from);
+    await createPeerConnection(incomingCall.fromUserId);
 
     // Set remote offer
     await pcRef.current.setRemoteDescription(new RTCSessionDescription(incomingCall.sdp));
@@ -124,13 +152,16 @@ export default function VideoCall() {
     const answer = await pcRef.current.createAnswer();
     await pcRef.current.setLocalDescription(answer);
 
-    socketRef.current.emit("answer", { to: incomingCall.from, sdp: answer });
+    socketRef.current.emit("answer", {
+      toUserId: incomingCall.fromUserId,
+      sdp: answer,
+      fromUserId: myUserId,
+    });
 
     setIncomingCall(null);
     setInCall(true);
   };
 
-  //Mute et cameraOff
   const toggleMute = () => {
     if (!localStreamRef.current) return;
     localStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
@@ -143,11 +174,6 @@ export default function VideoCall() {
     setCameraOff((prev) => !prev);
   };
 
-
-
-  // ========================
-  // Hang up
-  // ========================
   const endCall = () => {
     setStatus("Call ended 📴");
     setInCall(false);
@@ -163,27 +189,36 @@ export default function VideoCall() {
       pcRef.current = null;
     }
 
-    if (targetId) {
-      socketRef.current.emit("hang-up", { targetId });
-      setTargetId("");
+    if (targetUserId) {
+      socketRef.current.emit("hang-up", { toUserId: targetUserId, fromUserId: myUserId });
+      setTargetUserId("");
     }
   };
 
-  // ========================
-  // UI
-  // ========================
   return (
     <div style={{ padding: 20 }}>
-      <h1>Owly Video Call</h1>
+      <h1>Owly Video Call (Test)</h1>
       <p>Status: {status}</p>
-      <p>Your ID: <b>{myId}</b></p>
+      <p>Your userId: <b>{myUserId}</b></p>
+      <p>ConversationId: <b>{initialConversationId}</b></p>
+
+      {!myUserId && (
+        <div style={{ marginBottom: 10 }}>
+          <input
+            placeholder="Enter your userId"
+            value={myUserId}
+            onChange={(e) => setMyUserId(e.target.value)}
+            style={{ padding: 8, width: "300px" }}
+          />
+        </div>
+      )}
 
       {!inCall && (
         <div style={{ marginBottom: 10 }}>
           <input
-            placeholder="Enter target socket ID"
-            value={targetId}
-            onChange={(e) => setTargetId(e.target.value)}
+            placeholder="Enter target userId"
+            value={targetUserId}
+            onChange={(e) => setTargetUserId(e.target.value)}
             style={{ padding: 8, width: "300px" }}
           />
           <button onClick={startCall} style={{ marginLeft: 10, padding: 10 }}>
@@ -193,27 +228,13 @@ export default function VideoCall() {
       )}
 
       {incomingCall && !inCall && (
-        <div
-          style={{
-            marginTop: 20,
-            padding: 20,
-            border: "1px solid black",
-            borderRadius: 10,
-            width: 300,
-          }}
-        >
+        <div style={{ marginTop: 20, padding: 20, border: "1px solid black", borderRadius: 10, width: 300 }}>
           <h3>📞 Incoming Call</h3>
-          <p>From: {incomingCall.from}</p>
-          <button
-            onClick={acceptCall}
-            style={{ padding: 10, marginRight: 10, background: "green", color: "white" }}
-          >
+          <p>From userId: {incomingCall.fromUserId}</p>
+          <button onClick={acceptCall} style={{ padding: 10, marginRight: 10, background: "green", color: "white" }}>
             ✔ Accept
           </button>
-          <button
-            onClick={endCall}
-            style={{ padding: 10, background: "red", color: "white" }}
-          >
+          <button onClick={endCall} style={{ padding: 10, background: "red", color: "white" }}>
             ❌ Reject
           </button>
         </div>
@@ -222,64 +243,37 @@ export default function VideoCall() {
       <div style={{ display: "flex", gap: 20, marginTop: 20 }}>
         <div>
           <h3>Your Video</h3>
-          <video
-            ref={localVideoRef}
-            autoPlay
-            playsInline
-            muted
-            style={{ width: 300, borderRadius: 10 }}
-          />
+          <video ref={localVideoRef} autoPlay playsInline muted style={{ width: 300, borderRadius: 10 }} />
         </div>
         <div>
           <h3>Remote Video</h3>
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            style={{ width: 300, borderRadius: 10 }}
-          />
+          <video ref={remoteVideoRef} autoPlay playsInline style={{ width: 300, borderRadius: 10 }} />
         </div>
       </div>
 
       {inCall && (
         <div style={{ marginTop: 20 }}>
-          <button onClick={endCall} style={{ padding: 10, background: "red", color: "white" }}>
-            📞 Hang Up
-          </button>
+          <button onClick={endCall} style={{ padding: 10, background: "red", color: "white" }}>📞 Hang Up</button>
           <button onClick={toggleMute}>{isMuted ? "🔇 Unmute" : "🎙️ Mute"}</button>
           <button onClick={toggleCamera}>{cameraOff ? "📷 Turn On" : "🚫 Turn Off Cam"}</button>
         </div>
       )}
-
     </div>
   );
 }
 
 
 
+
 /*
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
-***********************************
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 */
 

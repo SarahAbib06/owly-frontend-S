@@ -5,6 +5,8 @@ import Login from "./pages/Login.jsx";
 import Welcome from "./pages/Welcome.jsx";
 import OtpPage from "./pages/OtpPage";
 import VideoCall from './components/VideoCall';
+import VideoCallTest from "./components/VideoCallTest.jsx";
+
 
 //import { useState } from "react";
 //import TestButton from "./pages/TestButton";
@@ -24,6 +26,7 @@ export default function App() {
         {/* page par défaut */}
         
         <Route path="/video-call" element={<VideoCall roomId="room123" />} />
+        <Route path="/video-call-test" element={<VideoCallTest />} />
 
       </Routes>
     </Router>
