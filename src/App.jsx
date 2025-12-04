@@ -9,19 +9,24 @@ import Welcome from "./pages/Welcome.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import OtpPage from "./pages/OtpPage";
 
+
 import MessagesPage from "./pages/MessagesPage";
 import MainLayout from "./components/MainLayout";
 import SettingsPage from "./pages/SettingsPage";
 import ForgotPassword from "./pages/ForgetPassword";
 
+
 import VideoCall from "./components/VideoCall";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
+
+
   return (
     <Router>
       <AuthProvider>
         <Routes>
+
 
           {/* Route par défaut */}
           <Route path="/" element={<Welcome />} />
