@@ -2,6 +2,10 @@
 import { Phone, Video, MoreVertical, Smile, Paperclip } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import VideoCallScreen from "../components/VideoCallScreen";
+import ChatOptionsMenu from "./ChatOptionMenu";
+import InfoContactModal from "./InfoContactModal";
+
+
 
 // Icône "vu"
 const SeenIconGray = () => (
@@ -46,6 +50,10 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
 
   const { t } = useTranslation();
     const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
+    const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
+
+
 
 
 
@@ -99,7 +107,7 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
 
 
   return (
-    <div className="flex flex-col w-full h-screen bg-myWhite dark:bg-neutral-900 text-myBlack dark:text-white transition-colors duration-300 min-w-[150px]">
+    <div className="relative flex flex-col w-full h-full bg-myWhite dark:bg-neutral-900 text-myBlack dark:text-white transition-colors duration-300 min-w-[150px]">
 
       {/* HEADER */}
       <header className="flex items-center justify-between px-2 py-2 border-b border-gray-300 dark:border-gray-700 min-w-0">
@@ -122,7 +130,12 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
   onClick={() => setIsVideoCallOpen(true)}
 />
 
-          <MoreVertical size={16} className="text-gray-600 dark:text-gray-300" />
+          <MoreVertical
+  size={16}
+  className="text-gray-600 dark:text-gray-300 cursor-pointer"
+  onClick={() => setIsOptionsOpen(!isOptionsOpen)}
+/>
+
         </div>
       </header>
 
@@ -262,7 +275,34 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
   />
 )}
 
+{/* ⭐ MODAL OPTIONS (3 points) */}
+{isOptionsOpen && (
+  <>
+    <div
+      className="fixed inset-0 bg-black/30 z-30"
+      onClick={() => setIsOptionsOpen(false)}
+    ></div>
 
+    <ChatOptionsMenu
+      selectedChat={{
+        ...selectedChat,
+        openInfo: () => setIsInfoOpen(true)
+      }}
+      onClose={() => setIsOptionsOpen(false)}
+    />
+  </>
+)}
+{/* ⭐ MODAL INFO DU CONTACT */}
+{isInfoOpen && (
+  <InfoContactModal
+    chat={selectedChat}
+    onClose={() => setIsInfoOpen(false)}
+  />
+)}
+
+
+
+ 
 
 
 

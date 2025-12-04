@@ -1,10 +1,29 @@
 // src/components/ParametresMenu.jsx
 import { MdComputer, MdLock, MdNotifications, MdHelp, MdLogout } from "react-icons/md";
 import { useTranslation } from "react-i18next";
-
+import { profileService } from "../services/profileService";
+import { useState, useEffect } from "react";
+ 
 export default function ParametresMenu({ selected, setSelected }) {
   const { t } = useTranslation();
+    const [profilePicture, setProfilePicture] = useState("");
+ const [name, setName] = useState("");
+   const [preview] = useState(null);
+ useEffect(() => {
+    const loadProfile = async () => {
+  try {
+    const user = await profileService.getProfile();
+    setName(user.username);
+     setProfilePicture(user.profilePicture); 
+    
+  } catch (err) {
+    console.error("Erreur chargement profil :", err);
+  }
+};
 
+
+    loadProfile();
+  }, []);
   return (
     <div
       className="
@@ -27,13 +46,16 @@ export default function ParametresMenu({ selected, setSelected }) {
       {/* PHOTO + NOM */}
       <div className="flex items-center gap-3 -mt-2">
         <img
-          src="/assets/profile.jpg"
+          src={preview || profilePicture || ""}
           alt="profile"
           className="w-14 h-14 rounded-full object-cover border-2 border-myBlack"
         />
-        <div className="font-medium text-myBlack dark:text-white">
-          Mehdi AIT
-        </div>
+        <button
+          onClick={() => setSelected("profil")}
+          className="font-medium text-myBlack dark:text-white hover:underline cursor-pointer"
+        >
+         {name}
+        </button>
       </div>
 
       {/* MENU */}

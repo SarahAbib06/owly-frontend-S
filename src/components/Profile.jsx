@@ -1,34 +1,137 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Camera } from "lucide-react";
-import yacine from "../assets/images/yacine.jpg";
+//import yacine from "../assets/images/yacine.jpg";
 import { FaUser } from "react-icons/fa";
 import { FaArrowLeft } from "react-icons/fa";
 import { MdEmail } from "react-icons/md";
 import { useTranslation } from "react-i18next";
+import { profileService } from "../services/profileService";
+import { useNavigate } from "react-router-dom";
+import DeleteAccountModal from "../components/DeleteAccountModal";
+import DeletePhotoModal from "../components/DeletePhotoModal";
+
+import { Trash } from "lucide-react";
+
+
 
 export default function Profile({ setSelectedMenu }) {
   const [editMode, setEditMode] = useState(false);
   const { t } = useTranslation();
-  const [name, setName] = useState("Mehdi ATT");
-const [email, setEmail] = useState("mehdiattouche89@gmail.com");
+  const navigate = useNavigate();
+    const [isImageOpen, setIsImageOpen] = useState(false);
+const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [profilePicture, setProfilePicture] = useState("");
+  const [password, setPassword] = useState("");
+const [showDeleteModal, setShowDeleteModal] = useState(false);
+  // 👉 Charger le profil à l’ouverture de la page
+  useEffect(() => {
+    const loadProfile = async () => {
+  try {
+    const user = await profileService.getProfile();
+    setName(user.username);
+    setEmail(user.email);
+    setProfilePicture(user.profilePicture); // AJOUTÉ
+  } catch (err) {
+    console.error("Erreur chargement profil :", err);
+  }
+};
+
+
+    loadProfile();
+  }, []);
+  const [preview, setPreview] = useState(null);
+
+const handlePhotoChange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  setPreview(URL.createObjectURL(file));
+
+  try {
+    const user = await profileService.uploadProfilePicture(file);
+
+    console.log("UPLOAD RESULT ===>", user);
+
+    setProfilePicture(user.profilePicture);
+
+  } catch (error) {
+    console.error(error);
+    alert("Erreur lors de l'enregistrement de la photo");
+  }
+};
+// supression du compte
+const handleDelete = async () => {
+  try {
+    const res = await profileService.deleteAccount(password);
+    alert(res.message);
+    // Déconnecter l’utilisateur
+    localStorage.removeItem("token");
+    navigate("/login");
+  } catch (error) {
+    console.error(error);
+    alert(error.response?.data?.message || "Erreur");
+  }
+};
+const handleDeletePhoto = async () => {
+  try {
+    // Appel au backend pour supprimer la photo
+    await profileService.deleteProfilePicture();
+
+    // Supprimer la photo côté front
+    setProfilePicture("");
+    setPreview(null);
+
+    alert("Photo de profil supprimée avec succès");
+  } catch (error) {
+    console.error("Erreur suppression photo :", error);
+    alert("Erreur lors de la suppression de la photo");
+  }
+};
+
+
+
+
+
 
 
   return (
+    
     <div className="bg-myGray4 dark:bg-neutral-900 p-6 rounded-2xl shadow-md lg:h-125 h-auto">
-                   
       <div className="flex items-center gap-3 mb-6">
-  <FaArrowLeft
-    onClick={() => setSelectedMenu(null)}
-    className="w-5 h-5 text-myBlack dark:text-white cursor-pointer lg:hidden"
-  />
+        <FaArrowLeft
+          onClick={() => setSelectedMenu(null)}
+          className="w-5 h-5 text-myBlack dark:text-white cursor-pointer lg:hidden"
+        />
 
-  <h2 className="text-2xl font-semibold">
-    {t("profile.profile")}
-  </h2>
-</div>
-
+        <h2 className="text-2xl font-semibold">
+          {t("profile.profile")}
+        </h2>
+      </div>
+      {/* IMAGE FULLSCREEN MODAL */}
+      {isImageOpen && (
+  <div 
+    className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]"
+    onClick={() => setIsImageOpen(false)}
+  >
+      <div onClick={(e) => e.stopPropagation()}>
+    {/* CONTENEUR CARRÉ */}
+    <div className="w-[380px] h-[380px] rounded-full overflow-hidden shadow-2xl"
+         style={{ maxWidth: "90vw", maxHeight: "90vh" }}>
+      
+      <img 
+        src={preview || profilePicture || ""}
+        className="w-full h-full object-cover"
+      />
+    </div>
+     </div>
+  </div>
+)}
+ 
       {/* ▬▬▬ CARD 1 : identité ▬▬▬ */}
-      <div className="
+      <div
+        className="
         bg-myGray4 dark:bg-neutral-800 
         rounded-xl border-[1.2px] border-myBlack 
         p-7 mb-6 
@@ -36,37 +139,63 @@ const [email, setEmail] = useState("mehdiattouche89@gmail.com");
         flex-col sm:flex-col md:flex-row 
         gap-4
         w-full
-      ">
-
+      "
+      >
         {/* Left side */}
         <div className="flex items-center gap-4 flex-col md:flex-row text-center md:text-left">
+          <div className="relative h-16 w-16">
           <img
-            src={yacine}
-            className="w-16 h-16 rounded-full object-cover border"
+          src={preview || profilePicture || ""}
+               onClick={() => setIsImageOpen(true)}
+
+
+            className="  w-16 h-16 rounded-full object-cover border"
           />
+              {editMode && (profilePicture || preview) && (
+    <button
+      onClick={() => setShowDeletePhotoModal(true)}
+      className="absolute top-0 right-0 bg-red-500 hover:bg-red-700 text-white p-1 rounded-full"
+    >
+      <Trash size={14} />
+    </button>
+
+  )}</div>
           <div>
-            <p className="text-md">Mehdi ATT</p>
-            <p className="text-gray-500 text-sm pt-1.5">mehdiattouche89@gmail.com</p>
+            <p className="text-md">{name}</p>
+            <p className="text-gray-500 text-sm pt-1.5">{email}</p>
           </div>
         </div>
 
         {/* Right side button */}
-        {editMode && (
-          <button className="bg-[#008C23] hover:bg-green-700 dark:bg-myYellow text-white text-xs font-semibold px-5 py-2 rounded-lg flex items-center gap-2">
-            <Camera size={18} /> {t("profile.changePhoto")}
-          </button>
-        )}
+{editMode && (
+  <>
+    <input
+      type="file"
+      id="photoInput"
+      accept="image/*"
+      className="hidden"
+      onChange={handlePhotoChange}
+    />
+
+    <button
+      onClick={() => document.getElementById("photoInput").click()}
+      className="bg-[#008C23] hover:bg-green-700 dark:bg-myYellow text-white text-xs font-semibold px-5 py-2 rounded-lg flex items-center gap-2"
+    >
+      <Camera size={18} /> {t("profile.changePhoto")}
+    </button>
+  </>
+)}
       </div>
 
       {/* ▬▬▬ CARD 2 : infos personnelles ▬▬▬ */}
-      <div className="
+      <div
+        className="
         bg-myGray4 dark:bg-neutral-800 
         rounded-xl border-[1.2px] border-myBlack 
         p-4 w-full
-      ">
-
+      "
+      >
         <div className="flex items-center justify-between mb-6 flex-col md:flex-row gap-4">
-
           <div>
             <h3 className="font-semibold text-lg mb-2">
               {t("profile.personalInfo")}
@@ -76,7 +205,6 @@ const [email, setEmail] = useState("mehdiattouche89@gmail.com");
             </p>
           </div>
 
-          {/* Top-right buttons */}
           {!editMode ? (
             <button
               onClick={() => setEditMode(true)}
@@ -94,7 +222,16 @@ const [email, setEmail] = useState("mehdiattouche89@gmail.com");
               </button>
 
               <button
-                onClick={() => setEditMode(false)}
+                onClick={async () => {
+                  try {
+                    const updated = await profileService.updateUsername(name);
+                    setName(updated.username);
+                    setEditMode(false);
+                  } catch (err) {
+                    console.error(err);
+                    alert("Erreur lors de la sauvegarde");
+                  }
+                }}
                 className="bg-[#008C23] hover:bg-green-700 dark:bg-myYellow text-white text-xs font-semibold px-6 py-2.5 rounded-lg h-9 w-full md:w-auto"
               >
                 {t("profile.save")}
@@ -103,7 +240,7 @@ const [email, setEmail] = useState("mehdiattouche89@gmail.com");
           )}
         </div>
 
-        {/* ▬ FORM ▬ */}
+        {/* FORM */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
           <div className="flex flex-col">
             <label className="text-sm mb-2">{t("profile.username")}</label>
@@ -112,12 +249,11 @@ const [email, setEmail] = useState("mehdiattouche89@gmail.com");
               <div className="flex items-center bg-white dark:bg-neutral-800 rounded-lg px-3">
                 <FaUser className="text-gray-500 text-sm mr-2" />
                 <input
-  className="w-full py-2 text-xs bg-transparent focus:outline-none"
-  value={name}
-  onChange={(e) => setName(e.target.value)}
-  disabled={!editMode}
-/>
-
+                  className="w-full py-2 text-xs bg-transparent focus:outline-none"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={!editMode}
+                />
               </div>
             </div>
           </div>
@@ -128,25 +264,45 @@ const [email, setEmail] = useState("mehdiattouche89@gmail.com");
             <div className="p-[2px] rounded-lg bg-gradient-to-r from-[#F9EE34] via-gray-300 to-transparent">
               <div className="flex items-center bg-white dark:bg-neutral-800 rounded-lg px-3">
                 <MdEmail className="text-gray-500 text-sm mr-2" />
-                                    <input
-  className="w-full py-2 text-xs bg-transparent focus:outline-none"
-  value={email}
-  onChange={(e) => setEmail(e.target.value)}
-  disabled={!editMode}
-/>
+                <input
+                  className="w-full py-2 text-xs bg-transparent focus:outline-none"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={!editMode}
+                />
               </div>
             </div>
           </div>
         </div>
 
         {editMode && (
+          
           <div className="mt-6">
-            <button className="bg-[#EF0000] hover:bg-red-700 text-white text-xs font-semibold px-5 py-2 rounded-lg">
+            <button 
+             onClick={() => setShowDeleteModal(true)}
+            className="bg-[#EF0000] hover:bg-red-700 text-white text-xs font-semibold px-5 py-2 rounded-lg">
               {t("profile.deleteAccount")}
             </button>
           </div>
         )}
       </div>
+      <DeleteAccountModal
+  isOpen={showDeleteModal}
+  onClose={() => setShowDeleteModal(false)}
+  password={password}
+  setPassword={setPassword}
+  onConfirm={handleDelete}
+/>
+   <DeletePhotoModal
+      isOpen={showDeletePhotoModal}
+      onClose={() => setShowDeletePhotoModal(false)}
+      onConfirm={() => {
+        handleDeletePhoto();
+        setShowDeletePhotoModal(false);
+      }}
+    />
+
     </div>
+    
   );
 }

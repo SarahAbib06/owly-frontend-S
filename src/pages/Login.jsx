@@ -98,7 +98,7 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="text-xs text-myBlack cursor-pointer mt-2 mb-8 hover:text-myGray2 dark:text-myWhite  dark:hover:text-myGray2 transition-colors duration-300"
+              className="text-xs text-myBlack cursor-pointer mt-2 mb-8 hover:text-myGray2 dark:text-myWhite  dark:hover:text-myGray2transition-colors duration-300"
             >
               {t("login.forgotPassword")}
             </button>
