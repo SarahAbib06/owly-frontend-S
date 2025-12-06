@@ -138,7 +138,35 @@
     "nouveauMotDePasse": "New password",
     "confirmerMotDePasse": "Confirm your password",
     "enregistrer": "Save"
-  }
+  },
+  "infoContactModal": {
+    "mediaDocuments": "Media & Documents",
+    "themes": "Themes",
+    "addToFavorites": "Add to Favorites",
+    "archiveConversation": "Archive Conversation",
+    "lockConversation": "Lock Conversation",
+    "block": "Block",
+    "deleteConversation": "Delete Conversation"
+  },
+  
+  "chatOptions": {
+    "infoOn": "Info on",
+    "addToFavorites": "Add to Favorites",
+    "archiveConversation": "Archive Conversation",
+    "lockConversation": "Lock Conversation",
+    "block": "Block",
+    "deleteConversation": "Delete Conversation"
+  },
+  "Media": {
+  "title": "Media, Documents",
+  "medias": "Media",
+  "documents": "Documents",
+  "nomedia": "No media",
+  "nodocuments": "No documents"
+}
+
+
+
 
 
 }
