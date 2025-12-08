@@ -5,6 +5,9 @@ export default {
     "./index.html",      // ton point d'entrée HTML
     "./src/**/*.{js,jsx}" // tous tes fichiers React
   ],
-   
+  theme: {
+    extend: {}, // tu peux ajouter ici tes couleurs, polices, spacing personnalisés
+  },
   plugins: [],
 };
+

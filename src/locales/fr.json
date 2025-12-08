@@ -6,10 +6,9 @@
     "passwordPlaceholder": "Mot de passe",
     "acceptTerms": "J’accepte les conditions générales",
     "connect": "Connecter",
+    "forgotPassword": "Mot de passe oublié ?",
     "noAccount": "Vous n'avez pas de compte ?",
-    "register": "S’inscrire",
-    "rememberMe": "Se souvenir de moi ",
-    "forgotPassword":"Mot de passe oublié ?"
+    "register": "S’inscrire"
   },
   
   "register": {
@@ -28,22 +27,179 @@
     "leftText1": "Chaque conversation prend son envol",
     "leftText2": "Connectez-vous instantanément avec vos proches, partagez vos moments et restez toujours en contact."
   },
-
-"otp": {
+  "otp": {
   "title": "Vérifier votre code OTP",
   "description": "Nous avons envoyé un code de vérification à 6 chiffres à votre adresse e-mail.",
   "code": "Code OTP",
   "verify": "Vérifier et continuer"
 },
+"chat": {
+    "today": "Aujourd’hui",
+    "yesterday": "Hier",
+    "online": "En ligne",
+    "inputPlaceholder": "Entrer un message...",
+    "reactions": "Réactions",
+    "close": "Fermer"
+  },
+   "messages": {
+    "searchFriends": "Rechercher dans vos amis..."
+  },
+  
+  "sidebar": {
+    "Owly": "Owly",
+    "Message": "Message",
+    "Groupe": "Groupe",
+    "Owly AI": "Owly IA",
+    "Paramètres": "Paramètres",
+    "Profile": "Profil"
+  },
+  "welcome": {
+    "title": "Bienvenue sur Owly",
+    "description": "Sélectionnez une conversation dans la liste à gauche pour commencer à échanger. Vous pouvez également démarrer un nouveau chat ou créer un groupe en quelques clics.",
+    "encrypted": "Vos messages personnels sont chiffrés de bout en bout."
+  },
+  "forgotPassword": {
+    "title": "Nouveau mot de passe",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "send": "Envoyer",
+     "subtitle": "Choisissez un mot de passe sécurisé, d’au moins 8 caractères, incluant lettres, chiffres et symboles, afin de protéger efficacement votre compte."
+  },
+  
+  "modifierMotDePasse": {
+    "titre": "Modifier le mot de passe",
+    "sousTitre": "Changer votre mot de passe actuel",
+    "motDePasseActuel": "Mot de passe actuel",
+    "nouveauMotDePasse": "Nouveau mot de passe",
+    "confirmerMotDePasse": "Confirmer votre mot de passe",
+    "enregistrer": "Enregistrer"
+  },"parametresMenu": {
+    "Title": "Paramètres",
+    "General": "Général",
+    "Confidentialite": "Confidentialité",
+    "Notifications": "Notifications",
+    "Aide": "Aide & support",
+    "Deconnexion": "Se déconnecter"
+  },
 
-"forgotPassword": {
-  "title": "Nouveau mot de passe",
-  "subtitle": "Veuillez entrer et confirmer votre nouveau mot de passe.",
-  "newPassword": "Entrer le nouveau mot de passe",
-  "confirmPassword": "Confirmer le mot de passe",
-  "send": "Envoyer"
-}
- 
+   "parametresGeneral": {
+    "Title": "Général",
+    "Description": "Personnalisez l'apparence et la langue de l'application",
+    "Language": "Langue",
+    "Theme": "Thème",
+    "LightMode": "Mode clair",
+    "DarkMode": "Mode sombre",
+     "French":"Francais",
+     "English":"Anglais"
+  },
+
+  "parametresConfidentialite": {
+    "Title": "Confidentialité",
+    "Description": "Gérez vos paramètres de confidentialité et vos données",
+    "LastLogin": "Dernière connexion",
+    "Status": "Statut",
+    "BlockedUsers": "Utilisateurs bloqués",
+    "BlockedUsersCount": "utilisateur(s) bloqué(s)",
+    "ChangePassword": "Modifier le mot de passe",
+    "ChangePasswordDesc": "Changer votre mot de passe actuel"
+  },
+  "derniereConnexion": {
+    "Title": "Dernière connexion",
+    "Description": "Consultez vos dernières connexions à votre compte",
+    "Everyone": "Tout le monde",
+    "NoOne": "Personne"
+  },
+  "statut": {
+    "Title": "Statut",
+    "Description": "Gérez votre statut de visibilité",
+    "Everyone": "Tout le monde",
+    "NoOne": "Personne"
+  },
+
+  "privacy": {
+    "BlockedUsersTitle": "Utilisateurs bloqués",
+    "NoBlockedUsers": "Aucun utilisateur bloqué",
+    "BlockedUsersDescription": "Les utilisateurs bloqués ne pourront plus vous appeler ni vous envoyer de messages.",
+    "Unblock": "Débloquer"
+  },
+  "infoContactModal": {
+    "mediaDocuments": "Médias, documents",
+    "themes": "Thèmes",
+    "addToFavorites": "Ajouter aux favoris",
+    "archiveConversation": "Archiver la conversation",
+    "lockConversation": "Verrouiller la conversation",
+    "block": "Bloquer",
+    "deleteConversation": "Supprimer la discussion"
+  },
+  
+  "chatOptions": {
+    "infoOn": "Infos sur",
+    "addToFavorites": "Ajouter aux favoris",
+    "archiveConversation": "Archiver la conversation",
+    "lockConversation": "Verrouiller la conversation",
+    "block": "Bloquer",
+    "deleteConversation": "Supprimer la discussion"
+  },"themeSelector": {
+    "simpleColors": "Couleurs simples",
+    "gradients": "Dégradés",
+    "chooseImage": "Choisir une image",
+    "removeTheme": "Retirer le thème",
+    "close": "Fermer",
+    "interactive": "Interactif léger",
+    "auto": "Jour/Nuit",
+    "seasonal" :"saisons"
+  },
+  "colors": {
+    "Jaune": "Jaune",
+    "Bleu": "Bleu",
+    "Vert": "Vert",
+    "Rose": "Rose",
+    "Rouge": "Rouge",
+    "Violet": "Violet",
+    "Orange": "Orange",
+    "Turquoise": "Turquoise",
+    "Gris": "Gris",
+    "Beige": "Beige",
+    "Soleil Doux": "Soleil Doux",
+    "Blanc": "Blanc"
+  },
+  "gradients": {
+    "Bleu → Rose": "Bleu → Rose",
+    "Violet → Bleu": "Violet → Bleu",
+    "Orange → Rouge": "Orange → Rouge",
+    "Bleu → Turquoise": "Bleu → Turquoise",
+    "Rose → Violet": "Rose → Violet",
+    "Jaune → Orange": "Jaune → Orange",
+    "Vert → Bleu": "Vert → Bleu",
+    "Rouge → Violet": "Rouge → Violet",
+    "Gris → Noir": "Gris → Noir",
+    "Bleu Lavande": "Bleu Lavande",
+    "Pêche → Rose": "Pêche → Rose",
+    "Arc-en-ciel doux": "Arc-en-ciel doux"
+  },
+  "parametresNotifications": {
+  "Title": "Notifications",
+  "Description": "Contrôlez vos préférences de notifications.",
+  
+  "Banner": "Afficher la bannière de notifications",
+  "BannerDesc": "Toujours",
+
+  "Messages": "Notifications des messages",
+  "MessagesDesc": "Afficher les notifications pour les nouveaux messages",
+
+  "Calls": "Notifications d'appels",
+  "CallsDesc": "Afficher les notifications pour les appels entrants",
+
+  "IncomingSound": "Appels entrants",
+  "IncomingSoundDesc": "Émettre un son pour les appels entrants"
+},
+  "banniereNotifications": {
+    "Title": "Bannière de notification",
+    "Description": "Sélectionnez quand les bannières doivent apparaître.",
+    "Never": "Jamais",
+    "Always": "Toujours",
+    "OnlyOpen": "Uniquement lorsque l'application est ouverte"
+  }
 }
 
 

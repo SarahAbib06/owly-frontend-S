@@ -6,11 +6,9 @@
     "passwordPlaceholder": "Password",
     "acceptTerms": "I accept the terms and conditions",
     "connect": "Login",
+    "forgotPassword": "Forgot password?",
     "noAccount": "Don't have an account?",
-    "register": "Register",
-    "rememberMe":"Remmember Me",
-    "forgotPassword":"forgot Password?"
-
+    "register": "Register"
   },
   "register": {
     "createAccount": "Create your account",
@@ -28,17 +26,296 @@
     "leftText1": "Every conversation takes flight",
     "leftText2": "Connect instantly with your friends, share your moments, and always stay in touch."
   },
-
   "otp": {
   "title": "Verify your OTP code",
   "description": "We sent a 6-digit verification code to your registered email.",
   "code": "OTP Code",
   "verify": "Verify and continue"
 },
-"forgotPassword": {
-  "title": "New Password",
-  "subtitle": "Please enter and confirm your new password.",
-  "newPassword": "Enter new password",
-  "confirmPassword": "Confirm password",
-  "send": "Send"
-  }}
+"chat": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "online": "Online",
+    "inputPlaceholder": "Enter a message...",
+    "reactions": "Reactions",
+    "close": "Close"
+  },
+  
+  "messages": {
+    "searchFriends": "Search among your friends..."
+  },
+  
+  "sidebar": {
+    "Owly": "Owly",
+    "Message": "Message",
+    "Groupe": "Group",
+    "Owly AI": "Owly AI",
+    "Paramètres": "Settings",
+    "Profile": "Profile"
+  },
+  "welcome": {
+    "title": "Welcome to Owly",
+    "description": "Select a conversation from the list on the left to start chatting. You can also start a new chat or create a group in just a few clicks.",
+    "encrypted": "Your personal messages are end-to-end encrypted."
+  },
+  
+  "forgotPassword": {
+    "title": "New Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "send": "Send",
+     "subtitle":"Choose a secure password with at least 8 characters, including letters, numbers, and symbols, to effectively protect your account."
+  },
+ 
+  "modifierMotDePasse": {
+    "titre": "Change password",
+    "sousTitre": "Change your current password",
+    "motDePasseActuel": "Current password",
+    "nouveauMotDePasse": "New password",
+    "confirmerMotDePasse": "Confirm your password",
+    "enregistrer": "Save"
+  },
+  "parametresMenu": {
+    "Title": "Settings",
+    "General": "General",
+    "Confidentialite": "Privacy",
+    "Notifications": "Notifications",
+    "Aide": "Help & Support",
+    "Deconnexion": "Logout"
+  },
+
+  "parametresGeneral": {
+    "Title": "General",
+    "Description": "Customize the app's appearance and language",
+    "Language": "Language",
+    "Theme": "Theme",
+    "LightMode": "Light mode",
+    "DarkMode": "Dark mode"
+  },
+
+  
+  "parametresConfidentialite": {
+    "Title": "Privacy",
+    "Description": "Manage your privacy settings and data",
+    "LastLogin": "Last login",
+    "Status": "Status",
+    "BlockedUsers": "Blocked users",
+    "BlockedUsersCount": "user(s) blocked",
+    "ChangePassword": "Change password",
+    "ChangePasswordDesc": "Change your current password"
+  },
+  
+  "derniereConnexion": {
+    "Title": "Last login",
+    "Description": "Check your recent account logins",
+    "Everyone": "Everyone",
+    "NoOne": "No one"
+  },
+
+  "statut": {
+    "Title": "Status",
+    "Description": "Manage your visibility status",
+    "Everyone": "Everyone",
+    "NoOne": "No one"
+  },
+
+
+  "privacy": {
+    "BlockedUsersTitle": "Blocked Users",
+    "NoBlockedUsers": "No blocked users",
+    "BlockedUsersDescription": "Blocked users will no longer be able to call or message you.",
+    "Unblock": "Unblock"
+  },"parametresMenu": {
+    "Title": "Settings",
+    "General": "General",
+    "Confidentialite": "Privacy",
+    "Notifications": "Notifications",
+    "Aide": "Help & Support",
+    "Deconnexion": "Logout"
+  },
+
+  "parametresGeneral": {
+    "Title": "General",
+    "Description": "Customize the app's appearance and language",
+    "Language": "Language",
+    "Theme": "Theme",
+    "LightMode": "Light mode",
+    "DarkMode": "Dark mode"
+  },
+
+  
+  "parametresConfidentialite": {
+    "Title": "Privacy",
+    "Description": "Manage your privacy settings and data",
+    "LastLogin": "Last login",
+    "Status": "Status",
+    "BlockedUsers": "Blocked users",
+    "BlockedUsersCount": "user(s) blocked",
+    "ChangePassword": "Change password",
+    "ChangePasswordDesc": "Change your current password"
+  },
+  
+  "derniereConnexion": {
+    "Title": "Last login",
+    "Description": "Check your recent account logins",
+    "Everyone": "Everyone",
+    "NoOne": "No one"
+  },
+
+  "statut": {
+    "Title": "Status",
+    "Description": "Manage your visibility status",
+    "Everyone": "Everyone",
+    "NoOne": "No one"
+  },
+
+
+  "privacy": {
+    "BlockedUsersTitle": "Blocked Users",
+    "NoBlockedUsers": "No blocked users",
+    "BlockedUsersDescription": "Blocked users will no longer be able to call or message you.",
+    "Unblock": "Unblock"
+  },"parametresMenu": {
+    "Title": "Settings",
+    "General": "General",
+    "Confidentialite": "Privacy",
+    "Notifications": "Notifications",
+    "Aide": "Help & Support",
+    "Deconnexion": "Logout"
+  },
+
+  "parametresGeneral": {
+    "Title": "General",
+    "Description": "Customize the app's appearance and language",
+    "Language": "Language",
+    "Theme": "Theme",
+    "LightMode": "Light mode",
+    "DarkMode": "Dark mode",
+    "French":"French",
+    "English":"Anglais"
+  },
+
+  
+  "parametresConfidentialite": {
+    "Title": "Privacy",
+    "Description": "Manage your privacy settings and data",
+    "LastLogin": "Last login",
+    "Status": "Status",
+    "BlockedUsers": "Blocked users",
+    "BlockedUsersCount": "user(s) blocked",
+    "ChangePassword": "Change password",
+    "ChangePasswordDesc": "Change your current password"
+  },
+  
+  "derniereConnexion": {
+    "Title": "Last login",
+    "Description": "Check your recent account logins",
+    "Everyone": "Everyone",
+    "NoOne": "No one"
+  },
+
+  "statut": {
+    "Title": "Status",
+    "Description": "Manage your visibility status",
+    "Everyone": "Everyone",
+    "NoOne": "No one"
+  },
+
+
+  "privacy": {
+    "BlockedUsersTitle": "Blocked Users",
+    "NoBlockedUsers": "No blocked users",
+    "BlockedUsersDescription": "Blocked users will no longer be able to call or message you.",
+    "Unblock": "Unblock"
+  },
+  "infoContactModal": {
+    "mediaDocuments": "Media & Documents",
+    "themes": "Themes",
+    "addToFavorites": "Add to Favorites",
+    "archiveConversation": "Archive Conversation",
+    "lockConversation": "Lock Conversation",
+    "block": "Block",
+    "deleteConversation": "Delete Conversation"
+  },
+  
+  "chatOptions": {
+    "infoOn": "Info on",
+    "addToFavorites": "Add to Favorites",
+    "archiveConversation": "Archive Conversation",
+    "lockConversation": "Lock Conversation",
+    "block": "Block",
+    "deleteConversation": "Delete Conversation"
+  },
+  "themeSelector": {
+    "simpleColors": "Simple Colors",
+    "gradients": "Gradients",
+    "chooseImage": "Choose an image",
+    "removeTheme": "Remove theme",
+    "close": "Close",
+    "interactive": "Light Interactive",
+    "auto": "Day/Night",
+    "seasonal" :"seasonal"
+  },
+  "colors": {
+    "Jaune": "Yellow",
+    "Bleu": "Blue",
+    "Vert": "Green",
+    "Rose": "Pink",
+    "Rouge": "Red",
+    "Violet": "Purple",
+    "Orange": "Orange",
+    "Turquoise": "Turquoise",
+    "Gris": "Gray",
+    "Beige": "Beige",
+    "Soleil Doux": "Soft Sun",
+    "Blanc": "White"
+  },
+  "gradients": {
+    "Bleu → Rose": "Blue → Pink",
+    "Violet → Bleu": "Purple → Blue",
+    "Orange → Rouge": "Orange → Red",
+    "Bleu → Turquoise": "Blue → Turquoise",
+    "Rose → Violet": "Pink → Purple",
+    "Jaune → Orange": "Yellow → Orange",
+    "Vert → Bleu": "Green → Blue",
+    "Rouge → Violet": "Red → Purple",
+    "Gris → Noir": "Gray → Black",
+    "Bleu Lavande": "Lavender Blue",
+    "Pêche → Rose": "Peach → Pink",
+    "Arc-en-ciel doux": "Soft Rainbow"
+  },
+  "parametresNotifications": {
+  "Title": "Notifications",
+  "Description": "Manage your notification preferences.",
+  
+  "Banner": "Show notification banner",
+  "BannerDesc": "Always",
+
+  "Messages": "Message notifications",
+  "MessagesDesc": "Show notifications for new messages",
+
+  "Calls": "Call notifications",
+  "CallsDesc": "Show notifications for incoming calls",
+
+  "IncomingSound": "Incoming calls",
+  "IncomingSoundDesc": "Play sound for incoming calls"
+},
+  "banniereNotifications": {
+    "Title": "Notification Banner",
+    "Description": "Select when banners should appear.",
+    "Never": "Never",
+    "Always": "Always",
+    "OnlyOpen": "Only when app is open"
+  }
+
+
+
+
+
+
+
+}
+
+
+
+

@@ -3,32 +3,7 @@ import { useTranslation } from "react-i18next";
 import logo from "../assets/images/owlylogo.png";
 
 <img src={logo} alt="logo" />
-{/*
-const FormCard = ({ title, subtitle, children }) => (
-  <div className="bg-white shadow-lg rounded-2xl md:flex-row w-[90%] flex w-[800px] overflow-hidden">
-    {/* Partie gauche */} {/*
-    <div className="bg-yellow-400 w-1/2 flex flex-col justify-center items-center p-6 text-center">
-      <img src={logo} alt="Logo" className="w-20 mb-4" />
-      <p className="text-sm text-black font-medium">
-        Chaque conversation prend son envol
-      </p>
-      <p className="text-sm font-semibold mt-2">
-        Connectez-vous instantanément avec vos proches, partagez vos moments et restez toujours en contact.
-      </p>
-    </div>
 
-    {/* Partie droite */}      {/*
-    <div className="w-1/2 flex flex-col justify-center items-center p-10">
-      <h2 className="text-2xl font-bold mb-2">{title}</h2>
-      <p className="text-gray-500 mb-6">{subtitle}</p>
-      {children}
-    </div>
-  </div>
-);
-
-export default FormCard;
-    */}
-    // src/components/FormCard.jsx
 const FormCard = ({ title, subtitle, children, topRight }) => {
   const { t } = useTranslation();
 
@@ -38,8 +13,8 @@ const FormCard = ({ title, subtitle, children, topRight }) => {
       bg-white dark:bg-mydarkGray3 shadow-lg rounded-2xl 
       flex flex-col md:flex-row
       min-h-0
-         w-[92%]          /* 📌 plus large sur mobile */
-       h-[700px]
+         w-[92%]          /*  plus large sur mobile */
+       h-[600px]
       sm:h-auto
       sm:w-[500px]
       md:w-[800px]
@@ -71,7 +46,7 @@ const FormCard = ({ title, subtitle, children, topRight }) => {
           <p className="text-xs sm:text-sm text-myBlack font-medium">
             {t('formCard.leftText1')}
           </p>
-          <p className="text-xs sm:text-sm font-semibold mt-2">
+          <p className="text-xs sm:text-sm  dark:text-myBlack font-semibold mt-2">
             {t('formCard.leftText2')}
           </p>
         </div>
@@ -81,8 +56,8 @@ const FormCard = ({ title, subtitle, children, topRight }) => {
       <div className="md:w-1/2 w-full flex flex-col justify-center 
                 items-center md:items-start min-h-0
                 p-4 sm:p-6 md:p-8 relative">
-        <h2 className="text-xl sm:text-2xl font-bold mb-2 text-center md:text-left">{title}</h2>
-        <p className="text-myGray2 mb-6 text-center md:text-left">{subtitle}</p>
+        <h2 className="text-2xl sm:text-2xl font-semibold mb-2 text-center md:text-left">{title}</h2>
+        <p className="text-[14px] text-myBlack  dark:text-myWhite mb-6 text-center md:text-left">{subtitle}</p>
         {children} 
       </div>
 
