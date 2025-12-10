@@ -18,41 +18,40 @@ const SearchModal = ({ onClose, onUserSelect }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // FONCTION POUR RÉCUPÉRER LES VRAIS CONTACTS
-  const fetchContacts = async () => {
-    try {
-      setLoadingContacts(true);
-      const token = localStorage.getItem('token');
-      
-     const response = await fetch('http://localhost:5000/api/contacts', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.contacts) {
-          // Formater les données pour correspondre à votre structure
-          const formattedContacts = data.contacts.map(contact => ({
-            id: contact.contact?._id || contact._id,
-            _id: contact.contact?._id || contact._id,
-            username: contact.contact?.username || contact.username,
-            status: contact.contact?.status || contact.status || 'offline',
-            profilePicture: contact.contact?.profilePicture || contact.profilePicture || null,
-            isContact: true
-          }));
-          setContacts(formattedContacts);
-        }
+ // Dans SearchModal.jsx - fonction fetchContacts simplifiée
+const fetchContacts = async () => {
+  try {
+    setLoadingContacts(true);
+    const token = localStorage.getItem('token');
+    
+    console.log('🔄 Chargement des contacts...');
+    
+    const response = await fetch('http://localhost:5000/api/relations/contacts', {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
-    } catch (error) {
-      console.error('Erreur chargement contacts:', error);
-      // Ne pas afficher d'erreur pour ne pas perturber l'UX
-    } finally {
-      setLoadingContacts(false);
+    });
+    
+    console.log('Status:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`);
     }
-  };
-
+    
+    const data = await response.json();
+    console.log('📊 Contacts reçus:', data);
+    
+    // data est déjà un tableau, pas besoin de data.contacts
+    setContacts(data);
+    
+  } catch (error) {
+    console.error('❌ Erreur chargement contacts:', error);
+    setError('Impossible de charger les contacts: ' + error.message);
+    setContacts([]);
+  } finally {
+    setLoadingContacts(false);
+  }
+};
   // RECHERCHE PAR USERNAME
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;

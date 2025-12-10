@@ -24,7 +24,7 @@ export default function Profile({ setSelectedMenu }) {
   
   // ÉTATS POUR QR CODE
   const [qrCodeData, setQrCodeData] = useState(null);
-  const [searchUrl, setSearchUrl] = useState("");
+  const [_searchUrl, setSearchUrl] = useState("");
   const [showQRModal, setShowQRModal] = useState(false);
   const [loadingQR, setLoadingQR] = useState(false);
 
