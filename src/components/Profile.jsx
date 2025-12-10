@@ -28,7 +28,7 @@ export default function Profile({ setSelectedMenu }) {
   const [showQRModal, setShowQRModal] = useState(false);
   const [loadingQR, setLoadingQR] = useState(false);
 
-  // 👉 Charger le profil à l'ouverture de la page
+  //  Charger le profil à l'ouverture de la page
   useEffect(() => {
     const loadProfile = async () => {
       try {
