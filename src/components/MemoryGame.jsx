@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import clickSound from "../assets/sounds/click.wav";
 import winSound from "../assets/sounds/win.wav";
 import loseSound from "../assets/sounds/lose.wav";
@@ -18,6 +19,7 @@ function playSound(sound) {
 }
 
 export default function MemoryGame() {
+  const navigate = useNavigate();
   const [cards, setCards] = useState([]);
   const [flippedCards, setFlippedCards] = useState([]);
   const [disabled, setDisabled] = useState(true);
@@ -91,7 +93,6 @@ export default function MemoryGame() {
       newCards = newCards.map(c =>
         c.emoji === card1.emoji ? { ...c, matched: true, effect: true } : c
       );
-      // effet lumineux temporaire
       setTimeout(() => {
         newCards = newCards.map(c => ({ ...c, effect: false }));
         setCards(newCards);
@@ -115,7 +116,6 @@ export default function MemoryGame() {
     setGameOver(true);
     playSound(winSound);
     setMessage("🎉 Niveau terminé !");
-    // Confetti
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
   };
 
@@ -138,7 +138,6 @@ export default function MemoryGame() {
     initGame(true);
   };
 
-  // Style timer dynamique
   const timerStyle = {
     fontSize: "1.5rem",
     fontWeight: "bold",
@@ -146,7 +145,6 @@ export default function MemoryGame() {
     transition: "color 0.3s",
   };
 
-  // Style bouton “jeu”
   const buttonStyle = {
     padding: "10px 20px",
     margin: "5px",
@@ -162,35 +160,35 @@ export default function MemoryGame() {
   };
 
   return (
-    <div style={{ textAlign: "center", marginTop: "20px", position: "relative" }}>
+    <div style={{ textAlign: "center", marginTop: "20px", position: "relative", padding: "0 10px" }}>
       <h2 style={timerStyle}>⏳ Temps restant: {timeLeft}s | Niveau: {level}</h2>
 
-      <div style={{ marginBottom: "15px" }}>
+      {/* Boutons de contrôle avec Retour */}
+      <div style={{ marginBottom: "15px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+        <button
+          style={{ ...buttonStyle, backgroundColor: "#555" }}
+          onClick={() => navigate("/games")}
+        >
+          ← Retour
+        </button>
+
         <button style={buttonStyle} onClick={() => setDisabled(false)}>▶ Start</button>
         <button style={buttonStyle} onClick={() => setDisabled(true)}>⏸ Pause</button>
         <button style={buttonStyle} onClick={() => initGame(true)}>🔄 Reset</button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 100px)", gap: "15px", justifyContent: "center" }}>
+      {/* Grille responsive */}
+      <div className="grid-responsive">
         {cards.map(card => (
           <motion.div
             key={card.id}
             layout
             whileHover={{ scale: 1.05 }}
             onClick={() => handleClick(card)}
+            className="card"
             style={{
-              width: "100px",
-              height: "100px",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
               backgroundColor: card.flipped || card.matched ? "#fffa" : "#555",
-              borderRadius: "15px",
-              fontSize: "2rem",
-              cursor: "pointer",
-              userSelect: "none",
               boxShadow: card.effect ? "0 0 20px 5px #0ff" : "0 5px 15px rgba(0,0,0,0.3)",
-              transition: "box-shadow 0.3s",
             }}
           >
             <AnimatePresence>
@@ -200,7 +198,6 @@ export default function MemoryGame() {
                   initial={{ rotateY: 180 }}
                   animate={{ rotateY: 0 }}
                   exit={{ rotateY: 180 }}
-                  style={{ display: "block" }}
                 >
                   {card.emoji}
                 </motion.span>
@@ -227,6 +224,41 @@ export default function MemoryGame() {
           </div>
         </div>
       )}
+
+      {/* CSS responsive */}
+      <style>{`
+        .grid-responsive {
+          display: grid;
+          grid-template-columns: repeat(4, 100px); /* Desktop 4x4 */
+          gap: 15px;
+          justify-content: center;
+          margin: 0 auto;
+        }
+
+        .card {
+          border-radius: 15px;
+          font-size: 2rem;
+          cursor: pointer;
+          user-select: none;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          aspect-ratio: 1 / 1;
+          transition: box-shadow 0.3s;
+        }
+
+        @media (max-width: 1024px) { /* Tablette et mobile */
+          .grid-responsive {
+            grid-template-columns: repeat(3, 1fr); /* 3 colonnes */
+            gap: 12px;
+            max-width: 360px; /* 3x100px + gaps */
+          }
+
+          .card {
+            font-size: 1.5rem;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,5 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import clickSound from "../assets/sounds/click.wav";
 import winSound from "../assets/sounds/win.wav";
 import loseSound from "../assets/sounds/lose.wav";
@@ -58,34 +59,44 @@ function pieceBgPos(idx){
 }
 
 export default function OwlyQuiz(){
+  const navigate = useNavigate();
   const [stage,setStage]=useState("intro");
   const [storyIndex,setStoryIndex]=useState(0);
   const [challengeType,setChallengeType]=useState(null);
 
-  // puzzle
   const [pieces,setPieces]=useState(shuffleArray(PUZZLE_PIECES));
   const [selected,setSelected]=useState(null);
   const [timer,setTimer]=useState(15);
   const timerRef=useRef(null);
 
-  // mémoire
   const [memorySeq,setMemorySeq]=useState([]);
   const [playerSeq,setPlayerSeq]=useState([]);
   const [memoryButtons,setMemoryButtons]=useState([]);
 
-  // boule
   const [ballPos,setBallPos]=useState(0);
   const [cups,setCups]=useState([false,false,false]);
   const [ballVisible,setBallVisible]=useState(true);
 
-  // observation visuelle
   const [obsGrid,setObsGrid] = useState([]);
   const [obsQuestion,setObsQuestion] = useState(null);
   const [obsOptions,setObsOptions] = useState([]);
   const [showGrid,setShowGrid] = useState(true);
 
-  // final
   const [finalQues,setFinalQues]=useState({question:"Quel est le message final ?",options:["Gagner","Apprendre","Protéger","Dormir"],correct:2});
+
+  const [windowWidth,setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(()=>{
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return ()=> window.removeEventListener("resize", handleResize);
+  },[]);
+
+  const getPuzzleSize = () => {
+    if(windowWidth >= 1024) return 100;
+    if(windowWidth >= 768) return 80;
+    return 60;
+  };
 
   const startChallenge=()=>{
     playSound(clickSound);
@@ -97,7 +108,6 @@ export default function OwlyQuiz(){
     const type=types[storyIndex] || "finalPuzzle";
     setChallengeType(type);
 
-    // puzzle
     if(type==="puzzle"){
       setPieces(shuffleArray(PUZZLE_PIECES));
       setTimer(15);
@@ -110,7 +120,6 @@ export default function OwlyQuiz(){
       },1000);
     }
 
-    // mémoire
     if(type==="memory"){
       const seq = shuffleArray(MEMORY_ICONS);
       setMemorySeq(seq);
@@ -119,7 +128,6 @@ export default function OwlyQuiz(){
       setTimeout(()=>setPlayerSeq([]),2000);
     }
 
-    // boule sous verres
     if(type==="cups"){
       const idx=Math.floor(Math.random()*3);
       setBallPos(idx);
@@ -144,9 +152,8 @@ export default function OwlyQuiz(){
       },1000);
     }
 
-    // observation visuelle
     if(type==="obsChallenge"){
-      const gridSize = 2; // 2x2
+      const gridSize = 2;
       const icons = shuffleArray(MEMORY_ICONS).slice(0, gridSize*gridSize);
       setObsGrid(icons);
       setShowGrid(true);
@@ -164,7 +171,6 @@ export default function OwlyQuiz(){
       setTimeout(()=>setShowGrid(false), 3000);
     }
 
-    // final
     if(type==="finalPuzzle"){
       setFinalQues({question:"Quel est le message final ?",options:shuffleArray(["Gagner","Apprendre","Protéger","Dormir"]),correct:2});
     }
@@ -220,6 +226,12 @@ export default function OwlyQuiz(){
 
   return(
     <div style={{minHeight:"100vh",backgroundColor:"#FFFF99",padding:20,color:"#000",display:"flex",flexDirection:"column",alignItems:"center"}}>
+
+      {/* BOUTON RETOUR */}
+      <div style={{width:"100%", maxWidth:720, display:"flex", justifyContent:"flex-start"}}>
+        <button onClick={()=>navigate("/games")} style={{...btnStyle, marginBottom:10}}>⬅ Retour aux jeux</button>
+      </div>
+
       <motion.h1 initial={{y:-50,opacity:0}} animate={{y:0,opacity:1}} style={{fontSize:"3rem"}}>🦉 Owly Quiz 🦉</motion.h1>
 
       {/* INTRO */}
@@ -232,11 +244,20 @@ export default function OwlyQuiz(){
       {stage==="challenge" && challengeType==="puzzle" && <div style={{marginTop:30}}>
         <h2>Puzzle — reconstitue l'image</h2>
         <p>Timer : {timer}s</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,100px)",gap:6,marginTop:20}}>
+        <div style={{
+          display:"grid",
+          gridTemplateColumns:`repeat(3, ${getPuzzleSize()}px)`,
+          gridTemplateRows:`repeat(2, ${getPuzzleSize()}px)`,
+          gap:6,
+          marginTop:20,
+          justifyContent:"center"
+        }}>
           {pieces.map((p,idx)=>
             <div key={p.id} onClick={()=>onPieceClick(idx)}
               style={{
-                width:100,height:100,cursor:"pointer",
+                width:getPuzzleSize(),
+                height:getPuzzleSize(),
+                cursor:"pointer",
                 border:selected===idx?"3px solid #ffd54f":"2px solid #000",
                 borderRadius:6,
                 backgroundImage:`url(${OWLY_IMAGE})`,
@@ -264,7 +285,7 @@ export default function OwlyQuiz(){
         <div style={{display:"flex",gap:20,justifyContent:"center",marginTop:20}}>
           {cups.map((c,i)=>
             <div key={i} onClick={()=>onCupClick(i)}
-              style={{width:80,height:80,borderRadius:10,backgroundColor:"#fff",border:"2px solid #000",display:"flex",justifyContent:"center",alignItems:"center",cursor:"pointer"}}>
+              style={{width:getPuzzleSize(),height:getPuzzleSize(),borderRadius:10,backgroundColor:"#fff",border:"2px solid #000",display:"flex",justifyContent:"center",alignItems:"center",cursor:"pointer"}}>
                 {ballVisible && c ? "⚪" : ""}
             </div>
           )}
@@ -275,18 +296,15 @@ export default function OwlyQuiz(){
       {stage==="challenge" && challengeType==="obsChallenge" && <div style={{textAlign:"center",marginTop:30}}>
         <h2>Défi d'observation visuelle</h2>
         {showGrid ? (
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,80px)",gap:10,justifyContent:"center",marginTop:20}}>
-            {obsGrid.map((icon,i)=><div key={i} style={{width:80,height:80,fontSize:40,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #000",borderRadius:8}}>{icon}</div>)}
+          <div style={{display:"grid",gridTemplateColumns:`repeat(2, ${getPuzzleSize()}px)`,gap:10,justifyContent:"center",marginTop:20}}>
+            {obsGrid.map((icon,i)=><div key={i} style={{width:getPuzzleSize(),height:getPuzzleSize(),fontSize:getPuzzleSize()/2,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #000",borderRadius:8}}>{icon}</div>)}
           </div>
         ) : (
           <>
             <p>Quel symbole était à la position {obsQuestion.index + 1} ?</p>
             <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:20}}>
               {obsOptions.map((icon,i)=>
-                <button key={i} onClick={()=>{
-                  if(icon === obsQuestion.icon) onWin();
-                  else onFail();
-                }} style={btnStyle}>{icon}</button>
+                <button key={i} onClick={()=>{if(icon===obsQuestion.icon) onWin(); else onFail();}} style={btnStyle}>{icon}</button>
               )}
             </div>
           </>
@@ -322,6 +340,7 @@ export default function OwlyQuiz(){
         {STORY_PARAGRAPHS.map((p,i)=><p key={i} style={{lineHeight:"1.6rem", fontSize:"1.1rem"}}>{p}</p>)}
         <button onClick={resetGame} style={{...btnStyle,marginTop:20}}>Rejouer</button>
       </div>}
+
     </div>
   );
 }

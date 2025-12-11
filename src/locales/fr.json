@@ -199,6 +199,19 @@
     "Never": "Jamais",
     "Always": "Toujours",
     "OnlyOpen": "Uniquement lorsque l'application est ouverte"
+  },
+  
+  "chat": {
+    "searchButton": "Rechercher",
+    "searchPlaceholder": "Tapez pour rechercher..."
+  
+},
+"gamesPage": {
+    "choose_game": "Choisis ton jeu",
+    "back": "Retour",
+    "owly_quiz": "Owly Quiz",
+    "rock_paper_scissors": "Pierre Papier Ciseaux",
+    "memory_game": "Jeu de Mémoire"
   }
 }
 

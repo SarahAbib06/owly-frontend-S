@@ -5,6 +5,8 @@ import VideoCallScreen from "../components/VideoCallScreen";
 import ThemeSelector from "../components/ThemeSelector";
 import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiSearch } from "react-icons/fi";
 
 // Icon "vu"
 const SeenIconGray = () => (
@@ -110,7 +112,7 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
       const base64 = await fileToBase64(theme.value);
       style = { backgroundImage: `url(${base64})`, backgroundSize:"cover", backgroundPosition:"center", backgroundRepeat:"no-repeat"};
       setThemeStyle(style);
-      setSendBtnColor(""); setBubbleBg(""); setShowThemeSelector(false);
+      setSendBtnColor(""); setBubbleBg(""); // setShowThemeSelector(false);
       if(save) localStorage.setItem(chatKey, JSON.stringify({...theme, value: base64}));
       return;
     }
@@ -118,7 +120,7 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
     // Image Base64
     if((theme.type==="image" || theme.type==="upload") && typeof theme.value === "string"){
       style = { backgroundImage: `url(${theme.value})`, backgroundSize:"cover", backgroundPosition:"center", backgroundRepeat:"no-repeat"};
-      setThemeStyle(style); setSendBtnColor(""); setBubbleBg(""); setShowThemeSelector(false);
+      setThemeStyle(style); setSendBtnColor(""); setBubbleBg("");// setShowThemeSelector(false);
       if(save) localStorage.setItem(chatKey, JSON.stringify(theme));
       return;
     }
@@ -152,7 +154,7 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
         setFloatingEmojis([]);
       }
 
-      setShowThemeSelector(false);
+      //setShowThemeSelector(false);
       if(save) localStorage.setItem(chatKey, JSON.stringify(theme));
     }
   };
@@ -201,6 +203,7 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
       });
     }, 60); // ~16fps
 
+
     return () => clearInterval(id);
   }, [themeEmojis]);
 
@@ -210,6 +213,9 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
       setFloatingEmojis([]);
     }
   }, [themeEmojis]);
+ //Smart Search Bubble
+const [openSearch, setOpenSearch] = useState(false);  // si le champ de recherche est visible
+const [searchTerm, setSearchTerm] = useState("");     // texte tapé par l'utilisateur
 
   return (
     <div className="relative flex flex-col w-full h-full bg-myWhite dark:bg-neutral-900 text-myBlack dark:text-white transition-colors duration-300 min-w-[150px]" style={themeStyle}>
@@ -278,16 +284,21 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
               : themeStyle.background
                 ? isDarkColor(themeStyle.background) ? "#fff":"#000"
                 :"#000";
+                const isMatch = searchTerm && msg.text.toLowerCase().includes(searchTerm.toLowerCase());
+
           return (
             <div key={i}>
               {showDate && <div className="text-center text-[10px] text-gray-700 dark:text-gray-300 my-2">{formatDateLabel(msg.date,t)}</div>}
               <div className={`flex ${msg.fromMe?"justify-end":"justify-start"}`}>
                 <div className="flex flex-col max-w-[85%]">
                   {!msg.fromMe && isGroup && <p className="text-[10px] ml-1 mb-1 text-gray-700 dark:text-gray-300">{msg.senderName}</p>}
-                  <div className={bubbleClasses(msg.fromMe)} style={{ background: msg.fromMe ? bubbleBg||undefined : undefined, color: textColor }}
-                       onClick={() => toggleReactionPicker(i)}>
-                    {msg.text}
-                  </div>
+                  <div
+  className={`${bubbleClasses(msg.fromMe)} ${isMatch ? "ring-2 ring-blue-400" : ""}`}
+  style={{ background: msg.fromMe ? bubbleBg||undefined : undefined, color: textColor }}
+  onClick={() => toggleReactionPicker(i)}
+>
+  {msg.text}
+</div>
                   {reactionPicker === i && (
                     <div className={`flex gap-1 bg-myGray3 dark:bg-[#2E2F2F] px-2 py-1 rounded-full shadow mt-1 ${msg.fromMe ? "self-end" : "self-start"}`}>
                       {EMOJIS.map((e) => (
@@ -343,6 +354,7 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
               openTheme: () => { setShowThemeSelector(true); setIsOptionsOpen(false); }
             }}
             onClose={() => setIsOptionsOpen(false)}
+            onOpenSearch={() => setOpenSearch(true)}
           />
         </>
       )}
@@ -377,6 +389,35 @@ export default function ChatWindow({ isGroup = false, selectedChat }) {
           </button>
         </div>
       )}
+      <AnimatePresence>
+  {openSearch && (
+    <>
+      {/* overlay invisible derrière la recherche */}
+      <div
+        className="fixed inset-0 z-40"
+        onClick={() => setOpenSearch(false)}
+      ></div>
+
+      {/* champ de recherche */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        className="absolute bottom-20 right-6 w-[300px] bg-white dark:bg-gray-700 rounded-lg shadow-lg p-3 z-50"
+      >
+        <input
+          type="text"
+          placeholder={t("chat.searchPlaceholder") || "Rechercher..."}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 text-xs"
+        />
+      </motion.div>
+    </>
+  )}
+</AnimatePresence>
+
+
     </div>
   );
 }

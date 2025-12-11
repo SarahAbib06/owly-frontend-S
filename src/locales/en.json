@@ -306,6 +306,17 @@
     "Never": "Never",
     "Always": "Always",
     "OnlyOpen": "Only when app is open"
+  },
+  "chat": {
+    "searchButton": "Search",
+    "searchPlaceholder": "Type to search..."
+  },
+   "gamesPage": {
+    "choose_game": "Choose your game",
+    "back": "Back",
+    "owly_quiz": "Owly Quiz",
+    "rock_paper_scissors": "Rock Paper Scissors",
+    "memory_game": "Memory Game"
   }
 
 

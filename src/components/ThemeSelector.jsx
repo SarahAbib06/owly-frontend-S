@@ -1,4 +1,3 @@
-
 import { useTranslation } from "react-i18next";
 
 // Couleurs simples
@@ -35,18 +34,44 @@ const GRADIENTS = [
 
 // Thèmes saisonniers (emoji inclus)
 const SEASONAL = [
-  { name: "Saint Valentin", value: "#FFB6C1", type: "seasonal", emoji:  "💖"},
-  { name: "Neige", value: "#D3E9FF", type: "seasonal", emoji:  "☃️"},
+  { name: "Saint Valentin", value: "#FFB6C1", type: "seasonal", emoji: "💖" },
+  { name: "Neige", value: "#D3E9FF", type: "seasonal", emoji: "☃️" },
   { name: "Halloween", value: "#FF8C42", type: "seasonal", emoji: "🎃" },
-  { name: "Noël", value: "#228B22", type: "seasonal", emoji: "❄️"},
+  { name: "Noël", value: "#228B22", type: "seasonal", emoji: "❄️" },
 ];
 
-export default function ThemeSelector({ onSelectTheme, onRemoveTheme, onClose }) {
+// Helper pour foncer les couleurs simples et saisonnelles
+function darkenColor(hex, percent = 0.25) {
+  if (!hex.startsWith("#")) return hex;
+  const num = parseInt(hex.slice(1), 16);
+  let r = (num >> 16) & 0xff;
+  let g = (num >> 8) & 0xff;
+  let b = num & 0xff;
+  r = Math.floor(r * (1 - percent));
+  g = Math.floor(g * (1 - percent));
+  b = Math.floor(b * (1 - percent));
+  return `rgb(${r},${g},${b})`;
+}
+
+export default function ThemeSelector({ isDark, onSelectTheme, onRemoveTheme, onClose }) {
   const { t } = useTranslation();
 
+  // Fonction pour foncer une couleur en dark mode
+  const getThemeStyle = (theme) => {
+    if (theme.type === "color" || theme.type === "seasonal") {
+      return { backgroundColor: isDark ? darkenColor(theme.value) : theme.value };
+    }
+    if (theme.type === "gradient") {
+      return { backgroundImage: theme.value, filter: isDark ? "brightness(0.6)" : "none" };
+    }
+    return {};
+  };
+
   return (
-    <div className="fixed top-16 right-2 z-50 w-[90vw] max-w-[18rem] p-3 bg-white dark:bg-neutral-800 shadow-xl rounded-xl sm:right-4 sm:w-72">
-      
+    <div
+      className="fixed top-16 right-2 z-50 w-[90vw] max-w-[18rem] p-3 bg-white dark:bg-neutral-800 shadow-xl rounded-xl sm:right-4 sm:w-72"
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Couleurs simples */}
       <h3 className="font-semibold mb-2 text-sm">{t("themeSelector.simpleColors")}</h3>
       <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-3">
@@ -54,7 +79,7 @@ export default function ThemeSelector({ onSelectTheme, onRemoveTheme, onClose })
           <button
             key={c.name}
             className="w-10 h-10 rounded-lg border border-gray-300 dark:border-neutral-700"
-            style={{ backgroundColor: c.value }}
+            style={getThemeStyle({ type: "color", value: c.value })}
             onClick={() => onSelectTheme({ type: "color", value: c.value })}
             title={t(`colors.${c.name}`)}
           />
@@ -68,7 +93,7 @@ export default function ThemeSelector({ onSelectTheme, onRemoveTheme, onClose })
           <button
             key={g.name}
             className="w-10 h-10 rounded-lg border border-gray-300 dark:border-neutral-700"
-            style={{ backgroundImage: g.value }}
+            style={getThemeStyle({ type: "gradient", value: g.value })}
             onClick={() => onSelectTheme({ type: "gradient", value: g.value })}
             title={t(`gradients.${g.name}`)}
           />
@@ -76,14 +101,20 @@ export default function ThemeSelector({ onSelectTheme, onRemoveTheme, onClose })
       </div>
 
       {/* Thèmes saisonniers */}
-      <h3 className="font-semibold mb-2 text-sm">{t("themeSelector.saison","Saison")}</h3>
+      <h3 className="font-semibold mb-2 text-sm">{t("themeSelector.saison", "Saison")}</h3>
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
         {SEASONAL.map((s) => (
           <button
             key={s.name}
             className="w-10 h-10 rounded-lg border border-gray-300 dark:border-neutral-700 flex items-center justify-center text-xl"
-            style={{ backgroundColor: s.value }}
-            onClick={() => onSelectTheme({ type: s.type, value: s.value, emoji: s.emoji })}
+            style={getThemeStyle(s)}
+            onClick={() =>
+              onSelectTheme({
+                type: s.type,
+                value: s.value,
+                emoji: s.emoji, // ← IMPORTANT (emoji sauvegardé)
+              })
+            }
             title={`${t(s.name)} ${s.emoji}`}
           >
             {s.emoji}
@@ -109,13 +140,20 @@ export default function ThemeSelector({ onSelectTheme, onRemoveTheme, onClose })
 
       {/* Actions */}
       <div className="flex justify-between">
-        <button className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs" onClick={onRemoveTheme}>
+        <button
+          className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs"
+          onClick={onRemoveTheme}
+        >
           {t("themeSelector.removeTheme")}
         </button>
-        <button className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs" onClick={onClose}>
+        <button
+          className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs"
+          onClick={onClose}
+        >
           {t("themeSelector.close")}
         </button>
       </div>
     </div>
   );
-} 
+}
+

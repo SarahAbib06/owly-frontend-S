@@ -3,7 +3,7 @@ import "./i18n";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 
-import RockPaperScissors from "./components/RockPaperScissors";
+import RockPaper from "./pages/RockPaper";
 
 import Register from "./pages/Register.jsx";
 import Login from "./pages/Login.jsx";
@@ -21,6 +21,11 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import MemoryGame from "./components/MemoryGame";
 import WhackAMole from "./components/WhackAMole";
 import OwlyQuiz from "./components/OwlyQuiz";
+
+
+import GamesPage from "./pages/GamesPage";
+
+
 
 export default function App() {
   return (
@@ -57,15 +62,7 @@ export default function App() {
             />
 
             {/* Mini-jeu intégré dans ton layout */}
-            <Route
-              path="/rock-paper-scissors"
-              element={
-                <ProtectedRoute>
-                  <RockPaperScissors />
-                </ProtectedRoute>
-              }
-            />
-          </Route>
+</Route>
 
           {/* Autres routes protégées */}
           <Route
@@ -93,6 +90,25 @@ export default function App() {
     </ProtectedRoute>
   }
 />
+
+
+<Route
+  path="/games"
+  element={
+    <ProtectedRoute>
+      <GamesPage />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/rock-paper-scissors"
+  element={
+    <ProtectedRoute>
+      <RockPaper />
+    </ProtectedRoute>
+  }
+/>
+
 <Route
   path="/whack-a-mole"
   element={
