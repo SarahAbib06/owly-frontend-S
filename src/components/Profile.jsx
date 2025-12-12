@@ -8,28 +8,17 @@ import { profileService } from "../services/profileService";
 import { useNavigate } from "react-router-dom";
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import DeletePhotoModal from "../components/DeletePhotoModal";
-<<<<<<< HEAD
-
-
-=======
->>>>>>> a03d2985b511657879941560311d51ad0cee62b6
 import { Trash } from "lucide-react";
 
 export default function Profile({ setSelectedMenu }) {
   const [editMode, setEditMode] = useState(false);
   const { t } = useTranslation();
   const navigate = useNavigate();
-<<<<<<< HEAD
+
     const [isImageOpen, setIsImageOpen] = useState(false);
 const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
 const [errorMessage, setErrorMessage] = useState("");
 
-
- 
-=======
-  const [isImageOpen, setIsImageOpen] = useState(false);
-  const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
->>>>>>> a03d2985b511657879941560311d51ad0cee62b6
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [profilePicture, setProfilePicture] = useState("");
@@ -79,31 +68,8 @@ const [errorMessage, setErrorMessage] = useState("");
     }
   };
 
-  // supression du compte
-  const handleDelete = async () => {
-    try {
-      const res = await profileService.deleteAccount(password);
-      alert(res.message);
-      // Déconnecter l'utilisateur
-      localStorage.removeItem("token");
-      navigate("/login");
-    } catch (error) {
-      console.error(error);
-      alert(error.response?.data?.message || "Erreur");
-    }
-  };
 
-  const handleDeletePhoto = async () => {
-    try {
-      // Appel au backend pour supprimer la photo
-      await profileService.deleteProfilePicture();
-
-<<<<<<< HEAD
-  } catch (error) {
-    console.error(error);
-    alert("Erreur lors de l'enregistrement de la photo");
-  }
-};
+  
 // supression du compte
 const handleDelete = async () => {
   try {
@@ -123,20 +89,11 @@ const handleDeletePhoto = async () => {
     // Appel au backend pour supprimer la photo et récupérer le message
      await profileService.deleteProfilePicture();
     // Appel au backend pour supprimer la photo
-=======
-      // Supprimer la photo côté front
-      setProfilePicture("");
-      setPreview(null);
->>>>>>> a03d2985b511657879941560311d51ad0cee62b6
 
-      alert("Photo de profil supprimée avec succès");
-    } catch (error) {
-      console.error("Erreur suppression photo :", error);
-      alert("Erreur lors de la suppression de la photo");
-    }
-  };
+    // Supprimer la photo côté front
+    setProfilePicture("");
+    setPreview(null);
 
-<<<<<<< HEAD
    
   } catch (error) {
     console.error("Erreur suppression photo :", error);
@@ -148,7 +105,6 @@ useEffect(() => {
     setErrorMessage("");
   }
 }, [editMode]);
-=======
   // FONCTIONS QR CODE
   const generateQRCode = async () => {
     try {
@@ -203,7 +159,6 @@ useEffect(() => {
       setLoadingQR(false);
     }
   };
->>>>>>> a03d2985b511657879941560311d51ad0cee62b6
 
   // Télécharger le QR code
   const downloadQRCode = () => {
@@ -217,7 +172,6 @@ useEffect(() => {
     }
   };
 
-<<<<<<< HEAD
 //message derreur 
   
 const handleUpdate = async () => {
@@ -232,10 +186,8 @@ const handleUpdate = async () => {
   }
 };
 
-=======
 return (
   <div className="bg-myGray4 dark:bg-neutral-900 p-6 rounded-2xl shadow-md lg:h-auto h-auto">
->>>>>>> a03d2985b511657879941560311d51ad0cee62b6
 
       <div className="flex items-center gap-3 mb-6">
         <FaArrowLeft
