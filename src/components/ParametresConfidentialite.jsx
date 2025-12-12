@@ -1,6 +1,6 @@
 // src/components/ParametresConfidentialite.jsx
 import { useTranslation } from "react-i18next";
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaChevronRight } from "react-icons/fa";
 
 export default function ParametresConfidentialite({
   setSelectedMenu,
@@ -19,7 +19,8 @@ export default function ParametresConfidentialite({
         shadow-md 
         border border-myGray4 dark:border-gray-700
         p-6
-        h-[400px]
+        h-auto
+        md:h-[400px]
         overflow-auto
       "
     >
@@ -42,58 +43,70 @@ export default function ParametresConfidentialite({
 
         {/* Dernière connexion */}
         <div className="flex flex-col">
-          <button
+          <div
+            className="flex items-center justify-between p-3 cursor-pointer"
             onClick={() => setPrivacySubPage("lastLogin")}
-            className="text-myBlack dark:text-gray-300 hover:text-black dark:hover:text-white p-3 rounded-md transition text-left"
           >
-            {t("parametresConfidentialite.LastLogin")}
-          </button>
-                   <p className="text-xs text-gray-600 dark:text-gray-400 ml-3 -mt-3">
-  {dernierConnexionChoice === "Tout le monde"
-    ? t("derniereConnexion.Everyone")
-    : t("derniereConnexion.NoOne")}
-</p> 
-          <div className="border-t border-gray-300 dark:border-gray-700 mt-4"></div>
+            <span className="text-myBlack dark:text-gray-300 transition text-left">
+              {t("parametresConfidentialite.LastLogin")}
+            </span>
+            <FaChevronRight className="text-gray-400" />
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 ml-3 -mt-3">
+            {dernierConnexionChoice === "Tout le monde"
+              ? t("derniereConnexion.Everyone")
+              : t("derniereConnexion.NoOne")}
+          </p>
+          <div className="border-t border-gray-300 dark:border-gray-700 mt-3"></div>
         </div>
 
         {/* Statut */}
         <div className="flex flex-col -mt-4">
-          <button
+          <div
+            className="flex items-center justify-between p-3 cursor-pointer"
             onClick={() => setPrivacySubPage("statut")}
-            className="text-myBlack dark:text-gray-300 hover:text-black dark:hover:text-white p-3 rounded-md transition text-left"
           >
-            {t("parametresConfidentialite.Status")}
-          </button>
+            <span className="text-myBlack dark:text-gray-300 transition text-left">
+              {t("parametresConfidentialite.Status")}
+            </span>
+            <FaChevronRight className="text-gray-400" />
+          </div>
           <p className="text-xs text-gray-600 dark:text-gray-400 ml-3 -mt-3">
-  {statutChoice === "Tout le monde"
-    ? t("statut.Everyone")
-    : t("statut.NoOne")}
-</p>
-          <div className="border-t border-gray-300 dark:border-gray-700 mt-4"></div>
+            {statutChoice === "Tout le monde"
+              ? t("statut.Everyone")
+              : t("statut.NoOne")}
+          </p>
+          <div className="border-t border-gray-300 dark:border-gray-700 mt-3"></div>
         </div>
 
         {/* Utilisateurs bloqués */}
         <div className="flex flex-col -mt-4">
-          <button
+          <div
+            className="flex items-center justify-between p-3 cursor-pointer"
             onClick={() => setPrivacySubPage("blockedUsers")}
-            className="text-myBlack dark:text-gray-300 hover:text-black dark:hover:text-white p-3 rounded-md transition text-left"
           >
-            {t("parametresConfidentialite.BlockedUsers")}
-          </button>
+            <span className="text-myBlack dark:text-gray-300 transition text-left">
+              {t("parametresConfidentialite.BlockedUsers")}
+            </span>
+            <FaChevronRight className="text-gray-400" />
+          </div>
           <p className="text-xs text-gray-600 dark:text-gray-400 ml-3 -mt-3">
             2 {t("parametresConfidentialite.BlockedUsersCount")}
           </p>
-          <div className="border-t border-gray-300 dark:border-gray-700 mt-4"></div>
+          <div className="border-t border-gray-300 dark:border-gray-700 mt-3"></div>
         </div>
 
         {/* Modifier le mot de passe */}
         <div className="flex flex-col -mt-4">
-          <button
+          <div
+            className="flex items-center justify-between p-3 cursor-pointer"
             onClick={() => setPrivacySubPage("ModefierMotDePasse")}
-            className="text-myBlack dark:text-gray-300 hover:text-black dark:hover:text-white p-3 rounded-md transition text-left"
           >
-            {t("parametresConfidentialite.ChangePassword")}
-          </button>
+            <span className="text-myBlack dark:text-gray-300 transition text-left">
+              {t("parametresConfidentialite.ChangePassword")}
+            </span>
+            <FaChevronRight className="text-gray-400" />
+          </div>
           <p className="text-xs text-gray-600 dark:text-gray-400 ml-3 -mt-3">
             {t("parametresConfidentialite.ChangePasswordDesc")}
           </p>

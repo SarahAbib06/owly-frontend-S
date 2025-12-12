@@ -40,7 +40,7 @@ export default function ChatOptionsMenu({ selectedChat, onClose }) {
           <Lock size={15} />
           <span>{t("chatOptions.lockConversation")}</span>
         </div>
-         <hr className="border-gray-200 dark:border-gray-700 my-1" />
+         <hr className="border-gray-400 dark:border-gray-700 my-1" />
    
         <div className="flex items-center gap-2 text-xs text-red-600 cursor-pointer py-2 px-2 rounded-md hover:bg-red-100 dark:hover:bg-red-700 transition-colors duration-150">
           <Ban size={15} />

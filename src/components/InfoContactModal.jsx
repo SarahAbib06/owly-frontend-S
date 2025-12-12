@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Star, Archive, Lock, Ban, Trash2 } from "lucide-react";
+import {  FaChevronRight } from "react-icons/fa";
 import MediaDocument from "./MediaDocument";
 
 export default function InfoContactModal({ chat, onClose }) {
@@ -70,17 +71,35 @@ export default function InfoContactModal({ chat, onClose }) {
             <div className="text-sm space-y-1 mt-4">
 
               <div
-                className="cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="cursor-pointer py-2 px-2 rounded-md  hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => setActiveSection("media")}
               >
+                <div className="flex items-center justify-between">
                 {t("infoContactModal.mediaDocuments")}
+                <FaChevronRight className="text-gray-400" />
+                </div>
+              
               </div>
-              <hr />
+               <hr className="border-gray-300" />
 
-              <div className="cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
-                {t("infoContactModal.themes")}
-              </div>
-              <hr />
+
+               <div
+  className="cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+  onClick={() => {
+    chat.openTheme();  // ouvre le ThemeSelector
+    onClose();         // ferme l'info
+  }}
+>
+   <div className="flex items-center justify-between">
+  {t("infoContactModal.themes")}
+  <FaChevronRight className="text-gray-400" />
+  </div>
+</div>
+              
+
+
+              
+              <hr className="border-gray-300" />
 
               <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
                 <Star size={15} />

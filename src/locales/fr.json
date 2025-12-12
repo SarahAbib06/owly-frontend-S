@@ -149,7 +149,11 @@
     "BlockedUsersTitle": "Utilisateurs bloqués",
     "NoBlockedUsers": "Aucun utilisateur bloqué",
     "BlockedUsersDescription": "Les utilisateurs bloqués ne pourront plus vous appeler ni vous envoyer de messages.",
-    "Unblock": "Débloquer"
+    "Unblock": "Débloquer",
+    "UnblockConfirmTitle": "Débloquer cet utilisateur ?",
+   "UnblockConfirmText": "{{username}} pourra désormais vous envoyer une demande de messages. Cette personne ne sera pas informée que vous l'avez débloquée.",
+  "Cancel": "Annuler",
+  "Confirm": "Débloquer"
   },
   
   
@@ -186,6 +190,29 @@
     "documents":"Documents",
     "nomedia":"Aucun Medias",
     "nodocuments":"Aucun document"
+  },
+  "parametresNotifications": {
+  "Title": "Notifications",
+  "Description": "Contrôlez vos préférences de notifications.",
+  
+  "Banner": "Afficher la bannière de notifications",
+  "BannerDesc": "Toujours",
+
+  "Messages": "Notifications des messages",
+  "MessagesDesc": "Afficher les notifications pour les nouveaux messages",
+
+  "Calls": "Notifications d'appels",
+  "CallsDesc": "Afficher les notifications pour les appels entrants",
+
+  "IncomingSound": "Appels entrants",
+  "IncomingSoundDesc": "Émettre un son pour les appels entrants"
+},
+  "banniereNotifications": {
+    "Title": "Bannière de notification",
+    "Description": "Sélectionnez quand les bannières doivent apparaître.",
+    "Never": "Jamais",
+    "Always": "Toujours",
+    "OnlyOpen": "Uniquement lorsque l'application est ouverte"
   }
 
 

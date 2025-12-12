@@ -101,9 +101,7 @@ socketRef.current.on("stop-screen-share", () => {
       endCall();
       setCallDisabled(false); 
     })
-    socketRef.current.on("hang-up", () => {
-      endCall();
-    });
+    
 
     return () => {
       // Nettoyer le minuteur de durée

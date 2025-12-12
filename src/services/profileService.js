@@ -11,12 +11,20 @@ export const profileService = {
   },
 
   //  2. Modifier le username
-  updateUsername: async (newUsername) => {
+updateUsername: async (newUsername) => {
+  try {
     const response = await api.put("/auth/profile/username", {
       username: newUsername,
     });
+
     return response.data.user;
-  },
+
+  } catch (err) {
+    // on remonte le message envoyé par le backend !
+    throw new Error(err.response?.data?.message || "Erreur lors de la mise à jour.");
+  }
+},
+
 
   // 3. Upload photo de profil
  uploadProfilePicture: async (file) => {
@@ -39,9 +47,14 @@ export const profileService = {
     return response.data;
   },
 
-   deleteProfilePicture: async ()=>{
-    const response = await api.delete("/auth/profile/picture")
+   deleteProfilePicture: async () => {
+  try {
+    const response = await api.delete("/auth/profile/picture");
     return response.data;
-   }
+  } catch (error) {
+    throw error.response?.data || { message: "Erreur serveur" };
+  }
+}
+
 };
 

@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import OtpPage from "./pages/OtpPage";
 
 
+import TicTacToe2 from "./components/TicTacToe2";
 import MessagesPage from "./pages/MessagesPage";
 import MainLayout from "./components/MainLayout";
 import SettingsPage from "./pages/SettingsPage";
@@ -78,6 +79,20 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+ 
+  
+/>
+  <Route
+  path="/tic-tac-toe2"
+  element={
+    <ProtectedRoute>
+      <TicTacToe2 />
+    </ProtectedRoute>
+  }
+  
+/>
+
         </Routes>
       </AuthProvider>
     </Router>

@@ -121,7 +121,11 @@
     "BlockedUsersTitle": "Blocked Users",
     "NoBlockedUsers": "No blocked users",
     "BlockedUsersDescription": "Blocked users will no longer be able to call or message you.",
-    "Unblock": "Unblock"
+    "Unblock": "Unblock",
+    "UnblockConfirmTitle": "Unblock this user?",
+  "UnblockConfirmText": "{{username}} will now be able to send you a message request. This person will not be notified that you unblocked them.",
+  "Cancel": "Cancel",
+  "Confirm": "Unblock"
   },
   "forgotPassword": {
     "title": "New Password",
@@ -163,7 +167,30 @@
   "documents": "Documents",
   "nomedia": "No media",
   "nodocuments": "No documents"
-}
+},
+"parametresNotifications": {
+  "Title": "Notifications",
+  "Description": "Manage your notification preferences.",
+  
+  "Banner": "Show notification banner",
+  "BannerDesc": "Always",
+
+  "Messages": "Message notifications",
+  "MessagesDesc": "Show notifications for new messages",
+
+  "Calls": "Call notifications",
+  "CallsDesc": "Show notifications for incoming calls",
+
+  "IncomingSound": "Incoming calls",
+  "IncomingSoundDesc": "Play sound for incoming calls"
+},
+  "banniereNotifications": {
+    "Title": "Notification Banner",
+    "Description": "Select when banners should appear.",
+    "Never": "Never",
+    "Always": "Always",
+    "OnlyOpen": "Only when app is open"
+  }
 
 
 

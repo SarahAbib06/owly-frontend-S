@@ -9,9 +9,7 @@ export default function MediaDocuments({ onBack }) {
   // Fake data (pour tester)
   // supprime le contenue des liste pour voir le logo de aucun media
   const fakeMedias = [
-    "/images/photo1.jpg",
-    "/images/photo2.jpg",
-    "/images/photo3.jpg",
+   
   ];
 
   const fakeDocuments = [
@@ -61,7 +59,7 @@ export default function MediaDocuments({ onBack }) {
       {activeTab === "media" ? (
         fakeMedias.length === 0 ? (
           /* 🟡 EMPTY STATE POUR MEDIAS */
-          <div className="flex flex-col items-center justify-center py-10">
+          <div className="flex flex-col items-center mt-25 justify-center py-10">
             <div className="w-15 h-15 rounded-2xl bg-myYellow flex items-center justify-center shadow mb-6">
               <img
                 src={logo}
@@ -88,8 +86,8 @@ export default function MediaDocuments({ onBack }) {
         )
       ) : fakeDocuments.length === 0 ? (
         /* 🟡 EMPTY STATE POUR DOCUMENTS */
-        <div className="flex flex-col items-center justify-center py-10">
-          <div className="w-15 h-15 rounded-2xl bg-myYellow flex items-center justify-center shadow mb-6">
+        <div className="flex flex-col items-center mt-25  justify-center py-10">
+          <div className="w-15 h-15 rounded-2xl  bg-myYellow flex items-center justify-center shadow mb-6">
             <img
               src={logo}
               alt="Logo"
