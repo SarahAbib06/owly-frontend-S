@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import winSound from "../assets/audio/win.wav";
 import errorSound from "../assets/audio/error.wav";
 import clickSound from "../assets/audio/click.mp3";
+import { useNavigate } from "react-router-dom";
 
 export default function GuessNumberGame() {
   const [targetNumber, setTargetNumber] = useState(0);
@@ -12,7 +13,8 @@ export default function GuessNumberGame() {
   const [gameWon, setGameWon] = useState(false);
   const [history, setHistory] = useState([]);
   const [difficulty, setDifficulty] = useState(100);
-
+ 
+const navigate = useNavigate();
   // Références audio
   const clickAudio = useRef(null);
   const winAudio = useRef(null);
@@ -21,6 +23,7 @@ export default function GuessNumberGame() {
   useEffect(() => {
     startNewGame();
   }, []);
+
 
   const startNewGame = () => {
     const random = Math.floor(Math.random() * difficulty) + 1;
@@ -91,6 +94,26 @@ export default function GuessNumberGame() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-myYellow via-myYellow2 to-myGray2 flex items-center justify-center p-2 sm:p-4">
+         {/* Boutons de contrôle avec Retour */}
+     <button
+  onClick={() => navigate("/games")}
+  style={{
+    position: "absolute",
+    top: "20px",
+    left: "20px",
+    padding: "10px 20px",
+    backgroundColor: "#555",
+    color: "#fff",
+    borderRadius: "8px",
+    border: "none",
+    cursor: "pointer",
+    fontWeight: "bold",
+    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+  }}
+>
+  ← Retour
+</button>
+
       <audio ref={clickAudio} src={clickSound} />
       <audio ref={winAudio} src={winSound} />
       <audio ref={errorAudio} src={errorSound} />

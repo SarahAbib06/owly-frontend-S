@@ -10,6 +10,7 @@ import { profileService } from "../services/profileService";
 import { useNavigate } from "react-router-dom";
 
 import DeletePhotoModal from "../components/DeletePhotoModal";
+import DeleteAccountModal from "./DeleteAccountModal";
 import { Trash } from "lucide-react";
 
 export default function Profile({ setSelectedMenu }) {

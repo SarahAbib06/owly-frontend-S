@@ -166,11 +166,26 @@ export default function MemoryGame() {
       {/* Boutons de contrôle avec Retour */}
       <div style={{ marginBottom: "15px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
         <button
-          style={{ ...buttonStyle, backgroundColor: "#555" }}
-          onClick={() => navigate("/games")}
-        >
-          ← Retour
-        </button>
+  onClick={() => navigate("/games")}
+  style={{
+    position: "absolute",
+    top: "20px",
+    left: "20px",
+    padding: "10px 20px",
+    borderRadius: 10,
+    background: "#555",
+    border: "none",
+    cursor: "pointer",
+    fontWeight: "700",
+    fontSize: 16,
+    color: "#fff",
+    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+    zIndex: 1000
+  }}
+>
+  ← Retour
+</button>
+
 
         <button style={buttonStyle} onClick={() => setDisabled(false)}>▶ Start</button>
         <button style={buttonStyle} onClick={() => setDisabled(true)}>⏸ Pause</button>

@@ -11,6 +11,7 @@ export default function GamesPage() {
     { name: t("gamesPage.owly_quiz"), route: "/owly-quiz" },
     { name: t("gamesPage.rock_paper_scissors"), route: "/rock-paper-scissors" },
     { name: t("gamesPage.memory_game"), route: "/memory-game" },
+    { name: t("gamesPage.tictac"), route: "/tic-tac-toe2" },
   ];
 
   return (

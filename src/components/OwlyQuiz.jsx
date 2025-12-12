@@ -229,7 +229,25 @@ export default function OwlyQuiz(){
 
       {/* BOUTON RETOUR */}
       <div style={{width:"100%", maxWidth:720, display:"flex", justifyContent:"flex-start"}}>
-        <button onClick={()=>navigate("/games")} style={{...btnStyle, marginBottom:10}}>⬅ Retour aux jeux</button>
+       <button
+  onClick={() => navigate("/games")}
+  style={{
+    position: "absolute",
+    top: "20px",
+    left: "20px",
+    padding: "10px 20px",
+    borderRadius: 10,
+    background: "#ffd54f",
+    border: "none",
+    cursor: "pointer",
+    fontWeight: "700",
+    fontSize: 16,
+    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+    zIndex: 1000
+  }}
+>
+  ⬅ Retour
+</button>
       </div>
 
       <motion.h1 initial={{y:-50,opacity:0}} animate={{y:0,opacity:1}} style={{fontSize:"3rem"}}>🦉 Owly Quiz 🦉</motion.h1>
