@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import DeletePhotoModal from "../components/DeletePhotoModal";
 
+
 import { Trash } from "lucide-react";
 
 
@@ -20,6 +21,10 @@ export default function Profile({ setSelectedMenu }) {
   const navigate = useNavigate();
     const [isImageOpen, setIsImageOpen] = useState(false);
 const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
+const [errorMessage, setErrorMessage] = useState("");
+
+
+ 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [profilePicture, setProfilePicture] = useState("");
@@ -75,21 +80,42 @@ const handleDelete = async () => {
   }
 };
 const handleDeletePhoto = async () => {
+ 
   try {
+    // Appel au backend pour supprimer la photo et récupérer le message
+     await profileService.deleteProfilePicture();
     // Appel au backend pour supprimer la photo
-    await profileService.deleteProfilePicture();
 
     // Supprimer la photo côté front
     setProfilePicture("");
     setPreview(null);
 
-    alert("Photo de profil supprimée avec succès");
+   
   } catch (error) {
     console.error("Erreur suppression photo :", error);
-    alert("Erreur lors de la suppression de la photo");
+    
   }
 };
+useEffect(() => {
+  if (!editMode) {
+    setErrorMessage("");
+  }
+}, [editMode]);
 
+
+//message derreur 
+  
+const handleUpdate = async () => {
+  setErrorMessage(""); // reset avant chaque update
+  try {
+    const updated = await profileService.updateUsername(name);
+    setName(updated.username);
+    setEditMode(false);
+  } catch (error) {
+    // si tu as throw { message: ... } côté service
+    setErrorMessage(error.message || "Une erreur est survenue lors de la mise à jour du username.");
+  }
+};
 
 
 
@@ -222,16 +248,8 @@ const handleDeletePhoto = async () => {
               </button>
 
               <button
-                onClick={async () => {
-                  try {
-                    const updated = await profileService.updateUsername(name);
-                    setName(updated.username);
-                    setEditMode(false);
-                  } catch (err) {
-                    console.error(err);
-                    alert("Erreur lors de la sauvegarde");
-                  }
-                }}
+                onClick={handleUpdate}
+
                 className="bg-[#008C23] hover:bg-green-700 dark:bg-myYellow text-white text-xs font-semibold px-6 py-2.5 rounded-lg h-9 w-full md:w-auto"
               >
                 {t("profile.save")}
@@ -251,11 +269,18 @@ const handleDeletePhoto = async () => {
                 <input
                   className="w-full py-2 text-xs bg-transparent focus:outline-none"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {setName(e.target.value)
+                    setErrorMessage("")
+                  }}
+                  
                   disabled={!editMode}
+                  
                 />
               </div>
             </div>
+              {errorMessage && (
+    <p className="text-red-500 text-xs mt-1">{errorMessage}</p>
+  )}
           </div>
 
           <div className="flex flex-col">
@@ -268,7 +293,7 @@ const handleDeletePhoto = async () => {
                   className="w-full py-2 text-xs bg-transparent focus:outline-none"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled={!editMode}
+                  disabled={editMode}
                 />
               </div>
             </div>
