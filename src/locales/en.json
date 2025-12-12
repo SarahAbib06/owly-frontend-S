@@ -32,13 +32,14 @@
   "code": "OTP Code",
   "verify": "Verify and continue"
 },
-"chat": {
+ "chat": {
     "today": "Today",
     "yesterday": "Yesterday",
     "online": "Online",
     "inputPlaceholder": "Enter a message...",
     "reactions": "Reactions",
     "close": "Close"
+    
   },
   
   "messages": {
@@ -51,7 +52,8 @@
     "Groupe": "Group",
     "Owly AI": "Owly AI",
     "Paramètres": "Settings",
-    "Profile": "Profile"
+    "Profile": "Profile",
+    "Jeux":"Games"
   },
   "welcome": {
     "title": "Welcome to Owly",

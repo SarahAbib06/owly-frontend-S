@@ -217,7 +217,7 @@ export default function Sidebar() {
 
                 <NavLink to="/games" className="flex items-center gap-3" onClick={() => setMenuOpen(false)}>
                   <GiGamepad className="w-6 h-6 text-myBlack dark:text-white" />
-                  <span className="text-sm font-medium text-myBlack dark:text-white">Jeux</span>
+                  <span className="text-sm font-medium text-myBlack dark:text-white">{t("sidebar.Jeux")}</span>
                 </NavLink>
               </div>
             </div>

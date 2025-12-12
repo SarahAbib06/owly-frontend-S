@@ -40,6 +40,7 @@
     "inputPlaceholder": "Entrer un message...",
     "reactions": "Réactions",
     "close": "Fermer"
+    
   },
    "messages": {
     "searchFriends": "Rechercher dans vos amis..."
@@ -51,7 +52,8 @@
     "Groupe": "Groupe",
     "Owly AI": "Owly IA",
     "Paramètres": "Paramètres",
-    "Profile": "Profil"
+    "Profile": "Profil",
+     "Jeux":"Jeux"
   },
   "welcome": {
     "title": "Bienvenue sur Owly",
