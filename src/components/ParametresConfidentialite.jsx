@@ -1,6 +1,8 @@
 // src/components/ParametresConfidentialite.jsx
 import { useTranslation } from "react-i18next";
+
 import { FaArrowLeft, FaChevronRight } from "react-icons/fa";
+
 
 export default function ParametresConfidentialite({
   setSelectedMenu,
@@ -19,8 +21,7 @@ export default function ParametresConfidentialite({
         shadow-md 
         border border-myGray4 dark:border-gray-700
         p-6
-        h-auto
-        md:h-[400px]
+        h-[400px]
         overflow-auto
       "
     >
@@ -43,6 +44,7 @@ export default function ParametresConfidentialite({
 
         {/* Dernière connexion */}
         <div className="flex flex-col">
+
           <div
             className="flex items-center justify-between p-3 cursor-pointer"
             onClick={() => setPrivacySubPage("lastLogin")}
@@ -58,10 +60,12 @@ export default function ParametresConfidentialite({
               : t("derniereConnexion.NoOne")}
           </p>
           <div className="border-t border-gray-300 dark:border-gray-700 mt-3"></div>
+
         </div>
 
         {/* Statut */}
         <div className="flex flex-col -mt-4">
+
           <div
             className="flex items-center justify-between p-3 cursor-pointer"
             onClick={() => setPrivacySubPage("statut")}
@@ -77,10 +81,12 @@ export default function ParametresConfidentialite({
               : t("statut.NoOne")}
           </p>
           <div className="border-t border-gray-300 dark:border-gray-700 mt-3"></div>
+
         </div>
 
         {/* Utilisateurs bloqués */}
         <div className="flex flex-col -mt-4">
+
           <div
             className="flex items-center justify-between p-3 cursor-pointer"
             onClick={() => setPrivacySubPage("blockedUsers")}
@@ -94,10 +100,12 @@ export default function ParametresConfidentialite({
             2 {t("parametresConfidentialite.BlockedUsersCount")}
           </p>
           <div className="border-t border-gray-300 dark:border-gray-700 mt-3"></div>
+
         </div>
 
         {/* Modifier le mot de passe */}
         <div className="flex flex-col -mt-4">
+
           <div
             className="flex items-center justify-between p-3 cursor-pointer"
             onClick={() => setPrivacySubPage("ModefierMotDePasse")}
@@ -107,6 +115,7 @@ export default function ParametresConfidentialite({
             </span>
             <FaChevronRight className="text-gray-400" />
           </div>
+
           <p className="text-xs text-gray-600 dark:text-gray-400 ml-3 -mt-3">
             {t("parametresConfidentialite.ChangePasswordDesc")}
           </p>
@@ -115,4 +124,6 @@ export default function ParametresConfidentialite({
       </div>
     </div>
   );
+
 }
+

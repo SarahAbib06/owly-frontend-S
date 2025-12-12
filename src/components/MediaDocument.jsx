@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { FaArrowLeft } from "react-icons/fa";
 import logo from "../assets/images/owlylogo.png";
+
 import { useTranslation } from "react-i18next";
 export default function MediaDocuments({ onBack }) {
   const [activeTab, setActiveTab] = useState("media");
    const { t } = useTranslation();
+
 
   // Fake data (pour tester)
   // supprime le contenue des liste pour voir le logo de aucun media
@@ -26,7 +28,9 @@ export default function MediaDocuments({ onBack }) {
           onClick={onBack}
         />
         <h1 className="text-2xl text-myBlack dark:text-myWhite ml-3">
+
           {t("Media.title")}
+
         </h1>
       </div>
 
@@ -40,7 +44,9 @@ export default function MediaDocuments({ onBack }) {
               : "text-gray-500"
           }`}
         >
+
           {t("Media.medias")}
+
         </button>
 
         <button
@@ -51,7 +57,9 @@ export default function MediaDocuments({ onBack }) {
               : "text-gray-500"
           }`}
         >
+
           {t("Media.documents")}
+
         </button>
       </div>
 
@@ -69,7 +77,9 @@ export default function MediaDocuments({ onBack }) {
             </div>
 
             <p className="text-lg font-bold text-myBlack dark:text-myWhite">
+
                {t("Media.nomedia")}
+
             </p>
           </div>
         ) : (
@@ -96,7 +106,9 @@ export default function MediaDocuments({ onBack }) {
           </div>
 
           <p className="text-lg font-bold text-myBlack dark:text-myWhite">
+
              {t("Media.nodocuments")}
+
           </p>
         </div>
       ) : (

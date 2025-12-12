@@ -13,6 +13,7 @@ export default function VideoCall() {
   const [inCall, setInCall] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
+
   const [callDisabled, setCallDisabled] = useState(false); 
   const [rejectDisabled, setRejectDisabled] = useState(true); 
   const [isSharing, setIsSharing] = useState(false); 
@@ -25,13 +26,16 @@ export default function VideoCall() {
  
 
   
+
   const socketRef = useRef();
   const pcRef = useRef();
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
+
   const durationIntervalRef = useRef(null);
    
+
 
 
   // ========================
@@ -45,6 +49,7 @@ export default function VideoCall() {
     socketRef.current.on("offer", async ({ from, sdp }) => {
       setIncomingCall({ from, sdp });
       setStatus("Incoming call...");
+
       setCallDisabled(true); 
     });
 
@@ -69,6 +74,7 @@ socketRef.current.on("answer", async ({ sdp }) => {
         } catch (error) {
           console.error("Error setting remote description on answer:", error);
         }
+
       }
     });
 
@@ -81,6 +87,7 @@ socketRef.current.on("answer", async ({ sdp }) => {
         }
       }
     });
+
    
 
 // GESTION DU PARTAGE D'ÉCRAN À DISTANCE
@@ -109,6 +116,7 @@ socketRef.current.on("stop-screen-share", () => {
     clearInterval(durationIntervalRef.current);
     durationIntervalRef.current = null;
   }
+
       if (pcRef.current) pcRef.current.close();
       socketRef.current.disconnect();
     };
@@ -144,6 +152,7 @@ socketRef.current.on("stop-screen-share", () => {
       }
     };
   };
+
 
   // le partage d'ecran
   const startScreenShare = async () => {
@@ -277,6 +286,7 @@ const stopScreenShare = async (emitSignal = true) => {
 };
 
 
+
   // ========================
   // Start Call
   // ========================
@@ -285,15 +295,18 @@ const stopScreenShare = async (emitSignal = true) => {
 
     setStatus("Calling…");
     await createPeerConnection(targetId);
+
     setRejectDisabled(false); 
     setCallDisabled(true); 
      
+
 
     const offer = await pcRef.current.createOffer();
     await pcRef.current.setLocalDescription(offer);
 
     socketRef.current.emit("offer", { to: targetId, sdp: offer });
   };
+
 
     //affichage de muniteur 
     const formatDuration = (seconds) => {
@@ -302,13 +315,16 @@ const stopScreenShare = async (emitSignal = true) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
+
   // ========================
   // Accept Call
   // ========================
   const acceptCall = async () => {
     if (!incomingCall) return;
 
+
      
+
 
     setTargetId(incomingCall.from);
     setStatus("Call accepted ✅");
@@ -325,6 +341,7 @@ const stopScreenShare = async (emitSignal = true) => {
 
     setIncomingCall(null);
     setInCall(true);
+
     // Démarrer le minuteur de durée
 durationIntervalRef.current = setInterval(() => {
   setCallDuration((prev) => prev + 1);
@@ -335,8 +352,10 @@ durationIntervalRef.current = setInterval(() => {
   //Mute et cameraOff
   const toggleMute = () => {
     if (!localStreamRef.current) return;
+
      localStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
      setIsMuted((prev) => !prev);
+
   };
 
   const toggleCamera = () => {
@@ -344,6 +363,7 @@ durationIntervalRef.current = setInterval(() => {
     localStreamRef.current.getVideoTracks().forEach((t) => (t.enabled = !t.enabled));
     setCameraOff((prev) => !prev);
   };
+
 
 
 
@@ -357,6 +377,7 @@ durationIntervalRef.current = setInterval(() => {
 }
 setCallDuration(0); // Réinitialiser la durée
 
+
     setStatus("Call ended 📴");
     setInCall(false);
     setIncomingCall(null);
@@ -364,7 +385,6 @@ setCallDuration(0); // Réinitialiser la durée
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
-      
 
     }
 
@@ -376,12 +396,14 @@ setCallDuration(0); // Réinitialiser la durée
     if (targetId) {
       socketRef.current.emit("hang-up", { targetId });
       setTargetId("");
+
       setCallDisabled(false); 
       //detruire la connexiot webrtc etabier
        if (pcRef.current) { // Utiliser pcRef.current qui est l'objet PeerConnection réel
         pcRef.current.close();
        }}
   };
+
   // ========================
   // UI
   // ========================
@@ -391,7 +413,9 @@ setCallDuration(0); // Réinitialiser la durée
       <p>Status: {status}</p>
       <p>Your ID: <b>{myId}</b></p>
 
+
       
+
 
       {!inCall && (
         <div style={{ marginBottom: 10 }}>
@@ -401,6 +425,7 @@ setCallDuration(0); // Réinitialiser la durée
             onChange={(e) => setTargetId(e.target.value)}
             style={{ padding: 8, width: "300px" }}
           />
+
           
         <button
        onClick={startCall}
@@ -425,6 +450,7 @@ setCallDuration(0); // Réinitialiser la durée
  </div>   
       )} 
          
+
 
       {incomingCall && !inCall && (
         <div
@@ -452,6 +478,7 @@ setCallDuration(0); // Réinitialiser la durée
           </button>
         </div>
       )}
+
          {inCall   && <p>Durée de l'appel : {formatDuration(callDuration)}</p>}
       <div style={{ display: "flex", gap: 20, marginTop: 20 }}>
        
@@ -461,6 +488,7 @@ setCallDuration(0); // Réinitialiser la durée
 
           <h3>Your Video</h3>
            
+
           <video
             ref={localVideoRef}
             autoPlay
@@ -487,6 +515,7 @@ setCallDuration(0); // Réinitialiser la durée
           </button>
           <button onClick={toggleMute}>{isMuted ? "🔇 Unmute" : "🎙️ Mute"}</button>
           <button onClick={toggleCamera}>{cameraOff ? "📷 Turn On" : "🚫 Turn Off Cam"}</button>
+
           <button 
             onClick={isSharing ? stopScreenShare : startScreenShare}
             disabled={shareDisabled} 
@@ -501,9 +530,41 @@ setCallDuration(0); // Réinitialiser la durée
                 : isRemoteSharing ? "vous pouvez pas parteger" : "🖥️ Partager l'Écran"
             }
           </button>
+
         </div>
       )}
 
     </div>
   );
+
 }
+
+
+
+/*
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+***********************************
+*/
+
+

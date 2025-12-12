@@ -1,14 +1,17 @@
 import React, { useState } from "react";
 import { FaArrowLeft } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
+
 import { MdLock, MdVisibility, MdVisibilityOff } from "react-icons/md";
 
 export default function ModifierMotDePasse({ setPrivacySubPage }) {
   const { t } = useTranslation();
 
+
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
   const [loading, setLoading] = useState(false);
   
   // États pour les mots de passe
@@ -117,6 +120,7 @@ export default function ModifierMotDePasse({ setPrivacySubPage }) {
               onClick={() => setShowOld(!showOld)}
               className="focus:outline-none"
             >
+
               {showOld ? (
                 <MdVisibilityOff size={22} className="text-gray-400"/>
               ) : (
@@ -129,6 +133,7 @@ export default function ModifierMotDePasse({ setPrivacySubPage }) {
         {/* INPUT 2 — Nouveau mot de passe */}
         <div className="p-[2px] rounded-xl bg-gradient-to-r from-myYellow to-myGray">
           <div className="relative flex items-center bg-white dark:bg-mydarkWhite rounded-xl px-4">
+
             <MdLock className="text-gray-400" size={24} />
             <input
               type={showNew ? "text" : "password"}
@@ -147,6 +152,7 @@ export default function ModifierMotDePasse({ setPrivacySubPage }) {
                 <MdVisibilityOff size={22} className="text-gray-400" />
               ) : (
                 <MdVisibility size={22} className="text-gray-400" />
+
               )}
             </button>
           </div>
@@ -155,6 +161,7 @@ export default function ModifierMotDePasse({ setPrivacySubPage }) {
         {/* INPUT 3 — Confirmer */}
         <div className="p-[2px] rounded-xl bg-gradient-to-r from-myYellow to-myGray">
           <div className="relative flex items-center bg-white dark:bg-mydarkWhite rounded-xl px-4">
+
             <MdLock className="text-gray-400" size={24} />
             <input
               type={showConfirm ? "text" : "password"}
@@ -169,6 +176,7 @@ export default function ModifierMotDePasse({ setPrivacySubPage }) {
               onClick={() => setShowConfirm(!showConfirm)}
               className="focus:outline-none"
             >
+
               {showConfirm ? (
                 <MdVisibilityOff size={22} className="text-gray-400"/>
               ) : (
@@ -179,6 +187,7 @@ export default function ModifierMotDePasse({ setPrivacySubPage }) {
         </div>
 
         {/* BOUTON */}
+
         <button 
           type="submit"
           disabled={loading}
@@ -202,3 +211,4 @@ export default function ModifierMotDePasse({ setPrivacySubPage }) {
     </div>
   );
 }
+

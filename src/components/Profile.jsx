@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+
 import { Camera, QrCode, Download } from "lucide-react";
+
 import { FaUser } from "react-icons/fa";
 import { FaArrowLeft } from "react-icons/fa";
 import { MdEmail } from "react-icons/md";
@@ -7,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { profileService } from "../services/profileService";
 import { useNavigate } from "react-router-dom";
 import DeleteAccountModal from "../components/DeleteAccountModal";
+
 import DeletePhotoModal from "../components/DeletePhotoModal";
 import { Trash } from "lucide-react";
 
@@ -15,14 +18,20 @@ export default function Profile({ setSelectedMenu }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+<<<<<<< HEAD
     const [isImageOpen, setIsImageOpen] = useState(false);
 const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
 const [errorMessage, setErrorMessage] = useState("");
+=======
+  const [isImageOpen, setIsImageOpen] = useState(false);
+  const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
+>>>>>>> 34b97e4fcdb81ed75d8f6f53bdd933a1e138b1aa
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [profilePicture, setProfilePicture] = useState("");
   const [password, setPassword] = useState("");
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   // ÉTATS POUR QR CODE
@@ -189,15 +198,18 @@ const handleUpdate = async () => {
 return (
   <div className="bg-myGray4 dark:bg-neutral-900 p-6 rounded-2xl shadow-md lg:h-auto h-auto">
 
+
       <div className="flex items-center gap-3 mb-6">
         <FaArrowLeft
           onClick={() => setSelectedMenu(null)}
           className="w-5 h-5 text-myBlack dark:text-white cursor-pointer lg:hidden"
         />
+
         <h2 className="text-2xl font-semibold">
           {t("profile.profile")}
         </h2>
       </div>
+
 
       {/* IMAGE FULLSCREEN MODAL */}
       {isImageOpen && (
@@ -219,6 +231,7 @@ return (
         </div>
       )}
 
+
       {/* ▬▬▬ CARD 1 : identité ▬▬▬ */}
       <div
         className="
@@ -231,6 +244,7 @@ return (
         w-full
       "
       >
+
         <div className="flex items-center gap-4 flex-col md:flex-row text-center md:text-left">
           <div className="relative h-16 w-16">
             <img
@@ -247,11 +261,13 @@ return (
               </button>
             )}
           </div>
+
           <div>
             <p className="text-md">{name}</p>
             <p className="text-gray-500 text-sm pt-1.5">{email}</p>
           </div>
         </div>
+
 
         {editMode && (
           <>
@@ -270,6 +286,7 @@ return (
             </button>
           </>
         )}
+
       </div>
 
       {/* ▬▬▬ CARD 2 : infos personnelles ▬▬▬ */}
@@ -277,7 +294,9 @@ return (
         className="
         bg-myGray4 dark:bg-neutral-800 
         rounded-xl border-[1.2px] border-myBlack 
+
         p-4 w-full mb-6
+
       "
       >
         <div className="flex items-center justify-between mb-6 flex-col md:flex-row gap-4">
@@ -305,6 +324,7 @@ return (
               >
                 {t("profile.cancel")}
               </button>
+
               <button
                 onClick={handleUpdate}
 
@@ -316,9 +336,11 @@ return (
           )}
         </div>
 
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
           <div className="flex flex-col">
             <label className="text-sm mb-2">{t("profile.username")}</label>
+
             <div className="p-[2px] rounded-lg bg-gradient-to-r from-[#F9EE34] via-gray-300 to-transparent">
               <div className="flex items-center bg-white dark:bg-neutral-800 rounded-lg px-3">
                 <FaUser className="text-gray-500 text-sm mr-2" />
@@ -341,6 +363,7 @@ return (
 
           <div className="flex flex-col">
             <label className="text-sm mb-2">{t("profile.email")}</label>
+
             <div className="p-[2px] rounded-lg bg-gradient-to-r from-[#F9EE34] via-gray-300 to-transparent">
               <div className="flex items-center bg-white dark:bg-neutral-800 rounded-lg px-3">
                 <MdEmail className="text-gray-500 text-sm mr-2" />
@@ -355,17 +378,20 @@ return (
           </div>
         </div>
 
+
         {editMode && (  
           <div className="mt-6">
             <button 
               onClick={() => setShowDeleteModal(true)}
               className="bg-[#EF0000] hover:bg-red-700 text-white text-xs font-semibold px-5 py-2 rounded-lg"
             >
+
               {t("profile.deleteAccount")}
             </button>
           </div>
         )}
       </div>
+
 
       {/* ▬▬▬ CARD 3 : QR CODE (MAINTENANT À L’INTÉRIEUR DU CONTAINER !) ▬▬▬ */}
       <div
@@ -538,3 +564,4 @@ return (
 );
 
 }
+

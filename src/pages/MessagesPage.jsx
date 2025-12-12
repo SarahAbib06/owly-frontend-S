@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import ConversationList from "../components/ConversationList";
 import ChatWindow from "../components/ChatWindow";
 import WelcomeChatScreen from "../components/WelcomeChatScreen";
+
 import { Search, QrCode } from "lucide-react"; // AJOUTEZ CES IMPORTS
 import SearchModal from "../components/SearchModal"; // NOUVEAU COMPOSANT
 
@@ -10,15 +11,19 @@ export default function Messages() {
   const [selectedChat, setSelectedChat] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false); // ÉTAT POUR LA MODAL
 
+
   const { setChatOpen } = useOutletContext();
 
   const openChat = (chat) => {
     setSelectedChat(chat);
+
     setChatOpen(true);
+
   };
 
   const closeChat = () => {
     setSelectedChat(null);
+
     setChatOpen(false);
   };
 
@@ -33,6 +38,7 @@ export default function Messages() {
       >
         <Search size={24} />
       </button>
+
 
       {/* === LISTE === */}
       <div className={` 
@@ -58,6 +64,7 @@ export default function Messages() {
         )}
       </div>
 
+
       {/* === MODAL DE RECHERCHE === */}
       {showSearchModal && (
         <SearchModal 
@@ -77,3 +84,4 @@ export default function Messages() {
     </div>
   );
 }
+

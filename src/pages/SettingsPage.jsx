@@ -11,9 +11,17 @@ import ParametresNotification from "../components/ParametresNotification";
 import BanniereNotification from "../components/BanniereNotification";
 
 
+
+
+
+
 export default function SettingsPage() {
   const isDesktopInit = window.innerWidth >= 1024;
   const [isDesktop, setIsDesktop] = useState(isDesktopInit);
+
+
+
+
   const [selectedMenu, setSelectedMenu] = useState(
     isDesktopInit ? "general" : null 
   );
@@ -103,7 +111,9 @@ const [bannerSelection, setBannerSelection] = useState("always");
             )}
           </>
         )}
-        {/* NOTIFICATIONS */}
+
+
+          {/* NOTIFICATIONS */}
 {selectedMenu === "notif" && (
   <>
     {notifSubPage === null && (
@@ -124,7 +134,7 @@ const [bannerSelection, setBannerSelection] = useState("always");
     )}
   </>
 )}
-        
+
       </div>
     </div>
   );

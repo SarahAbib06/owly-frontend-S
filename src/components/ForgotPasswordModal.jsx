@@ -1,4 +1,7 @@
-// frontend/src/components/ForgotPasswordModal.jsx
+
+
+  // frontend/src/components/ForgotPasswordModal.jsx
+
 import { useState } from "react";
 import { FaEnvelope, FaLock, FaTimes } from "react-icons/fa";
 import { useAuth } from "../hooks/useAuth";

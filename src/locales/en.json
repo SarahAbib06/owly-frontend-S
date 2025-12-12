@@ -33,13 +33,17 @@
   "verify": "Verify and continue"
 
 },
-"chat": {
+ "chat": {
+
     "today": "Today",
     "yesterday": "Yesterday",
     "online": "Online",
     "inputPlaceholder": "Enter a message...",
     "reactions": "Reactions",
-    "close": "Close"
+    "close": "Close",
+    "searchButton": "Search",
+    "searchPlaceholder": "Type to search..."
+
   },
   
   "messages": {
@@ -52,13 +56,20 @@
     "Groupe": "Group",
     "Owly AI": "Owly AI",
     "Paramètres": "Settings",
-    "Profile": "Profile"
+
+    "Profile": "Profile",
+    "Jeux":"Games"
+
   },
   "welcome": {
     "title": "Welcome to Owly",
     "description": "Select a conversation from the list on the left to start chatting. You can also start a new chat or create a group in just a few clicks.",
     "encrypted": "Your personal messages are end-to-end encrypted."
   },
+
+  
+  
+ 
    "profile": {
     "profile": "Profile",
     "personalInfo": "Personal information",
@@ -70,6 +81,7 @@
     "deleteAccount": "Delete account",
     "username": "Username",
     "email": "Email"
+
   },
   "parametresMenu": {
     "Title": "Settings",
@@ -85,12 +97,13 @@
     "Description": "Customize the app's appearance and language",
     "Language": "Language",
     "Theme": "Theme",
+
     "English": "English",
     "French": "French",
     "LightMode": "Light Mode",
     "DarkMode": "Dark Mode"
   },
-  
+
   "parametresConfidentialite": {
     "Title": "Privacy",
     "Description": "Manage your privacy settings and data",
@@ -121,11 +134,13 @@
     "BlockedUsersTitle": "Blocked Users",
     "NoBlockedUsers": "No blocked users",
     "BlockedUsersDescription": "Blocked users will no longer be able to call or message you.",
+
     "Unblock": "Unblock",
     "UnblockConfirmTitle": "Unblock this user?",
   "UnblockConfirmText": "{{username}} will now be able to send you a message request. This person will not be notified that you unblocked them.",
   "Cancel": "Cancel",
   "Confirm": "Unblock"
+
   },
   "forgotPassword": {
     "title": "New Password",
@@ -142,6 +157,7 @@
     "nouveauMotDePasse": "New password",
     "confirmerMotDePasse": "Confirm your password",
     "enregistrer": "Save"
+
   },
   "infoContactModal": {
     "mediaDocuments": "Media & Documents",
@@ -161,12 +177,76 @@
     "block": "Block",
     "deleteConversation": "Delete Conversation"
   },
+
+  "themeSelector": {
+    "simpleColors": "Simple Colors",
+    "gradients": "Gradients",
+    "chooseImage": "Choose an image",
+    "removeTheme": "Remove theme",
+    "close": "Close",
+    "interactive": "Light Interactive",
+    "auto": "Day/Night",
+    "seasonal" :"seasonal"
+  },
+  "colors": {
+    "Jaune": "Yellow",
+    "Bleu": "Blue",
+    "Vert": "Green",
+    "Rose": "Pink",
+    "Rouge": "Red",
+    "Violet": "Purple",
+    "Orange": "Orange",
+    "Turquoise": "Turquoise",
+    "Gris": "Gray",
+    "Beige": "Beige",
+    "Soleil Doux": "Soft Sun",
+    "Blanc": "White"
+  },
+  "gradients": {
+    "Bleu → Rose": "Blue → Pink",
+    "Violet → Bleu": "Purple → Blue",
+    "Orange → Rouge": "Orange → Red",
+    "Bleu → Turquoise": "Blue → Turquoise",
+    "Rose → Violet": "Pink → Purple",
+    "Jaune → Orange": "Yellow → Orange",
+    "Vert → Bleu": "Green → Blue",
+    "Rouge → Violet": "Red → Purple",
+    "Gris → Noir": "Gray → Black",
+    "Bleu Lavande": "Lavender Blue",
+    "Pêche → Rose": "Peach → Pink",
+    "Arc-en-ciel doux": "Soft Rainbow"
+  },
+ 
+  "banniereNotifications": {
+    "Title": "Notification Banner",
+    "Description": "Select when banners should appear.",
+    "Never": "Never",
+    "Always": "Always",
+    "OnlyOpen": "Only when app is open"
+  },
+ 
+   "gamesPage": {
+    "choose_game": "Choose your game",
+    "back": "Back",
+    "owly_quiz": "Owly Quiz",
+    "rock_paper_scissors": "Rock Paper Scissors",
+    "memory_game": "Memory Game"
+  },
+
+
+
+
+
+
+
+
   "Media": {
   "title": "Media, Documents",
   "medias": "Media",
   "documents": "Documents",
   "nomedia": "No media",
   "nodocuments": "No documents"
+
 },
 "parametresNotifications": {
   "Title": "Notifications",
@@ -183,18 +263,13 @@
 
   "IncomingSound": "Incoming calls",
   "IncomingSoundDesc": "Play sound for incoming calls"
-},
-  "banniereNotifications": {
-    "Title": "Notification Banner",
-    "Description": "Select when banners should appear.",
-    "Never": "Never",
-    "Always": "Always",
-    "OnlyOpen": "Only when app is open"
-  }
-
-
-
-
+}
+ 
 
 }
+
+
+
+
+
 

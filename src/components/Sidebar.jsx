@@ -4,6 +4,9 @@ import { NavLink } from "react-router-dom";
 import { FaFeatherAlt, FaBars } from "react-icons/fa";
 import { IoSparklesOutline } from "react-icons/io5";
 import { MdMessage, MdGroups, MdSettings } from "react-icons/md";
+
+import { GiGamepad } from "react-icons/gi";
+
 import { useTranslation } from "react-i18next";
 
 export default function Sidebar() {
@@ -66,6 +69,7 @@ export default function Sidebar() {
                 <div className={`p-3 rounded-md transition ${isActive ? "bg-black dark:bg-[#F9EE34]" : "hover:bg-gray-300 dark:hover:bg-gray-700"}`}>
                   <IoSparklesOutline className={`w-6 h-6 transition ${isActive ? "text-white dark:text-black" : "text-myBlack dark:text-white"}`} />
 
+
                 </div>
                 <span className={`text-xs font-medium -mt-3 transform transition-transform duration-150 ${isActive ? "translate-y-4" : "translate-y-0 group-hover:translate-y-4"} text-myBlack dark:text-white`}>
                   {t("sidebar.Owly AI")}
@@ -73,6 +77,22 @@ export default function Sidebar() {
               </div>
             )}
           </NavLink>
+
+
+          {/* JEUX */}
+          <NavLink to="/games">
+            {({ isActive }) => (
+              <div className="flex flex-col items-center gap-0.5 group">
+                <div className={`p-3 rounded-md transition ${isActive ? "bg-black dark:bg-[#F9EE34]" : "hover:bg-gray-300 dark:hover:bg-gray-700"}`}>
+                  <GiGamepad className={`w-6 h-6 transition ${isActive ? "text-white dark:text-black" : "text-myBlack dark:text-white"}`} />
+                </div>
+                <span className={`text-xs font-medium -mt-3 transform transition-transform duration-150 ${isActive ? "translate-y-4" : "translate-y-0 group-hover:translate-y-4"} text-myBlack dark:text-white`}>
+                  {t("sidebar.Jeux")}
+                </span>
+              </div>
+            )}
+          </NavLink>
+
         </div>
 
         {/* BOTTOM */}
@@ -90,7 +110,9 @@ export default function Sidebar() {
             )}
           </NavLink>
 
+
           {/* PROFIL */}
+
           <NavLink to="/profile">
             {({ isActive }) => (
               <div className="flex flex-col items-center gap-0.5 group">
@@ -147,6 +169,8 @@ export default function Sidebar() {
                 ${isActive ? "bg-black dark:bg-[#F9EE34]" : ""}`}>
                 <IoSparklesOutline className={`w-6 h-6 ${isActive ? "text-white dark:text-black" : "text-myBlack dark:text-white"}`} />
 
+
+
               </div>
               <span className="text-xs font-medium text-myBlack dark:text-white">
                 {t("sidebar.Owly AI")}
@@ -154,6 +178,23 @@ export default function Sidebar() {
             </div>
           )}
         </NavLink>
+
+
+        {/* JEUX */}
+        <NavLink to="/games">
+          {({ isActive }) => (
+            <div className="flex flex-col items-center gap-1">
+              <div className={`p-2 rounded-md transition flex justify-center items-center w-14 h-6
+                ${isActive ? "bg-black dark:bg-[#F9EE34]" : ""}`}>
+                <GiGamepad className={`w-6 h-6 ${isActive ? "text-white dark:text-black" : "text-myBlack dark:text-white"}`} />
+              </div>
+              <span className="text-xs font-medium text-myBlack dark:text-white">
+                Jeux
+              </span>
+            </div>
+          )}
+        </NavLink>
+
 
         {/* MENU BURGER */}
         <div className="flex flex-col items-center gap-1 relative">
@@ -167,39 +208,35 @@ export default function Sidebar() {
           <span className="text-xs font-medium text-myBlack dark:text-white">
             Menu
           </span>
-
+=
           {/* MENU POPUP */}
           {menuOpen && (
             <div className="fixed inset-0 flex justify-center items-center z-50">
               <div className="w-60 p-6 rounded-md flex flex-col gap-4 shadow-lg bg-[#EAEAEA] dark:bg-[#2E2F2F]">
 
                 {/* BOUTON FERMER */}
+
                 <button
                   onClick={() => setMenuOpen(false)}
                   className="self-end mb-2 text-xl font-bold text-myBlack dark:text-white hover:opacity-70 transition"
                 >
                   &times;
                 </button>
-
-                {/* PROFIL */}
                 <div className="flex items-center gap-3">
                   <img src="/assets/profile.jpg" alt="profile" className="w-12 h-12 rounded-full object-cover border-2 border-myBlack" />
-                  <span className="text-sm font-medium text-myBlack dark:text-white">
-                    Rayane ARAB
-                  </span>
+                  <span className="text-sm font-medium text-myBlack dark:text-white">Rayane ARAB</span>
                 </div>
 
-                {/* PARAMÈTRES */}
-                <NavLink 
-                  to="/settings"
-                  className="flex items-center gap-3"
-                  onClick={() => setMenuOpen(false)}
-                >
+                <NavLink to="/settings" className="flex items-center gap-3" onClick={() => setMenuOpen(false)}>
                   <MdSettings className="w-6 h-6 text-myBlack dark:text-white" />
-                  <span className="text-sm font-medium text-myBlack dark:text-white">
-                    {t("sidebar.Paramètres")}
-                  </span>
+                  <span className="text-sm font-medium text-myBlack dark:text-white">{t("sidebar.Paramètres")}</span>
                 </NavLink>
+
+                <NavLink to="/games" className="flex items-center gap-3" onClick={() => setMenuOpen(false)}>
+                  <GiGamepad className="w-6 h-6 text-myBlack dark:text-white" />
+                  <span className="text-sm font-medium text-myBlack dark:text-white">{t("sidebar.Jeux")}</span>
+                </NavLink>
+
 
               </div>
             </div>

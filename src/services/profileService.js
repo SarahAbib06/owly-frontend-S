@@ -47,6 +47,7 @@ updateUsername: async (newUsername) => {
     return response.data;
   },
 
+
    deleteProfilePicture: async () => {
   try {
     const response = await api.delete("/auth/profile/picture");
@@ -55,6 +56,7 @@ updateUsername: async (newUsername) => {
     throw error.response?.data || { message: "Erreur serveur" };
   }
 }
+
 
 };
 
