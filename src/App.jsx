@@ -30,8 +30,7 @@ import GamesPage from "./pages/GamesPage";
 
 
 
-import VideoCall from "./components/VideoCall";
-import ProtectedRoute from "./components/ProtectedRoute";
+
 
 export default function App() {
 
