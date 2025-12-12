@@ -7,14 +7,18 @@ import Statut from "../components/Statut";
 import Profile from "../components/Profile";
 import UtilisateursBloques from "../components/UtilisateursBloques";
 import ModifierMotDePasse from "../components/ModefierMotDePasse";
+
 import ParametresNotification from "../components/ParametresNotification";
 import BanniereNotification from "../components/BanniereNotification";
+
 
 export default function SettingsPage() {
   const isDesktopInit = window.innerWidth >= 1024;
   const [isDesktop, setIsDesktop] = useState(isDesktopInit);
+
 const [notifSubPage, setNotifSubPage] = useState(null);
 const [bannerSelection, setBannerSelection] = useState("always");
+
 
 
   const [selectedMenu, setSelectedMenu] = useState(
@@ -104,6 +108,7 @@ const [bannerSelection, setBannerSelection] = useState("always");
             )}
           </>
         )}
+
           {/* NOTIFICATIONS */}
 {selectedMenu === "notif" && (
   <>
@@ -125,6 +130,7 @@ const [bannerSelection, setBannerSelection] = useState("always");
     )}
   </>
 )}
+
 
 
 

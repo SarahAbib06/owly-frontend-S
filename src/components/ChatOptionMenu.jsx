@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Info, Star, Archive, Lock, Ban, Trash2 } from "lucide-react";
 
+
 export default function ChatOptionsMenu({ selectedChat, onClose, onOpenSearch}) {
+
   const { t } = useTranslation();
 
   return (
@@ -51,6 +53,7 @@ export default function ChatOptionsMenu({ selectedChat, onClose, onOpenSearch}) 
           <Trash2 size={15} />
           <span>{t("chatOptions.deleteConversation")}</span>
         </div>
+
            {/* ✅ Nouvelle option : Rechercher */}
  <button
   onClick={() => { onOpenSearch(); onClose(); }}
@@ -58,6 +61,7 @@ export default function ChatOptionsMenu({ selectedChat, onClose, onOpenSearch}) 
 >
   🔍 {t("chat.searchButton")}
 </button>
+
       </div>
     </>
   );

@@ -2,11 +2,18 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Star, Archive, Lock, Ban, Trash2 } from "lucide-react";
 import MediaDocument from "./MediaDocument";
+
 import {  FaChevronRight } from "react-icons/fa";
+
 
 export default function InfoContactModal({ chat, onClose }) {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState("info");
+
+
+  //  état pour le zoom image
+  const [isImageOpen, setIsImageOpen] = useState(false);
+
 
   return (
     <>
@@ -16,26 +23,57 @@ export default function InfoContactModal({ chat, onClose }) {
         onClick={onClose}
       ></div>
 
+
+      {/* IMAGE FULLSCREEN MODAL */}
+      {isImageOpen && (
+  <div 
+    className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]"
+    onClick={() => setIsImageOpen(false)}
+  >
+    {/* CONTENEUR CARRÉ */}
+    <div className="w-[380px] h-[380px] rounded-full overflow-hidden shadow-2xl"
+         style={{ maxWidth: "90vw", maxHeight: "90vh" }}>
+      
+      <img 
+        src={chat.avatar}
+        className="w-full h-full object-cover"
+      />
+    </div>
+  </div>
+)}
+
+     
+
       {/* RIGHT PANEL */}
       <div className="absolute inset-0 bg-myGray4 dark:bg-neutral-800 shadow-xl z-50 p-6 overflow-y-auto">
 
-        {/* CLOSE BUTTON — hide it in MEDIA section */}
+
         {activeSection !== "media" && (
           <button className="text-2xl mb-4" onClick={onClose}>✕</button>
         )}
 
+
         {/* 🔵 SECTION MEDIA */}
+
         {activeSection === "media" && (
           <MediaDocument onBack={() => setActiveSection("info")} />
         )}
 
-        {/* 🔵 SECTION INFO */}
+
+        {/* SECTION INFO */}
         {activeSection === "info" && (
           <div>
-
             {/* Avatar + Name */}
             <div className="flex flex-col items-center">
-              <img src={chat.avatar} className="w-24 h-24 rounded-full object-cover mb-2" />
+              
+              {/* 👉 Clique pour agrandir */}
+              <img
+                src={chat.avatar}
+                className="w-24 h-24 rounded-full object-cover mb-2 cursor-pointer hover:scale-105 transition"
+                onClick={() => setIsImageOpen(true)}
+              />
+
+
               <h2 className="text-lg font-semibold">{chat.name}</h2>
               <p className="text-sm text-gray-500">email@emailemai.com</p>
             </div>
@@ -47,6 +85,7 @@ export default function InfoContactModal({ chat, onClose }) {
                 className="cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => setActiveSection("media")}
               >
+
                 
                 <div className="flex items-center justify-between">
                 {t("infoContactModal.mediaDocuments")}
@@ -68,6 +107,15 @@ export default function InfoContactModal({ chat, onClose }) {
                 </div>
   
 </div>
+
+                {t("infoContactModal.mediaDocuments")}
+              </div>
+              <hr />
+
+              <div className="cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                {t("infoContactModal.themes")}
+              </div>
+              <hr />
 
               <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
                 <Star size={15} />
@@ -95,7 +143,7 @@ export default function InfoContactModal({ chat, onClose }) {
               </div>
 
             </div>
-          </div>
+          
         )}
 
       </div>

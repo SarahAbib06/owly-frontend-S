@@ -31,15 +31,19 @@
   "description": "We sent a 6-digit verification code to your registered email.",
   "code": "OTP Code",
   "verify": "Verify and continue"
+
 },
  "chat": {
+
     "today": "Today",
     "yesterday": "Yesterday",
     "online": "Online",
     "inputPlaceholder": "Enter a message...",
     "reactions": "Reactions",
-    "close": "Close"
-    
+    "close": "Close",
+    "searchButton": "Search",
+    "searchPlaceholder": "Type to search..."
+
   },
   
   "messages": {
@@ -52,30 +56,32 @@
     "Groupe": "Group",
     "Owly AI": "Owly AI",
     "Paramètres": "Settings",
+
     "Profile": "Profile",
     "Jeux":"Games"
+
   },
   "welcome": {
     "title": "Welcome to Owly",
     "description": "Select a conversation from the list on the left to start chatting. You can also start a new chat or create a group in just a few clicks.",
     "encrypted": "Your personal messages are end-to-end encrypted."
   },
+
   
-  "forgotPassword": {
-    "title": "New Password",
-    "newPassword": "New Password",
-    "confirmPassword": "Confirm Password",
-    "send": "Send",
-     "subtitle":"Choose a secure password with at least 8 characters, including letters, numbers, and symbols, to effectively protect your account."
-  },
+  
  
-  "modifierMotDePasse": {
-    "titre": "Change password",
-    "sousTitre": "Change your current password",
-    "motDePasseActuel": "Current password",
-    "nouveauMotDePasse": "New password",
-    "confirmerMotDePasse": "Confirm your password",
-    "enregistrer": "Save"
+   "profile": {
+    "profile": "Profile",
+    "personalInfo": "Personal information",
+    "personalInfoDesc": "Manage your basic profile information",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "changePhoto": "Change photo",
+    "deleteAccount": "Delete account",
+    "username": "Username",
+    "email": "Email"
+
   },
   "parametresMenu": {
     "Title": "Settings",
@@ -91,11 +97,13 @@
     "Description": "Customize the app's appearance and language",
     "Language": "Language",
     "Theme": "Theme",
-    "LightMode": "Light mode",
-    "DarkMode": "Dark mode"
+
+    "English": "English",
+    "French": "French",
+    "LightMode": "Light Mode",
+    "DarkMode": "Dark Mode"
   },
 
-  
   "parametresConfidentialite": {
     "Title": "Privacy",
     "Description": "Manage your privacy settings and data",
@@ -127,108 +135,24 @@
     "NoBlockedUsers": "No blocked users",
     "BlockedUsersDescription": "Blocked users will no longer be able to call or message you.",
     "Unblock": "Unblock"
-  },"parametresMenu": {
-    "Title": "Settings",
-    "General": "General",
-    "Confidentialite": "Privacy",
-    "Notifications": "Notifications",
-    "Aide": "Help & Support",
-    "Deconnexion": "Logout"
-  },
 
-  "parametresGeneral": {
-    "Title": "General",
-    "Description": "Customize the app's appearance and language",
-    "Language": "Language",
-    "Theme": "Theme",
-    "LightMode": "Light mode",
-    "DarkMode": "Dark mode"
   },
-
-  
-  "parametresConfidentialite": {
-    "Title": "Privacy",
-    "Description": "Manage your privacy settings and data",
-    "LastLogin": "Last login",
-    "Status": "Status",
-    "BlockedUsers": "Blocked users",
-    "BlockedUsersCount": "user(s) blocked",
-    "ChangePassword": "Change password",
-    "ChangePasswordDesc": "Change your current password"
+  "forgotPassword": {
+    "title": "New Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "send": "Send",
+     "subtitle":"Choose a secure password with at least 8 characters, including letters, numbers, and symbols, to effectively protect your account."
   },
-  
-  "derniereConnexion": {
-    "Title": "Last login",
-    "Description": "Check your recent account logins",
-    "Everyone": "Everyone",
-    "NoOne": "No one"
-  },
+ 
+  "modifierMotDePasse": {
+    "titre": "Change password",
+    "sousTitre": "Change your current password",
+    "motDePasseActuel": "Current password",
+    "nouveauMotDePasse": "New password",
+    "confirmerMotDePasse": "Confirm your password",
+    "enregistrer": "Save"
 
-  "statut": {
-    "Title": "Status",
-    "Description": "Manage your visibility status",
-    "Everyone": "Everyone",
-    "NoOne": "No one"
-  },
-
-
-  "privacy": {
-    "BlockedUsersTitle": "Blocked Users",
-    "NoBlockedUsers": "No blocked users",
-    "BlockedUsersDescription": "Blocked users will no longer be able to call or message you.",
-    "Unblock": "Unblock"
-  },"parametresMenu": {
-    "Title": "Settings",
-    "General": "General",
-    "Confidentialite": "Privacy",
-    "Notifications": "Notifications",
-    "Aide": "Help & Support",
-    "Deconnexion": "Logout"
-  },
-
-  "parametresGeneral": {
-    "Title": "General",
-    "Description": "Customize the app's appearance and language",
-    "Language": "Language",
-    "Theme": "Theme",
-    "LightMode": "Light mode",
-    "DarkMode": "Dark mode",
-    "French":"French",
-    "English":"Anglais"
-  },
-
-  
-  "parametresConfidentialite": {
-    "Title": "Privacy",
-    "Description": "Manage your privacy settings and data",
-    "LastLogin": "Last login",
-    "Status": "Status",
-    "BlockedUsers": "Blocked users",
-    "BlockedUsersCount": "user(s) blocked",
-    "ChangePassword": "Change password",
-    "ChangePasswordDesc": "Change your current password"
-  },
-  
-  "derniereConnexion": {
-    "Title": "Last login",
-    "Description": "Check your recent account logins",
-    "Everyone": "Everyone",
-    "NoOne": "No one"
-  },
-
-  "statut": {
-    "Title": "Status",
-    "Description": "Manage your visibility status",
-    "Everyone": "Everyone",
-    "NoOne": "No one"
-  },
-
-
-  "privacy": {
-    "BlockedUsersTitle": "Blocked Users",
-    "NoBlockedUsers": "No blocked users",
-    "BlockedUsersDescription": "Blocked users will no longer be able to call or message you.",
-    "Unblock": "Unblock"
   },
   "infoContactModal": {
     "mediaDocuments": "Media & Documents",
@@ -248,6 +172,7 @@
     "block": "Block",
     "deleteConversation": "Delete Conversation"
   },
+
   "themeSelector": {
     "simpleColors": "Simple Colors",
     "gradients": "Gradients",
@@ -309,17 +234,14 @@
     "Always": "Always",
     "OnlyOpen": "Only when app is open"
   },
-  "chat": {
-    "searchButton": "Search",
-    "searchPlaceholder": "Type to search..."
-  },
+ 
    "gamesPage": {
     "choose_game": "Choose your game",
     "back": "Back",
     "owly_quiz": "Owly Quiz",
     "rock_paper_scissors": "Rock Paper Scissors",
     "memory_game": "Memory Game"
-  }
+  },
 
 
 
@@ -327,6 +249,15 @@
 
 
 
+
+  "Media": {
+  "title": "Media, Documents",
+  "medias": "Media",
+  "documents": "Documents",
+  "nomedia": "No media",
+  "nodocuments": "No documents"
+
+}
 }
 
 

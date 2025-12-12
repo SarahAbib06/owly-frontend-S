@@ -1,9 +1,11 @@
+
 // frontend/src/App.jsx avec le jeux hajar waraq miqas
 import "./i18n";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 
 import RockPaper from "./pages/RockPaper";
+
 
 import Register from "./pages/Register.jsx";
 import Login from "./pages/Login.jsx";
@@ -16,6 +18,7 @@ import MainLayout from "./components/MainLayout";
 import SettingsPage from "./pages/SettingsPage";
 import ForgotPassword from "./pages/ForgotPassword";
 
+
 import VideoCall from "./components/VideoCall";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MemoryGame from "./components/MemoryGame";
@@ -27,22 +30,34 @@ import GamesPage from "./pages/GamesPage";
 
 
 
+import VideoCall from "./components/VideoCall";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 export default function App() {
+
   return (
     <Router>
       <AuthProvider>
         <Routes>
 
-          {/* Routes publiques */}
+
+
+          {/* Route par défaut */}
           <Route path="/" element={<Welcome />} />
+
+          {/* Routes publiques */}
+
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/OtpPage" element={<OtpPage />} />
           <Route path="/ForgotPassword" element={<ForgotPassword />} />
 
-          {/* Layout global */}
+
+          {/* Layout avec sidebar/header */}
           <Route element={<MainLayout />}>
+            {/* Ces pages doivent être accessibles avec layout mais protégées */}
+
             <Route
               path="/MessagesPage"
               element={
@@ -61,10 +76,12 @@ export default function App() {
               }
             />
 
+
             {/* Mini-jeu intégré dans ton layout */}
 </Route>
 
           {/* Autres routes protégées */}
+
           <Route
             path="/dashboard"
             element={
@@ -82,6 +99,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
     <Route
   path="/memory-game"
   element={
@@ -125,6 +143,7 @@ export default function App() {
     </ProtectedRoute>
   }
 />
+
 
 
 

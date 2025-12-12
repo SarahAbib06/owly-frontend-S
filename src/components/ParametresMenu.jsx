@@ -24,6 +24,7 @@ export default function ParametresMenu({ selected, setSelected }) {
 
     loadProfile();
   }, []);
+
 const handleLogout = () => {
     // 1) supprimer le token (nommé "token" ici — change si tu as un autre nom)
     localStorage.removeItem("token");
@@ -39,6 +40,7 @@ const handleLogout = () => {
     window.location.href = "/login";
     // Si tu utilises react-router, on préférera navigate("/login") (voir Option B)
   };
+
 
 
 
@@ -138,6 +140,7 @@ const handleLogout = () => {
         <div className="border-t border-gray-300 dark:border-gray-700 pt-2"></div>
 
         {/* DÉCONNEXION */}
+
         <button
   onClick={handleLogout}
   className="flex items-center gap-3 p-3 rounded-md hover:bg-red-300 dark:hover:bg-red-700 transition"
@@ -147,6 +150,7 @@ const handleLogout = () => {
     {t("parametresMenu.Deconnexion")}
   </span>
 </button>
+
 
       </div>
     </div>
