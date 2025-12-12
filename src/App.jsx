@@ -24,7 +24,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import VideoCall from "./components/VideoCall";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MemoryGame from "./components/MemoryGame";
-import WhackAMole from "./components/WhackAMole";
+
 import OwlyQuiz from "./components/OwlyQuiz";
 
 
@@ -144,14 +144,7 @@ export default function App() {
   }
 />
 
-<Route
-  path="/whack-a-mole"
-  element={
-    <ProtectedRoute>
-      <WhackAMole />
-    </ProtectedRoute>
-  }
-/>
+
 <Route
   path="/owly-quiz"
   element={

@@ -8,7 +8,6 @@ import { MdEmail } from "react-icons/md";
 import { useTranslation } from "react-i18next";
 import { profileService } from "../services/profileService";
 import { useNavigate } from "react-router-dom";
-import DeleteAccountModal from "../components/DeleteAccountModal";
 
 import DeletePhotoModal from "../components/DeletePhotoModal";
 import { Trash } from "lucide-react";
@@ -18,14 +17,10 @@ export default function Profile({ setSelectedMenu }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-<<<<<<< HEAD
     const [isImageOpen, setIsImageOpen] = useState(false);
 const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
 const [errorMessage, setErrorMessage] = useState("");
-=======
-  const [isImageOpen, setIsImageOpen] = useState(false);
-  const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
->>>>>>> 34b97e4fcdb81ed75d8f6f53bdd933a1e138b1aa
+
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
