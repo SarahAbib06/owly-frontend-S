@@ -160,5 +160,35 @@
     "nouveauMotDePasse": "Nouveau mot de passe",
     "confirmerMotDePasse": "Confirmer votre mot de passe",
     "enregistrer": "Enregistrer"
+  },
+  
+  "infoContactModal": {
+    "mediaDocuments": "Médias, documents",
+    "themes": "Thèmes",
+    "addToFavorites": "Ajouter aux favoris",
+    "archiveConversation": "Archiver la conversation",
+    "lockConversation": "Verrouiller la conversation",
+    "block": "Bloquer",
+    "deleteConversation": "Supprimer la discussion"
+  },
+  
+  "chatOptions": {
+    "infoOn": "Infos sur",
+    "addToFavorites": "Ajouter aux favoris",
+    "archiveConversation": "Archiver la conversation",
+    "lockConversation": "Verrouiller la conversation",
+    "block": "Bloquer",
+    "deleteConversation": "Supprimer la discussion"
+  },
+  "Media":{
+    "title":"Medias,documents",
+    "medias":"Medias",
+    "documents":"Documents",
+    "nomedia":"Aucun Medias",
+    "nodocuments":"Aucun document"
   }
+
+
+
+
 }

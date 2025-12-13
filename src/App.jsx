@@ -6,7 +6,6 @@ import { AuthProvider } from "./context/AuthContext";
 import Register from "./pages/Register.jsx";
 import Login from "./pages/Login.jsx";
 import Welcome from "./pages/Welcome.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
 import OtpPage from "./pages/OtpPage";
 import VideoCall from './components/VideoCall';
 import VideoCallTest from "./components/VideoCallTest.jsx";
@@ -60,16 +59,6 @@ export default function App() {
               }
             />
           </Route>
-
-          {/* Routes protégées simples */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
 
           <Route
             path="/video-call"

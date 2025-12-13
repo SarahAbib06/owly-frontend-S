@@ -1,39 +1,40 @@
+// frontend/src/pages/MessagesPage.jsx
 import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import ConversationList from "../components/ConversationList";
 import ChatWindow from "../components/ChatWindow";
 import WelcomeChatScreen from "../components/WelcomeChatScreen";
+import { Search } from "lucide-react";
 
-export default function Messages() {
+export default function MessagesPage() {
   const [selectedChat, setSelectedChat] = useState(null);
-
   const { setChatOpen } = useOutletContext();
 
   const openChat = (chat) => {
     setSelectedChat(chat);
-    setChatOpen(true);   // 🔥 Dit à MainLayout de cacher Sidebar
+    setChatOpen(true);
   };
 
   const closeChat = () => {
     setSelectedChat(null);
-    setChatOpen(false);  // 🔥 Remet le Sidebar
+    setChatOpen(false);
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen relative">
+      
+ 
 
-      {/* === LISTE === */}
-      <div className={` 
+      {/* LISTE DES CONVERSATIONS */}
+      <div className={`
         ${selectedChat ? "hidden md:block" : "block"} 
-        w-full md:w-[360px] border-r
+        w-full md:w-[360px] border-r border-gray-300 dark:border-gray-700
       `}>
         <ConversationList onSelect={openChat} />
       </div>
 
-      {/* === CHAT === */}
-      <div className={`flex-1 
-        ${selectedChat ? "block" : "hidden md:block"}
-      `}>
+      {/* FENÊTRE DE CHAT */}
+      <div className={`flex-1 ${selectedChat ? "block" : "hidden md:block"}`}>
         {selectedChat ? (
           <ChatWindow
             selectedChat={selectedChat}
