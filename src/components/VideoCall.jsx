@@ -323,12 +323,12 @@ export default function VideoCall({ selectedChat, onClose }) {
         otherParticipantId = otherParticipant._id;
         otherParticipantName = otherParticipant.username;
         setTargetUserId(otherParticipantId);
-      } else if (selectedChat.type === "group") {
+      } /*else if (selectedChat.type === "group") {
         setStatus("❌ Les appels de groupe ne sont pas encore supportés");
         setCallDisabled(false);
         setIsInitiating(false);
         return;
-      }
+      }*/
 
       // Initier l'appel via le socket
       socketRef.current.emit("initiate-call", {
