@@ -266,7 +266,8 @@
     "back": "Retour",
     "owly_quiz": "Owly Quiz",
     "rock_paper_scissors": "Pierre Papier Ciseaux",
-    "memory_game": "Jeu de Mémoire"
+    "memory_game": "Jeu de Mémoire",
+    "tictac":"Devine le nombre"
   },
 
 

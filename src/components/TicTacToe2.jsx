@@ -9,7 +9,7 @@ export default function GuessNumberGame() {
   const [guess, setGuess] = useState("");
   const [message, setMessage] = useState("🎯 Devine le nombre entre 1 et 100 !");
   const [attempts, setAttempts] = useState(0);
-  const [bestScore, setBestScore] = useState(null);
+ 
   const [gameWon, setGameWon] = useState(false);
   const [history, setHistory] = useState([]);
   const [difficulty, setDifficulty] = useState(100);
@@ -69,9 +69,7 @@ const navigate = useNavigate();
       setMessage(`🎉 BRAVO ! Tu as trouvé en ${newAttempts} tentative${newAttempts > 1 ? 's' : ''} !`);
       if (winAudio.current) winAudio.current.play();
 
-      if (!bestScore || newAttempts < bestScore) {
-        setBestScore(newAttempts);
-      }
+      
     } else {
       const distance = Math.abs(userGuess - targetNumber);
       let hint = "";
@@ -124,12 +122,7 @@ const navigate = useNavigate();
           Devine le Nombre
         </h1>
 
-        {/* Meilleur score */}
-        {bestScore && (
-          <p className="text-center text-sm text-gray-600 mb-4">
-            🏆 Meilleur score : {bestScore} tentative{bestScore > 1 ? "s" : ""}
-          </p>
-        )}
+      
 
         {/* Niveaux de difficulté */}
         <div className="flex flex-col sm:flex-row gap-2 mb-4 sm:mb-6">

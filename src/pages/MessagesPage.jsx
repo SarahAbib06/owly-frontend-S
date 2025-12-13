@@ -6,7 +6,7 @@ import WelcomeChatScreen from "../components/WelcomeChatScreen";
 
 import { Search, QrCode } from "lucide-react"; // AJOUTEZ CES IMPORTS
 import SearchModal from "../components/SearchModal"; // NOUVEAU COMPOSANT
-
+import { Plus } from "lucide-react";
 export default function Messages() {
   const [selectedChat, setSelectedChat] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false); // ÉTAT POUR LA MODAL
@@ -30,14 +30,9 @@ export default function Messages() {
   return (
     <div className="flex h-screen relative">
       
-      {/* === BOUTON RECHERCHE FLOTTANT === */}
-      <button
-        onClick={() => setShowSearchModal(true)}
-        className="fixed bottom-6 right-6 z-40 bg-[#F9EE34] hover:bg-yellow-500 text-black p-4 rounded-full shadow-lg flex items-center justify-center"
-        style={{ width: '60px', height: '60px' }}
-      >
-        <Search size={24} />
-      </button>
+      {/* === BOUTON NOUVELLE DISCUSSION === */}
+
+
 
 
       {/* === LISTE === */}
@@ -45,7 +40,10 @@ export default function Messages() {
         ${selectedChat ? "hidden md:block" : "block"} 
         w-full md:w-[360px] border-r
       `}>
-        <ConversationList onSelect={openChat} />
+        <ConversationList
+  onSelect={openChat}
+  onNewChat={() => setShowSearchModal(true)}
+/>
       </div>
 
       {/* === CHAT === */}
@@ -84,4 +82,6 @@ export default function Messages() {
     </div>
   );
 }
+
+
 
