@@ -1,23 +1,47 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaArrowLeft } from "react-icons/fa";
 import logo from "../assets/images/owlylogo.png";
 import { useTranslation } from "react-i18next";
-export default function MediaDocuments({ onBack }) {
+import { messageService } from "../services/messageService";
+
+export default function MediaDocuments({ onBack, conversationId }) {
   const [activeTab, setActiveTab] = useState("media");
-   const { t } = useTranslation();
+  const [media, setMedia] = useState([]);
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
-  // Fake data (pour tester)
-  // supprime le contenue des liste pour voir le logo de aucun media
-  const fakeMedias = [
-    "/images/photo1.jpg",
-    "/images/photo2.jpg",
-    "/images/photo3.jpg",
-  ];
+  // 🔥 CHARGER LES MÉDIAS ET FICHIERS
+  useEffect(() => {
+    if (conversationId) {
+      loadMediaAndFiles();
+    }
+  }, [conversationId]);
 
-  const fakeDocuments = [
-    { name: "Document 1.pdf", size: "1.2 MB" },
-    { name: "Document 2.docx", size: "900 KB" },
-  ];
+  const loadMediaAndFiles = async () => {
+    try {
+      setLoading(true);
+      const response = await messageService.getConversationMedia(conversationId);
+      
+      console.log('📁 Médias et fichiers:', response);
+      
+      setMedia(response.media?.items || []);
+      setFiles(response.files?.items || []);
+    } catch (err) {
+      console.error('❌ Erreur chargement médias:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🔥 FORMATER LA TAILLE DES FICHIERS
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
 
   return (
     <div className="w-full bg-myGray4 p-4">
@@ -57,10 +81,14 @@ export default function MediaDocuments({ onBack }) {
         </button>
       </div>
 
-      {/* 🟡 CONTENU DES ONGLES */}
-      {activeTab === "media" ? (
-        fakeMedias.length === 0 ? (
-          /* 🟡 EMPTY STATE POUR MEDIAS */
+      {/* CONTENU */}
+      {loading ? (
+        <div className="flex justify-center items-center py-10">
+          <p className="text-gray-500">Chargement...</p>
+        </div>
+      ) : activeTab === "media" ? (
+        media.length === 0 ? (
+          /* EMPTY STATE MÉDIAS */
           <div className="flex flex-col items-center justify-center py-10">
             <div className="w-15 h-15 rounded-2xl bg-myYellow flex items-center justify-center shadow mb-6">
               <img
@@ -69,25 +97,38 @@ export default function MediaDocuments({ onBack }) {
                 className="w-[140px] h-[140px] sm:w-[180px] sm:h-[180px] md:w-[300px] md:h-[300px] object-contain"
               />
             </div>
-
             <p className="text-lg font-bold text-myBlack dark:text-myWhite">
-               {t("Media.nomedia")}
+              {t("Media.nomedia")}
             </p>
           </div>
         ) : (
-          /* 🟢 AFFICHAGE NORMAL DES MEDIAS (style ORIGINE) */
+          /* AFFICHAGE MÉDIAS */
           <div className="grid grid-cols-3 gap-4">
-            {fakeMedias.map((src, index) => (
-              <img
-                key={index}
-                src={src}
-                className="rounded-lg object-cover w-full h-32"
-              />
+            {media.map((item, index) => (
+              <div key={index} className="relative">
+                {item.type === 'image' ? (
+                  <img
+                    src={item.url}
+                    alt="Media"
+                    className="rounded-lg object-cover w-full h-32 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => window.open(item.url, '_blank')}
+                  />
+                ) : (
+                  <video
+                    src={item.url}
+                    className="rounded-lg object-cover w-full h-32 cursor-pointer"
+                    onClick={() => window.open(item.url, '_blank')}
+                  />
+                )}
+                <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">
+                  {item.type === 'video' && item.duration && `${Math.floor(item.duration)}s`}
+                </div>
+              </div>
             ))}
           </div>
         )
-      ) : fakeDocuments.length === 0 ? (
-        /* 🟡 EMPTY STATE POUR DOCUMENTS */
+      ) : files.length === 0 ? (
+        /* EMPTY STATE DOCUMENTS */
         <div className="flex flex-col items-center justify-center py-10">
           <div className="w-15 h-15 rounded-2xl bg-myYellow flex items-center justify-center shadow mb-6">
             <img
@@ -96,24 +137,33 @@ export default function MediaDocuments({ onBack }) {
               className="w-[140px] h-[140px] sm:w-[180px] sm:h-[180px] md:w-[300px] md:h-[300px] object-contain"
             />
           </div>
-
           <p className="text-lg font-bold text-myBlack dark:text-myWhite">
-             {t("Media.nodocuments")}
+            {t("Media.nodocuments")}
           </p>
         </div>
       ) : (
-        /* 🟢 AFFICHAGE NORMAL DES DOCUMENTS (ton style original) */
+        /* AFFICHAGE DOCUMENTS */
         <div className="space-y-3">
-          {fakeDocuments.map((doc, index) => (
-            <div
+          {files.map((doc, index) => (
+            <a
               key={index}
-              className="p-3 rounded-lg border border-myBlack dark:border-gray-700"
+              href={doc.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block p-3 rounded-lg border border-myBlack dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
-              <p className="font-medium dark:text-myWhite">{doc.name}</p>
-              <p className="text-sm text-gray-500 dark:text-myWhite">
-                {doc.size}
-              </p>
-            </div>
+              <div className="flex items-center gap-3">
+                <div className="text-2xl">📄</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium dark:text-myWhite truncate">
+                    {doc.fileName || 'Document'}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {formatFileSize(doc.size)}
+                  </p>
+                </div>
+              </div>
+            </a>
           ))}
         </div>
       )}
