@@ -22,7 +22,7 @@ import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
 import socketService from "../services/socketService";
 import VideoCallScreen from "./VideoCallScreen";
-import ThemeSelector from "./ThemeSelect";
+import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
