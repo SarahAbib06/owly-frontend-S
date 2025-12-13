@@ -9,7 +9,8 @@ import { useReactions } from "../hooks/useReactions";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
 import socketService from "../services/socketService";
-import VideoCallScreen from "./VideoCallScreen";
+//import VideoCallScreen from "./VideoCallScreen";
+import VideoCall from "./VideoCall";
 import ThemeSelector from "./ThemeSelect";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
@@ -738,7 +739,7 @@ const { reactions, addReaction, removeReaction } = useReactions(msg._id);
       </footer>
 
       {isVideoCallOpen && (
-        <VideoCallScreen 
+        <VideoCall
           selectedChat={selectedChat} 
           onClose={() => setIsVideoCallOpen(false)} 
         />
