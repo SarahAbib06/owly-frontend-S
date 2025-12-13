@@ -1,12 +1,12 @@
 // frontend/src/components/ConversationList.jsx
 import { useState, useEffect } from "react";
 import ConversationItem from "./ConversationItem";
-import { SlidersHorizontal, Search, Loader2 } from "lucide-react";
+import { SlidersHorizontal, Search, Loader2, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useConversations } from "../hooks/useConversations";
 import socketService from "../services/socketService";
 
-export default function ConversationList({ onSelect }) {
+export default function ConversationList({ onSelect, onNewChat }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
@@ -71,10 +71,27 @@ export default function ConversationList({ onSelect }) {
     <aside className="h-screen bg-myWhite dark:bg-neutral-900 flex flex-col">
       
       {/* HEADER */}
-      <div className="px-4 pt-3 sm:px-6 sm:pt-4 sm:pb-2">
+      <div className="px-4 pt-3 sm:px-6 sm:pt-4 sm:pb-2 items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Owly
         </h2>
+
+                {/* === BOUTON NOUVELLE DISCUSSION (+) === */}
+          <button
+            onClick={onNewChat}
+            className="
+              rounded-xl shrink-0
+             
+              text-yellow-500
+              bg-[#f0f0f0] dark:bg-[#2E2F2F]
+              hover:bg-gray-200 dark:hover:bg-neutral-700
+              transition
+               p-2.5 md:p-3
+            "
+            title="Nouvelle discussion"
+          >
+            <Plus size={18} />
+          </button>
       </div>
 
       {/* BARRE DE RECHERCHE */}

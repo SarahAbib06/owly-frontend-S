@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FaArrowLeft } from "react-icons/fa";
 import logo from "../assets/images/owlylogo.png";
+
 import { useTranslation } from "react-i18next";
 import { messageService } from "../services/messageService";
 
@@ -52,7 +53,9 @@ export default function MediaDocuments({ onBack, conversationId }) {
           onClick={onBack}
         />
         <h1 className="text-2xl text-myBlack dark:text-myWhite ml-3">
+
           {t("Media.title")}
+
         </h1>
       </div>
 
@@ -66,7 +69,9 @@ export default function MediaDocuments({ onBack, conversationId }) {
               : "text-gray-500"
           }`}
         >
+
           {t("Media.medias")}
+
         </button>
 
         <button
@@ -77,19 +82,18 @@ export default function MediaDocuments({ onBack, conversationId }) {
               : "text-gray-500"
           }`}
         >
+
           {t("Media.documents")}
+
         </button>
       </div>
 
-      {/* CONTENU */}
-      {loading ? (
-        <div className="flex justify-center items-center py-10">
-          <p className="text-gray-500">Chargement...</p>
-        </div>
-      ) : activeTab === "media" ? (
-        media.length === 0 ? (
-          /* EMPTY STATE MÉDIAS */
-          <div className="flex flex-col items-center justify-center py-10">
+
+      {/* 🟡 CONTENU DES ONGLES */}
+      {activeTab === "media" ? (
+        fakeMedias.length === 0 ? (
+          /* 🟡 EMPTY STATE POUR MEDIAS */
+          <div className="flex flex-col items-center mt-25 justify-center py-10">
             <div className="w-15 h-15 rounded-2xl bg-myYellow flex items-center justify-center shadow mb-6">
               <img
                 src={logo}
@@ -131,6 +135,7 @@ export default function MediaDocuments({ onBack, conversationId }) {
         /* EMPTY STATE DOCUMENTS */
         <div className="flex flex-col items-center justify-center py-10">
           <div className="w-15 h-15 rounded-2xl bg-myYellow flex items-center justify-center shadow mb-6">
+
             <img
               src={logo}
               alt="Logo"

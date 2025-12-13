@@ -1,17 +1,41 @@
 import { FaArrowLeft, FaUserSlash } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
-
+import { useEffect, useState } from "react";
+import { relationService } from "../services/relationService";
+import UnblockUserModal from "../components/UnblockUserModal.jsx";
 export default function UtilisateursBloques({ setPrivacySubPage }) {
   const { t } = useTranslation();
+ const [blockedUsers, setBlockedUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+const [selectedUser, setSelectedUser] = useState(null);
 
-  const users = [
-     { id: 1, name: "Yacine zerfa", img: "/images/user1.jpg" },
-    { id: 2, name: "Yacine zerfa", img: "/images/user1.jpg" },
-    { id: 3, name: "Yacine zerfa", img: "/images/user1.jpg" },
-    { id: 4, name: "Yacine zerfa", img: "/images/user1.jpg" },
-   
-    // Si tu veux tester la page vide, laisse le tableau vide
-  ];
+  // Charger la liste
+  useEffect(() => {
+    const fetchBlocked = async () => {
+      try {
+        const users = await relationService.getBlockedUsers();
+        setBlockedUsers(users);
+      } catch (err) {
+        console.error("Erreur lors du chargement:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlocked();
+  }, []);
+
+  // Débloquer utilisateur
+  const handleUnblock = async (contactId) => {
+    try {
+      await relationService.unblockUser(contactId);
+      // Retirer de la liste localement
+      setBlockedUsers(prev => prev.filter(u => u.contactId._id !== contactId));
+    } catch (err) {
+      console.error("Erreur lors du déblocage:", err);
+    }
+  };
 
   return (
     <div
@@ -33,9 +57,15 @@ export default function UtilisateursBloques({ setPrivacySubPage }) {
           {t("privacy.BlockedUsersTitle")}
         </h1>
       </div>
+      {/* LOADING */}
+      {loading && (
+        <div className="text-center text-gray-500 mt-10">
+          Chargement...
+        </div>
+      )}
 
       {/* CONTENU */}
-      {users.length === 0 ? (
+      {!loading && blockedUsers.length === 0 &&(
         <div className="flex flex-col items-center justify-center mt-16 text-center gap-4">
           {/* Icône avec background plus grand et coins arrondis */}
           <div className="bg-myYellow w-20 h-20 flex items-center justify-center rounded-lg">
@@ -50,33 +80,58 @@ export default function UtilisateursBloques({ setPrivacySubPage }) {
             {t("privacy.BlockedUsersDescription")}
           </span>
         </div>
-      ) : (
+      ) } 
+        {!loading && blockedUsers.length > 0 && (
         <div className="flex flex-col gap-4">
-          {users.map((u) => (
-            <div
-              key={u.id}
-              className="flex items-center justify-between border-b border-gray-300 dark:border-gray-700 pb-3"
-            >
-              {/* Profil */}
-              <div className="flex items-center gap-3">
-                <img
-                  src={u.img}
-                  className="w-10 h-10 rounded-full object-cover"
-                  alt="user"
-                />
-                <span className="text-sm text-myBlack dark:text-gray-300 font-medium">
-                  {u.name}
-                </span>
-              </div>
+          {blockedUsers.map((item) => {
+            const user = item.contactId;
 
-              {/* Débloquer */}
-              <button className="text-red-500 text-sm hover:underline">
-                {t("privacy.Unblock")}
-              </button>
-            </div>
-          ))}
+            return (
+              <div
+                key={item._id}
+                className="flex items-center justify-between border-b border-gray-300 dark:border-gray-700 pb-3"
+              >
+                {/* profil */}
+                <div className="flex items-center gap-3">
+                  <img
+                    src={user.profilePicture || "/default-avatar.png"}
+                    className="w-10 h-10 rounded-full object-cover"
+                    alt="user"
+                  />
+                  <span className="text-sm text-myBlack dark:text-gray-300 font-medium">
+                    {user.username}
+                  </span>
+                </div>
+
+                {/* bouton débloquer */}
+                <button
+                 
+                  
+                  onClick={() => {
+                              setSelectedUser(user);
+                               setShowModal(true);
+                  }}
+
+                  className="text-red-500 text-sm hover:underline"
+                >
+                  {t("privacy.Unblock")}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
+      <UnblockUserModal
+  isOpen={showModal}
+  onClose={() => setShowModal(false)}
+  user={selectedUser}
+  onConfirm={() => {
+    handleUnblock(selectedUser._id);
+    setShowModal(false);
+  }}
+/>
+
     </div>
+    
   );
 }

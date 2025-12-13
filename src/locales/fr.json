@@ -39,7 +39,10 @@
     "online": "En ligne",
     "inputPlaceholder": "Entrer un message...",
     "reactions": "Réactions",
-    "close": "Fermer"
+    "close": "Fermer",
+     "searchButton": "Rechercher",
+    "searchPlaceholder": "Tapez pour rechercher..."
+
   },
    "messages": {
     "searchFriends": "Rechercher dans vos amis..."
@@ -51,13 +54,17 @@
     "Groupe": "Groupe",
     "Owly AI": "Owly IA",
     "Paramètres": "Paramètres",
-    "Profile": "Profil"
+
+    "Profile": "Profil",
+     "Jeux":"Jeux"
+
   },
   "welcome": {
     "title": "Bienvenue sur Owly",
     "description": "Sélectionnez une conversation dans la liste à gauche pour commencer à échanger. Vous pouvez également démarrer un nouveau chat ou créer un groupe en quelques clics.",
     "encrypted": "Vos messages personnels sont chiffrés de bout en bout."
   },
+
   "profile":{
   "profile": "Profil",
   "personalInfo": "Informations personnelles",
@@ -71,6 +78,7 @@
   "email": "E-mail"
 },
 "parametresMenu": {
+
     "Title": "Paramètres",
     "General": "Général",
     "Confidentialite": "Confidentialité",
@@ -78,6 +86,7 @@
     "Aide": "Aide & support",
     "Deconnexion": "Se déconnecter"
   },
+
 
 
   "forgotPassword": {
@@ -111,17 +120,20 @@
     }
   },
 
+
    "parametresGeneral": {
     "Title": "Général",
     "Description": "Personnalisez l'apparence et la langue de l'application",
     "Language": "Langue",
     "Theme": "Thème",
+
     "English": "Anglais",
     "French": "Français",
     "LightMode": "Mode clair",
     "DarkMode": "Mode sombre"
     
   },
+
   "parametresConfidentialite": {
     "Title": "Confidentialité",
     "Description": "Gérez vos paramètres de confidentialité et vos données",
@@ -149,8 +161,13 @@
     "BlockedUsersTitle": "Utilisateurs bloqués",
     "NoBlockedUsers": "Aucun utilisateur bloqué",
     "BlockedUsersDescription": "Les utilisateurs bloqués ne pourront plus vous appeler ni vous envoyer de messages.",
-    "Unblock": "Débloquer"
+    "Unblock": "Débloquer",
+    "UnblockConfirmTitle": "Débloquer cet utilisateur ?",
+   "UnblockConfirmText": "{{username}} pourra désormais vous envoyer une demande de messages. Cette personne ne sera pas informée que vous l'avez débloquée.",
+  "Cancel": "Annuler",
+  "Confirm": "Débloquer"
   },
+
   
   
   "modifierMotDePasse": {
@@ -162,6 +179,7 @@
     "enregistrer": "Enregistrer"
   },
   
+
   "infoContactModal": {
     "mediaDocuments": "Médias, documents",
     "themes": "Thèmes",
@@ -179,7 +197,81 @@
     "lockConversation": "Verrouiller la conversation",
     "block": "Bloquer",
     "deleteConversation": "Supprimer la discussion"
+
+  },"themeSelector": {
+    "simpleColors": "Couleurs simples",
+    "gradients": "Dégradés",
+    "chooseImage": "Choisir une image",
+    "removeTheme": "Retirer le thème",
+    "close": "Fermer",
+    "interactive": "Interactif léger",
+    "auto": "Jour/Nuit",
+    "seasonal" :"saisons"
   },
+  "colors": {
+    "Jaune": "Jaune",
+    "Bleu": "Bleu",
+    "Vert": "Vert",
+    "Rose": "Rose",
+    "Rouge": "Rouge",
+    "Violet": "Violet",
+    "Orange": "Orange",
+    "Turquoise": "Turquoise",
+    "Gris": "Gris",
+    "Beige": "Beige",
+    "Soleil Doux": "Soleil Doux",
+    "Blanc": "Blanc"
+  },
+  "gradients": {
+    "Bleu → Rose": "Bleu → Rose",
+    "Violet → Bleu": "Violet → Bleu",
+    "Orange → Rouge": "Orange → Rouge",
+    "Bleu → Turquoise": "Bleu → Turquoise",
+    "Rose → Violet": "Rose → Violet",
+    "Jaune → Orange": "Jaune → Orange",
+    "Vert → Bleu": "Vert → Bleu",
+    "Rouge → Violet": "Rouge → Violet",
+    "Gris → Noir": "Gris → Noir",
+    "Bleu Lavande": "Bleu Lavande",
+    "Pêche → Rose": "Pêche → Rose",
+    "Arc-en-ciel doux": "Arc-en-ciel doux"
+  },
+  "parametresNotifications": {
+  "Title": "Notifications",
+  "Description": "Contrôlez vos préférences de notifications.",
+  
+  "Banner": "Afficher la bannière de notifications",
+  "BannerDesc": "Toujours",
+
+  "Messages": "Notifications des messages",
+  "MessagesDesc": "Afficher les notifications pour les nouveaux messages",
+
+  "Calls": "Notifications d'appels",
+  "CallsDesc": "Afficher les notifications pour les appels entrants",
+
+  "IncomingSound": "Appels entrants",
+  "IncomingSoundDesc": "Émettre un son pour les appels entrants"
+},
+  "banniereNotifications": {
+    "Title": "Bannière de notification",
+    "Description": "Sélectionnez quand les bannières doivent apparaître.",
+    "Never": "Jamais",
+    "Always": "Toujours",
+    "OnlyOpen": "Uniquement lorsque l'application est ouverte"
+  },
+  
+
+"gamesPage": {
+    "choose_game": "Choisis ton jeu",
+    "back": "Retour",
+    "owly_quiz": "Owly Quiz",
+    "rock_paper_scissors": "Pierre Papier Ciseaux",
+    "memory_game": "Jeu de Mémoire",
+    "tictac":"Devine le nombre"
+  },
+
+
+  
   "Media":{
     "title":"Medias,documents",
     "medias":"Medias",
@@ -187,8 +279,11 @@
     "nomedia":"Aucun Medias",
     "nodocuments":"Aucun document"
   }
-
-
-
-
+ 
+  
 }
+
+
+
+
+

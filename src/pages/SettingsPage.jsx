@@ -7,10 +7,21 @@ import Statut from "../components/Statut";
 import Profile from "../components/Profile";
 import UtilisateursBloques from "../components/UtilisateursBloques";
 import ModifierMotDePasse from "../components/ModefierMotDePasse";
+import ParametresNotification from "../components/ParametresNotification";
+import BanniereNotification from "../components/BanniereNotification";
+
+
+
+
+
 
 export default function SettingsPage() {
   const isDesktopInit = window.innerWidth >= 1024;
   const [isDesktop, setIsDesktop] = useState(isDesktopInit);
+
+
+
+
   const [selectedMenu, setSelectedMenu] = useState(
     isDesktopInit ? "general" : null 
   );
@@ -20,6 +31,8 @@ export default function SettingsPage() {
 
   const [dernierConnexionChoice, setDernierConnexionChoice] = useState("Personne");
   const [statutChoice, setStatutChoice] = useState("Personne");
+const [notifSubPage, setNotifSubPage] = useState(null);
+const [bannerSelection, setBannerSelection] = useState("always");
 
   useEffect(() => {
     const handleResize = () => {
@@ -98,6 +111,30 @@ export default function SettingsPage() {
             )}
           </>
         )}
+
+
+          {/* NOTIFICATIONS */}
+{selectedMenu === "notif" && (
+  <>
+    {notifSubPage === null && (
+      <ParametresNotification
+        setSelectedMenu={setSelectedMenu}
+        setNotifSubPage={setNotifSubPage}
+        bannerSelection={bannerSelection}
+        setBannerSelection={setBannerSelection}
+      />
+    )}
+
+    {notifSubPage === "banner" && (
+      <BanniereNotification
+        setNotifSubPage={setNotifSubPage}
+        selection={bannerSelection}
+        setSelection={setBannerSelection}
+      />
+    )}
+  </>
+)}
+
       </div>
     </div>
   );

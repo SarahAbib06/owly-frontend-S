@@ -2,6 +2,12 @@
 import api from './api';
 
 export const relationService = {
+
+    getBlockedUsers: async () => {
+    // ✅ Changé de "/users/blocked" à "/auth/blocked"
+    const response = await api.get("/auth/blocked");
+    return response.data;
+  },
   // Envoyer une invitation
   sendInvitation: async (contactId) => {
     const response = await api.post('/search-relations/relations/invite', {
@@ -47,14 +53,14 @@ export const relationService = {
     const response = await api.post('/relation/block', {
       blockedUserId
     });
-    return response.data;
-  },
+    },
+
 
   // Débloquer un utilisateur
-  unblockUser: async (blockedUserId) => {
-    const response = await api.post('/relation/unblock', {
-      blockedUserId
-    });
+
+  unblockUser: async (contactId) => {
+    // ✅ Changé de "/users/unblock" à "/auth/unblock"
+    const response = await api.put(`/auth/unblock/${contactId}`);
     return response.data;
   }
 };
