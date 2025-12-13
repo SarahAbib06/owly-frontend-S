@@ -1,12 +1,12 @@
 // frontend/src/components/ConversationList.jsx
 import { useState, useEffect } from "react";
 import ConversationItem from "./ConversationItem";
-import { SlidersHorizontal, Search, Loader2 } from "lucide-react";
+import { SlidersHorizontal, Search, Loader2, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useConversations } from "../hooks/useConversations";
 import socketService from "../services/socketService";
 
-export default function ConversationList({ onSelect }) {
+export default function ConversationList({ onSelect, onNewChat }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);

@@ -1,32 +1,34 @@
-// frontend/src/App.jsx
+// frontend/src/App.jsx avec le jeux hajar waraq miqas
 import "./i18n";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+
+import RockPaper from "./pages/RockPaper";
 
 import Register from "./pages/Register.jsx";
 import Login from "./pages/Login.jsx";
 import Welcome from "./pages/Welcome.jsx";
 import OtpPage from "./pages/OtpPage";
 
-
+import TicTacToe2 from "./components/TicTacToe2";
 import MessagesPage from "./pages/MessagesPage";
 import MainLayout from "./components/MainLayout";
 import SettingsPage from "./pages/SettingsPage";
-import ForgotPassword from "./pages/ForgetPassword";
-
+import ForgotPassword from "./pages/ForgotPassword";
 
 import VideoCall from "./components/VideoCall";
 import ProtectedRoute from "./components/ProtectedRoute";
+import MemoryGame from "./components/MemoryGame";
+
+import OwlyQuiz from "./components/OwlyQuiz";
+
+import GamesPage from "./pages/GamesPage";
 
 export default function App() {
-
-
   return (
     <Router>
       <AuthProvider>
         <Routes>
-
-
           {/* Route par défaut */}
           <Route path="/" element={<Welcome />} />
 
@@ -57,16 +59,61 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-          </Route>
 
-          <Route
-            path="/video-call"
-            element={
-              <ProtectedRoute>
-                <VideoCall roomId="room123" />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/video-call"
+              element={
+                <ProtectedRoute>
+                  <VideoCall roomId="room123" />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/tic-tac-toe2"
+              element={
+                <ProtectedRoute>
+                  <TicTacToe2 />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/memory-game"
+              element={
+                <ProtectedRoute>
+                  <MemoryGame />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/games"
+              element={
+                <ProtectedRoute>
+                  <GamesPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/rock-paper-scissors"
+              element={
+                <ProtectedRoute>
+                  <RockPaper />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/owly-quiz"
+              element={
+                <ProtectedRoute>
+                  <OwlyQuiz />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
         </Routes>
       </AuthProvider>
     </Router>

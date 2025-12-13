@@ -6,7 +6,8 @@ export default {
     "./src/**/*.{js,jsx}" // tous tes fichiers React
   ],
   theme: {
-    extend: {},
+    extend: {}, // tu peux ajouter ici tes couleurs, polices, spacing personnalisés
   },
   plugins: [],
 };
+
