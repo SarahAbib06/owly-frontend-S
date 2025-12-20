@@ -20,8 +20,8 @@ import { useTyping } from "../hooks/useTyping";
 import { useReactions } from "../hooks/useReactions";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
+import { useAppel } from "../context/AppelContext"; // IMPORT AJOUTÉ
 import socketService from "../services/socketService";
-//import VideoCallScreen from "./VideoCallScreen";
 import VideoCall from "./VideoCall";
 import ThemeSelector from "./ThemeSelect";
 import AudioMessage from "./AudioMessage";
@@ -101,9 +101,9 @@ const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥
 export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { startCall, currentCall } = useAppel(); // UTILISATION DU CONTEXTE D'APPEL
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
 
-  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
   const [bubbleBg, setBubbleBg] = useState("");
@@ -335,6 +335,27 @@ export default function ChatWindow({ selectedChat, onBack }) {
 
     return () => clearInterval(id);
   }, [themeEmojis]);
+
+  // FONCTION POUR DÉMARRER UN APPEL VIDÉO
+  const handleVideoCall = () => {
+    if (!selectedChat) {
+      alert('Aucune conversation sélectionnée');
+      return;
+    }
+    
+    if (selectedChat.isGroup) {
+      alert("Les appels de groupe ne sont pas encore disponibles");
+      return;
+    }
+    
+    if (!selectedChat.participants || selectedChat.participants.length < 2) {
+      alert('Impossible de trouver le destinataire');
+      return;
+    }
+    
+    // Utiliser le contexte d'appel global
+    startCall(selectedChat);
+  };
 
   const bubbleClasses = (fromMe) =>
     fromMe
@@ -678,17 +699,18 @@ export default function ChatWindow({ selectedChat, onBack }) {
         <div className="flex items-center gap-2">
           <Phone
             size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer"
+            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 transition-colors"
           />
+          {/* BOUTON VIDÉO MODIFIÉ */}
           <Video
             size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer"
-            onClick={() => setIsVideoCallOpen(true)}
+            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 transition-colors"
+            onClick={handleVideoCall}
           />
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
               size={16}
-              className="text-gray-600 dark:text-gray-300 cursor-pointer"
+              className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 transition-colors"
             />
           </button>
         </div>
@@ -829,12 +851,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
         </div>
       </footer>
 
-      {isVideoCallOpen && (
-        <VideoCall
-          selectedChat={selectedChat} 
-          onClose={() => setIsVideoCallOpen(false)} 
-        />
-      )}
 
       {isOptionsOpen && (
         <>
