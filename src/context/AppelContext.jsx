@@ -48,7 +48,6 @@ export const AppelProvider = ({ children }) => {
     // Appel accepté
     socketRef.current.on('call-answered', (data) => {
       console.log('✅ Appel accepté:', data);
-      // Ne pas cacher la modal ici, laisser VideoCall s'afficher
     });
 
     // Appel refusé
@@ -119,13 +118,10 @@ export const AppelProvider = ({ children }) => {
 
     console.log('📞 Démarrage appel vers:', otherParticipant._id);
 
-    // Émettre l'événement d'appel
+    // CORRECTION: Envoyer seulement les paramètres attendus par le backend
     socketRef.current.emit('initiate-call', {
       conversationId: conversation._id,
-      toUserId: otherParticipant._id,
-      callType: 'video',
-      fromUserId: user._id,
-      fromUsername: user.username
+      callType: 'video'
     });
 
     // Définir l'appel en cours
@@ -145,11 +141,10 @@ export const AppelProvider = ({ children }) => {
     // Arrêter le son
     stopRingtone();
 
-    // Répondre à l'appel
+    // CORRECTION: Envoyer les bons paramètres
     socketRef.current.emit('answer-call', {
       conversationId: incomingCall.conversationId,
-      toUserId: incomingCall.fromUserId,
-      fromUserId: user?._id
+      fromUserId: incomingCall.fromUserId
     });
 
     // Définir l'appel en cours
@@ -173,11 +168,10 @@ export const AppelProvider = ({ children }) => {
 
     console.log('❌ Refus appel de:', incomingCall.fromUserId);
 
-    // Émettre le refus
+    // CORRECTION: Envoyer les bons paramètres
     socketRef.current.emit('reject-call', {
       conversationId: incomingCall.conversationId,
-      toUserId: incomingCall.fromUserId,
-      fromUserId: user?._id
+      fromUserId: incomingCall.fromUserId
     });
 
     // Arrêter le son et fermer
@@ -190,7 +184,6 @@ export const AppelProvider = ({ children }) => {
     if (currentCall && socketRef.current?.connected) {
       socketRef.current.emit('hang-up', {
         conversationId: currentCall.conversation?._id,
-        toUserId: currentCall.targetUserId,
         fromUserId: user?._id
       });
     }
