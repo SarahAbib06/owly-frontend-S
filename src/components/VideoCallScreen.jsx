@@ -2,74 +2,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Mic, MicOff, Video, VideoOff, PhoneOff, 
-  Maximize, Minimize, User, AlertCircle, CameraOff, Settings
+  Maximize, Minimize, User, AlertCircle, CameraOff
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import socketService from '../services/socketService';
-import webRTCService from '../services/webRTCService';
+import webRTCService from '../services/WebRTCService'; // Nouveau service
 import { useAuth } from '../hooks/useAuth';
 
 export default function VideoCallScreen({ selectedChat, callData, onClose }) {
   const { user } = useAuth();
   
-  // États
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState('initializing');
   const [error, setError] = useState(null);
-  const [debugInfo, setDebugInfo] = useState({});
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
-  const peerRef = useRef(null);
   const callStartTime = useRef(null);
   const durationInterval = useRef(null);
 
-  // Déterminer les données d'appel
+  // Initialiser l'appel
   useEffect(() => {
-    const initCallData = () => {
-      let actualCallData = callData;
-      
-      if (!actualCallData && selectedChat) {
-        const currentUserId = user?._id || user?.id;
-        
-        // Trouver l'autre participant
-        const otherParticipant = selectedChat.participants?.find(
-          p => String(p._id || p.id) !== String(currentUserId)
-        );
-        
-        actualCallData = {
-          callId: `chat_${selectedChat._id}_${Date.now()}`,
-          callerId: currentUserId,
-          callerName: user?.username || user?.name || 'Vous',
-          receiverId: otherParticipant?._id,
-          receiverName: otherParticipant?.username || 'Utilisateur'
-        };
-      }
-      
-      if (!actualCallData) {
-        setError('Aucune donnée d\'appel disponible');
-        return null;
-      }
-      
-      setDebugInfo(prev => ({
-        ...prev,
-        callData: actualCallData,
-        currentUserId: user?._id,
-        remoteUserId: actualCallData.callerId === user?._id ? actualCallData.receiverId : actualCallData.callerId,
-        isInitiator: actualCallData.callerId === user?._id
-      }));
-      
-      return actualCallData;
-    };
-    
-    const callDataObj = initCallData();
-    
-    if (callDataObj) {
-      initializeCall(callDataObj);
-    }
+    initializeCall();
     
     return () => {
       cleanup();
@@ -89,213 +46,133 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
     return () => {
       if (durationInterval.current) {
         clearInterval(durationInterval.current);
-        durationInterval.current = null;
       }
     };
   }, [connectionStatus]);
 
-  const initializeCall = async (callDataObj) => {
+  const initializeCall = async () => {
     try {
-      setConnectionStatus('checking_permissions');
-      setDebugInfo(prev => ({ ...prev, step: 'checking_permissions' }));
-      
-      // Vérifier que webRTCService existe
-      if (!webRTCService) {
-        throw new Error('Service WebRTC non disponible');
-      }
+      setConnectionStatus('getting_stream');
       
       // 1. Obtenir le stream local
-      console.log('🎥 Tentative d\'obtention du stream local...');
-      let stream;
-      try {
-        // Essayer getLocalStream d'abord, sinon checkAndRequestPermissions
-        if (typeof webRTCService.getLocalStream === 'function') {
-          stream = await webRTCService.getLocalStream();
-        } else if (typeof webRTCService.checkAndRequestPermissions === 'function') {
-          stream = await webRTCService.checkAndRequestPermissions();
-        } else {
-          // Fallback direct
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: 640, height: 480 },
-            audio: true
-          });
-        }
-      } catch (streamError) {
-        console.error('❌ Erreur stream:', streamError);
-        throw new Error(`Accès média: ${streamError.message}`);
-      }
-      
-      if (!stream) {
-        throw new Error('Impossible d\'obtenir le flux média');
-      }
+      const stream = await webRTCService.getLocalStream();
       
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
-        console.log('✅ Stream local attaché');
       }
       
-      setConnectionStatus('creating_peer');
-      setDebugInfo(prev => ({ ...prev, step: 'creating_peer', hasLocalStream: true }));
+      setConnectionStatus('creating_connection');
       
-      // 2. Créer la connexion peer
+      // 2. Déterminer le rôle (caller ou receiver)
       const currentUserId = user?._id;
-      const isInitiator = callDataObj.callerId === currentUserId;
-      const remoteUserId = isInitiator ? callDataObj.receiverId : callDataObj.callerId;
+      const actualCallData = callData || (selectedChat ? {
+        callerId: currentUserId,
+        receiverId: selectedChat.participants?.find(p => 
+          String(p._id) !== String(currentUserId)
+        )?._id
+      } : null);
       
-      console.log('🔗 Création peer:', { isInitiator, remoteUserId });
+      const isInitiator = actualCallData?.callerId === currentUserId;
+      const remoteUserId = isInitiator ? actualCallData.receiverId : actualCallData.callerId;
       
-      // Vérifier que socketService existe
-      if (!socketService || !socketService.socket) {
-        throw new Error('Service Socket non disponible');
-      }
+      console.log('📱 Rôle:', { isInitiator, remoteUserId });
       
-      // Créer le peer avec gestion des callbacks
-      const peerOptions = {
-        stream,
-        initiator: isInitiator,
-        trickle: false,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
-        }
-      };
-      
-      // Créer le peer directement avec simple-peer si webRTCService ne fonctionne pas
-      let peer;
-      if (typeof webRTCService.createPeer === 'function') {
-        peer = webRTCService.createPeer(
-          stream,
-          isInitiator,
-          // Signal callback
-          (signal) => {
-            console.log('📡 Signal WebRTC:', signal.type);
-            if (isInitiator) {
-              socketService.sendCallOffer?.(remoteUserId, signal);
-            } else {
-              socketService.sendCallAnswer?.(remoteUserId, signal);
-            }
-          },
-          // Stream callback
-          (remoteStream) => {
-            console.log('✅ Stream distant reçu');
-            if (remoteVideoRef.current) {
-              remoteVideoRef.current.srcObject = remoteStream;
-            }
-            setConnectionStatus('connected');
-          },
-          // Error callback
-          (err) => {
-            console.error('💥 Erreur Peer:', err);
-            setConnectionStatus('error');
-            setError(`Erreur connexion: ${err.message}`);
-          },
-          // Close callback
-          () => {
-            console.log('📴 Connexion fermée');
-            handleEndCall();
-          }
-        );
-      } else {
-        // Fallback direct
-        const Peer = (await import('simple-peer')).default;
-        peer = new Peer(peerOptions);
+      // 3. Configurer les callbacks de signalisation
+      webRTCService.onSignal(async (signal) => {
+        console.log('📡 Signal à envoyer:', signal.type);
         
-        peer.on('signal', (signal) => {
-          console.log('📡 Signal WebRTC:', signal.type);
-          if (isInitiator) {
+        if (isInitiator) {
+          if (signal.type === 'offer') {
             socketService.sendCallOffer?.(remoteUserId, signal);
-          } else {
+          } else if (signal.type === 'candidate') {
+            // Envoyer les candidats ICE
+            socketService.socket?.emit('call:ice-candidate', {
+              receiverId: remoteUserId,
+              candidate: signal.candidate
+            });
+          }
+        } else {
+          if (signal.type === 'answer') {
             socketService.sendCallAnswer?.(remoteUserId, signal);
+          } else if (signal.type === 'candidate') {
+            socketService.socket?.emit('call:ice-candidate', {
+              receiverId: remoteUserId,
+              candidate: signal.candidate
+            });
           }
-        });
-        
-        peer.on('stream', (remoteStream) => {
-          console.log('✅ Stream distant reçu');
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = remoteStream;
-          }
-          setConnectionStatus('connected');
-        });
-        
-        peer.on('error', (err) => {
-          console.error('💥 Erreur Peer:', err);
-          setConnectionStatus('error');
-          setError(`Erreur connexion: ${err.message}`);
-        });
-        
-        peer.on('close', () => {
-          console.log('📴 Connexion fermée');
-          handleEndCall();
-        });
-      }
+        }
+      });
       
-      peerRef.current = peer;
+      webRTCService.onStream((remoteStream) => {
+        console.log('✅ Stream distant reçu');
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream;
+        }
+        setConnectionStatus('connected');
+      });
       
-      setConnectionStatus('waiting_connection');
-      setDebugInfo(prev => ({ 
-        ...prev, 
-        step: 'waiting_connection',
-        peerCreated: true,
-        isInitiator,
-        remoteUserId
-      }));
+      // 4. Créer la connexion
+      webRTCService.createPeerConnection(isInitiator);
       
-      // Configurer les écouteurs socket
+      // 5. Écouter les signaux entrants via socket
       if (isInitiator) {
+        // Écouter les réponses
         socketService.onCallAnswer?.((data) => {
-          console.log('📡 Réponse WebRTC reçue:', data);
-          if (data.receiverId === remoteUserId && peerRef.current) {
-            peerRef.current.signal(data.signal);
+          console.log('📡 Réponse reçue');
+          if (data.receiverId === remoteUserId) {
+            webRTCService.setRemoteDescription(data.signal);
           }
         });
+        
+        // Créer l'offre
+        setTimeout(async () => {
+          try {
+            await webRTCService.createOffer();
+            setConnectionStatus('waiting_answer');
+          } catch (err) {
+            console.error('❌ Erreur création offre:', err);
+            setError('Erreur création appel');
+          }
+        }, 1000);
+        
       } else {
+        // Écouter les offres
         socketService.onCallOffer?.((data) => {
-          console.log('📡 Offre WebRTC reçue:', data);
-          if (data.callerId === remoteUserId && peerRef.current) {
-            peerRef.current.signal(data.signal);
+          console.log('📡 Offre reçue');
+          if (data.callerId === remoteUserId) {
+            webRTCService.setRemoteDescription(data.signal)
+              .then(() => webRTCService.createAnswer())
+              .catch(err => console.error('Erreur réponse:', err));
           }
         });
+        
+        setConnectionStatus('waiting_offer');
       }
       
+      // Écouter les candidats ICE
+      socketService.socket?.on('call:ice-candidate', (data) => {
+        if ((isInitiator && data.receiverId === remoteUserId) ||
+            (!isInitiator && data.callerId === remoteUserId)) {
+          webRTCService.addIceCandidate(data.candidate);
+        }
+      });
+      
+      // Écouter la fin d'appel
       socketService.onCallEnded?.(() => {
-        console.log('📴 Appel terminé par l\'autre utilisateur');
+        console.log('📴 Appel terminé à distance');
         handleEndCall();
       });
       
     } catch (error) {
       console.error('💥 Erreur initialisation appel:', error);
       setConnectionStatus('error');
-      setError(error.message || 'Erreur lors de l\'initialisation de l\'appel');
-      
-      setDebugInfo(prev => ({
-        ...prev,
-        error: error.toString(),
-        errorStack: error.stack,
-        step: 'failed'
-      }));
+      setError(error.message || 'Erreur initialisation appel');
     }
   };
 
   const cleanup = () => {
-    console.log('🧹 Nettoyage VideoCallScreen');
-    
-    if (peerRef.current) {
-      peerRef.current.destroy();
-      peerRef.current = null;
-    }
-    
-    if (typeof webRTCService?.stopAllStreams === 'function') {
-      webRTCService.stopAllStreams();
-    } else {
-      // Fallback manual cleanup
-      if (localVideoRef.current?.srcObject) {
-        const stream = localVideoRef.current.srcObject;
-        stream.getTracks().forEach(track => track.stop());
-        localVideoRef.current.srcObject = null;
-      }
-    }
+    console.log('🧹 Nettoyage appel');
+    webRTCService.stopAllStreams();
     
     if (durationInterval.current) {
       clearInterval(durationInterval.current);
@@ -306,13 +183,25 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
     socketService.off?.('call:answer');
     socketService.off?.('call:offer');
     socketService.off?.('call:ended');
+    socketService.socket?.off('call:ice-candidate');
   };
 
   const handleEndCall = () => {
-    console.log('📞 Fin d\'appel demandée');
+    console.log('📞 Fin d\'appel');
     
-    // Récupérer l'ID distant depuis les debug infos
-    const remoteUserId = debugInfo.remoteUserId;
+    // Récupérer l'ID distant
+    const currentUserId = user?._id;
+    const actualCallData = callData || (selectedChat ? {
+      callerId: currentUserId,
+      receiverId: selectedChat.participants?.find(p => 
+        String(p._id) !== String(currentUserId)
+      )?._id
+    } : null);
+    
+    const remoteUserId = actualCallData?.callerId === currentUserId 
+      ? actualCallData.receiverId 
+      : actualCallData?.callerId;
+    
     if (remoteUserId) {
       socketService.endCall?.(remoteUserId);
     }
@@ -322,41 +211,13 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
   };
 
   const toggleAudio = () => {
-    try {
-      let enabled = false;
-      if (typeof webRTCService?.toggleAudio === 'function') {
-        enabled = webRTCService.toggleAudio();
-      } else if (localVideoRef.current?.srcObject) {
-        const stream = localVideoRef.current.srcObject;
-        const audioTrack = stream.getAudioTracks()[0];
-        if (audioTrack) {
-          audioTrack.enabled = !audioTrack.enabled;
-          enabled = audioTrack.enabled;
-        }
-      }
-      setIsAudioEnabled(enabled);
-    } catch (err) {
-      console.error('Erreur toggle audio:', err);
-    }
+    const enabled = webRTCService.toggleAudio();
+    setIsAudioEnabled(enabled);
   };
 
   const toggleVideo = () => {
-    try {
-      let enabled = false;
-      if (typeof webRTCService?.toggleVideo === 'function') {
-        enabled = webRTCService.toggleVideo();
-      } else if (localVideoRef.current?.srcObject) {
-        const stream = localVideoRef.current.srcObject;
-        const videoTrack = stream.getVideoTracks()[0];
-        if (videoTrack) {
-          videoTrack.enabled = !videoTrack.enabled;
-          enabled = videoTrack.enabled;
-        }
-      }
-      setIsVideoEnabled(enabled);
-    } catch (err) {
-      console.error('Erreur toggle video:', err);
-    }
+    const enabled = webRTCService.toggleVideo();
+    setIsVideoEnabled(enabled);
   };
 
   const toggleFullscreen = () => {
@@ -375,30 +236,6 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleRetry = () => {
-    setError(null);
-    setConnectionStatus('initializing');
-    setDebugInfo({});
-    
-    // Recréer les données d'appel
-    const callDataObj = callData || (selectedChat ? {
-      callId: `chat_${selectedChat._id}_${Date.now()}`,
-      callerId: user?._id,
-      callerName: user?.username || 'Vous',
-      receiverId: selectedChat.participants?.find(p => 
-        String(p._id) !== String(user?._id)
-      )?._id,
-      receiverName: selectedChat.participants?.find(p => 
-        String(p._id) !== String(user?._id)
-      )?.username || 'Utilisateur'
-    } : null);
-    
-    if (callDataObj) {
-      initializeCall(callDataObj);
-    }
-  };
-
-  // Écran d'erreur
   if (error) {
     return (
       <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center text-white p-6">
@@ -406,16 +243,13 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
         <h2 className="text-2xl font-bold mb-4">Erreur d'appel</h2>
         <p className="text-lg mb-2 text-center">{error}</p>
         
-        <div className="bg-gray-800 p-4 rounded-lg mt-4 mb-6 w-full max-w-md">
-          <p className="text-sm font-semibold mb-2">Informations de débogage:</p>
-          <pre className="text-xs bg-gray-900 p-2 rounded overflow-auto max-h-40">
-            {JSON.stringify(debugInfo, null, 2)}
-          </pre>
-        </div>
-        
-        <div className="flex gap-4">
+        <div className="flex gap-4 mt-6">
           <button
-            onClick={handleRetry}
+            onClick={() => {
+              setError(null);
+              setConnectionStatus('initializing');
+              initializeCall();
+            }}
             className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition"
           >
             Réessayer
@@ -424,21 +258,7 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
             onClick={onClose}
             className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition"
           >
-            Annuler
-          </button>
-          <button
-            onClick={() => {
-              console.log('Debug info:', debugInfo);
-              navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                .then(stream => {
-                  alert('Permissions OK!');
-                  stream.getTracks().forEach(t => t.stop());
-                })
-                .catch(err => alert(`Erreur: ${err.message}`));
-            }}
-            className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg font-medium transition"
-          >
-            Tester Permissions
+            Fermer
           </button>
         </div>
       </div>
@@ -451,33 +271,23 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
       <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-10">
         <div className="flex items-center justify-between text-white">
           <div>
-            <h3 className="font-semibold text-lg">
-              {debugInfo.callData?.receiverName || 'Utilisateur'}
-            </h3>
+            <h3 className="font-semibold text-lg">Appel en cours</h3>
             <p className="text-sm text-gray-300">
               {connectionStatus === 'initializing' && 'Initialisation...'}
-              {connectionStatus === 'checking_permissions' && 'Vérification permissions...'}
-              {connectionStatus === 'creating_peer' && 'Création connexion...'}
-              {connectionStatus === 'waiting_connection' && 'En attente de connexion...'}
+              {connectionStatus === 'getting_stream' && 'Accès caméra/micro...'}
+              {connectionStatus === 'creating_connection' && 'Création connexion...'}
+              {connectionStatus === 'waiting_offer' && 'En attente d\'appel...'}
+              {connectionStatus === 'waiting_answer' && 'En attente de réponse...'}
               {connectionStatus === 'connected' && formatDuration(callDuration)}
               {connectionStatus === 'error' && 'Erreur de connexion'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => console.log('Debug:', debugInfo)}
-              className="p-2 hover:bg-white/10 rounded-full transition"
-              title="Debug"
-            >
-              <Settings size={16} />
-            </button>
-            <button
-              onClick={toggleFullscreen}
-              className="p-2 hover:bg-white/10 rounded-full transition"
-            >
-              {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-            </button>
-          </div>
+          <button
+            onClick={toggleFullscreen}
+            className="p-2 hover:bg-white/10 rounded-full transition"
+          >
+            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+          </button>
         </div>
       </div>
 
@@ -491,29 +301,23 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
           className="w-full h-full object-cover bg-gray-900"
         />
 
-        {/* Placeholder vidéo distante */}
+        {/* Placeholder si pas de vidéo distante */}
         {connectionStatus !== 'connected' && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
             <div className="text-center text-white">
               <User size={80} className="mx-auto mb-4 opacity-50" />
-              <p className="text-lg">
-                {debugInfo.callData?.receiverName || 'Utilisateur'}
-              </p>
+              <p className="text-lg">Appel vidéo</p>
               <p className="text-sm text-gray-300 mt-2">
-                {connectionStatus === 'waiting_connection' && 'En attente de connexion...'}
-                {connectionStatus === 'checking_permissions' && 'Vérification des permissions...'}
-                {connectionStatus === 'creating_peer' && 'Établissement de la connexion...'}
+                {connectionStatus === 'waiting_offer' && 'En attente de connexion...'}
+                {connectionStatus === 'waiting_answer' && 'Appel en cours...'}
+                {connectionStatus === 'connected' && 'Connecté'}
               </p>
             </div>
           </div>
         )}
 
-        {/* Vidéo locale */}
-        <motion.div
-          drag
-          dragConstraints={{ top: 0, left: 0, right: 300, bottom: 500 }}
-          className="absolute top-20 right-4 w-32 h-48 rounded-lg overflow-hidden shadow-2xl border-2 border-white/30 cursor-move z-20"
-        >
+        {/* Vidéo locale (miniature) */}
+        <div className="absolute top-20 right-4 w-32 h-48 rounded-lg overflow-hidden shadow-2xl border-2 border-white/30">
           <video
             ref={localVideoRef}
             autoPlay
@@ -526,14 +330,13 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
               <CameraOff size={32} className="text-white" />
             </div>
           )}
-        </motion.div>
+        </div>
       </div>
 
       {/* Contrôles */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
         <div className="flex items-center justify-center gap-6">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={toggleAudio}
             className={`p-4 rounded-full ${
               isAudioEnabled 
@@ -542,10 +345,9 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
             } text-white transition`}
           >
             {isAudioEnabled ? <Mic size={24} /> : <MicOff size={24} />}
-          </motion.button>
+          </button>
 
-          <motion.button
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={toggleVideo}
             className={`p-4 rounded-full ${
               isVideoEnabled 
@@ -554,29 +356,18 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
             } text-white transition`}
           >
             {isVideoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
-          </motion.button>
+          </button>
 
-          <motion.button
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={handleEndCall}
             className="p-5 rounded-full bg-red-600 hover:bg-red-700 text-white transition"
           >
             <PhoneOff size={28} />
-          </motion.button>
+          </button>
         </div>
       </div>
 
-      {/* Debug overlay */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="absolute top-16 left-4 bg-black/70 text-white text-xs p-2 rounded">
-          <div>Status: {connectionStatus}</div>
-          <div>Local stream: {localVideoRef.current?.srcObject ? '✅' : '❌'}</div>
-          <div>Remote stream: {remoteVideoRef.current?.srcObject ? '✅' : '❌'}</div>
-          <div>Peer: {peerRef.current ? '✅' : '❌'}</div>
-        </div>
-      )}
-
-      <style jsx>{`
+      <style>{`
         .mirror {
           transform: scaleX(-1);
         }

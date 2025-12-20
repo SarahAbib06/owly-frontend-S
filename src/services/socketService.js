@@ -474,6 +474,18 @@ class SocketService {
       this.socket.on('call:user_busy', callback);
     }
   }
+  // socketService.js
+sendIceCandidate(receiverId, candidate) {
+  if (this.socket) {
+    this.socket.emit('call:ice-candidate', { receiverId, candidate });
+  }
+}
+
+onIceCandidate(callback) {
+  if (this.socket) {
+    this.socket.on('call:ice-candidate', callback);
+  }
+}
   // ==================== HISTORIQUE ====================
 
   // Récupérer l'historique d'une conversation
