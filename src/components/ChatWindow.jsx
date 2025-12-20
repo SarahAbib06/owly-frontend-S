@@ -22,6 +22,7 @@ import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
 import socketService from "../services/socketService";
 import VideoCallScreen from "./VideoCallScreen";
+import IncomingCallModal from './IncomingCallModal';
 import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
@@ -116,6 +117,10 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showPinnedSection, setShowPinnedSection] = useState(false);
+  
+  // États pour les appels
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [activeCall, setActiveCall] = useState(null);
 
   // États pour les interactions
   const [selectedMessage, setSelectedMessage] = useState(null);
@@ -147,6 +152,57 @@ export default function ChatWindow({ selectedChat, onBack }) {
   // Hook pour l'enregistrement audio
   const { isRecording, recordingTime, startRecording, stopAndSend, cancelRecording } =
     useAudioRecorder(selectedChat?._id);
+
+  // Gérer les appels entrants
+  useEffect(() => {
+    // Vérifiez d'abord si socketService existe
+    if (!socketService || !socketService.socket) {
+      console.error('SocketService non initialisé');
+      return;
+    }
+
+    console.log('🔌 Configuration des écouteurs d\'appel...');
+
+    // Utilisez les méthodes standard Socket.io
+    socketService.socket.on('call:incoming', (call) => {
+      console.log('📞 Appel entrant:', call);
+      setIncomingCall(call);
+    });
+
+    socketService.socket.on('call:accepted', (data) => {
+      console.log('✅ Appel accepté:', data);
+      setActiveCall(data);
+      setIsVideoCallOpen(true);
+    });
+
+    socketService.socket.on('call:rejected', () => {
+      console.log('❌ Appel rejeté');
+      setIncomingCall(null);
+      alert('Appel rejeté');
+    });
+
+    socketService.socket.on('call:user_busy', () => {
+      console.log('⏳ Utilisateur occupé');
+      alert('Utilisateur occupé');
+    });
+
+    socketService.socket.on('call:ended', () => {
+      console.log('📞 Appel terminé');
+      setActiveCall(null);
+      setIsVideoCallOpen(false);
+    });
+
+    return () => {
+      // Nettoyage
+      if (socketService.socket) {
+        socketService.socket.off('call:incoming');
+        socketService.socket.off('call:accepted');
+        socketService.socket.off('call:rejected');
+        socketService.socket.off('call:user_busy');
+        socketService.socket.off('call:ended');
+      }
+    };
+  }, []);
 
   // 🔥 Charger les messages épinglés
   useEffect(() => {
@@ -294,6 +350,39 @@ export default function ChatWindow({ selectedChat, onBack }) {
     localStorage.removeItem(chatKey);
   };
 
+  // Gérer l'appel entrant
+  const handleAcceptCall = () => {
+    if (!socketService.socket || !incomingCall) {
+      console.error('Socket non disponible ou appel inexistant');
+      return;
+    }
+    
+    console.log('✅ Acceptation de l\'appel:', incomingCall);
+    socketService.socket.emit('call:accept', {
+      callId: incomingCall.callId,
+      callerId: incomingCall.callerId
+    });
+    
+    setActiveCall(incomingCall);
+    setIncomingCall(null);
+    setIsVideoCallOpen(true);
+  };
+
+  const handleRejectCall = () => {
+    if (!socketService.socket || !incomingCall) {
+      console.error('Socket non disponible ou appel inexistant');
+      return;
+    }
+    
+    console.log('❌ Rejet de l\'appel:', incomingCall);
+    socketService.socket.emit('call:reject', {
+      callId: incomingCall.callId,
+      callerId: incomingCall.callerId
+    });
+    
+    setIncomingCall(null);
+  };
+
   // Charger le thème sauvegardé
   useEffect(() => {
     const savedTheme = localStorage.getItem(chatKey);
@@ -378,7 +467,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
     const fromMe =
       currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
 
-    console.log("🔍 message from", { currentUserId, messageSenderId, fromMe, msg });
+   
 
     const { reactions, addReaction, removeReaction } = useReactions(msg._id);
 
@@ -674,23 +763,73 @@ export default function ChatWindow({ selectedChat, onBack }) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Phone
-            size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer"
-          />
-          <Video
-            size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer"
-            onClick={() => setIsVideoCallOpen(true)}
-          />
-          <button onClick={() => setIsOptionsOpen(true)}>
-            <MoreVertical
-              size={16}
-              className="text-gray-600 dark:text-gray-300 cursor-pointer"
-            />
-          </button>
-        </div>
+       <div className="flex items-center gap-2">
+  <Phone
+    size={16}
+    className="text-gray-600 dark:text-gray-300 cursor-pointer"
+  />
+  <Video
+    size={16}
+    className="text-gray-600 dark:text-gray-300 cursor-pointer"
+    onClick={() => {
+      // Vérification de base
+      if (!selectedChat || !selectedChat.participants || !user) {
+        console.error('Données manquantes pour initier un appel');
+        return;
+      }
+      
+      const currentUserId = user._id || user.id || user.userId;
+      console.log('Mon ID:', currentUserId);
+      console.log('Participants du chat:', selectedChat.participants);
+      
+      // Pour un chat individuel
+      if (!selectedChat.isGroup) {
+        // Trouver l'autre participant
+        const otherParticipant = selectedChat.participants.find(participant => {
+          const participantId = participant._id || participant.id;
+          return String(participantId) !== String(currentUserId);
+        });
+        
+        console.log('Autre participant trouvé:', otherParticipant);
+        
+        if (otherParticipant && otherParticipant._id) {
+          const receiverId = otherParticipant._id;
+          
+          // Vérifier qu'on ne s'appelle pas soi-même
+          if (String(receiverId) === String(currentUserId)) {
+            console.error('ERREUR: ReceiverId est le même que callerId!');
+            alert('Impossible de s\'appeler soi-même');
+            return;
+          }
+          
+          console.log('📞 Initiation d\'un appel vidéo vers:', receiverId);
+          
+          if (socketService.socket) {
+            socketService.socket.emit('call:initiate', {
+              chatId: selectedChat._id,
+              receiverId: receiverId,
+              type: 'video'
+            });
+          } else {
+            console.error('Socket non connecté');
+          }
+        } else {
+          console.error('Impossible de trouver l\'autre participant');
+          alert('Impossible de trouver le contact');
+        }
+      } else {
+        // Pour un chat de groupe
+        alert('Les appels de groupe ne sont pas encore disponibles');
+      }
+    }}
+  />
+  <button onClick={() => setIsOptionsOpen(true)}>
+    <MoreVertical
+      size={16}
+      className="text-gray-600 dark:text-gray-300 cursor-pointer"
+    />
+  </button>
+</div>
       </header>
 
       {/* SECTION MESSAGES ÉPINGLÉS */}
@@ -828,12 +967,21 @@ export default function ChatWindow({ selectedChat, onBack }) {
         </div>
       </footer>
 
-      {isVideoCallOpen && (
-        <VideoCallScreen
-          selectedChat={selectedChat}
-          onClose={() => setIsVideoCallOpen(false)}
+      {/* Composants pour les appels */}
+      {incomingCall && (
+        <IncomingCallModal
+          call={incomingCall}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
         />
       )}
+
+      {isVideoCallOpen && activeCall && (
+  <VideoCallScreen
+    callData={activeCall}  // Passez activeCall comme callData
+    onClose={() => setIsVideoCallOpen(false)}
+  />
+)}
 
       {isOptionsOpen && (
         <>

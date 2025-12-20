@@ -1,186 +1,586 @@
+// frontend/src/components/VideoCallScreen.jsx
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Mic, MicOff, Video, VideoOff, PhoneOff, 
+  Maximize, Minimize, User, AlertCircle, CameraOff, Settings
+} from 'lucide-react';
+import { motion } from 'framer-motion';
+import socketService from '../services/socketService';
+import webRTCService from '../services/webRTCService';
+import { useAuth } from '../hooks/useAuth';
 
-import React from "react";
-import { Phone, Mic, Video, Volume2, Users } from "lucide-react";
+export default function VideoCallScreen({ selectedChat, callData, onClose }) {
+  const { user } = useAuth();
+  
+  // États
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState('initializing');
+  const [error, setError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState({});
 
-export default function VideoCallScreen({ selectedChat, onClose }) {
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const peerRef = useRef(null);
+  const callStartTime = useRef(null);
+  const durationInterval = useRef(null);
 
-  const safeChat = {
-    name: selectedChat?.name || "Utilisateur",
-    avatar: selectedChat?.avatar || "https://i.pravatar.cc/150?img=5",
+  // Déterminer les données d'appel
+  useEffect(() => {
+    const initCallData = () => {
+      let actualCallData = callData;
+      
+      if (!actualCallData && selectedChat) {
+        const currentUserId = user?._id || user?.id;
+        
+        // Trouver l'autre participant
+        const otherParticipant = selectedChat.participants?.find(
+          p => String(p._id || p.id) !== String(currentUserId)
+        );
+        
+        actualCallData = {
+          callId: `chat_${selectedChat._id}_${Date.now()}`,
+          callerId: currentUserId,
+          callerName: user?.username || user?.name || 'Vous',
+          receiverId: otherParticipant?._id,
+          receiverName: otherParticipant?.username || 'Utilisateur'
+        };
+      }
+      
+      if (!actualCallData) {
+        setError('Aucune donnée d\'appel disponible');
+        return null;
+      }
+      
+      setDebugInfo(prev => ({
+        ...prev,
+        callData: actualCallData,
+        currentUserId: user?._id,
+        remoteUserId: actualCallData.callerId === user?._id ? actualCallData.receiverId : actualCallData.callerId,
+        isInitiator: actualCallData.callerId === user?._id
+      }));
+      
+      return actualCallData;
+    };
+    
+    const callDataObj = initCallData();
+    
+    if (callDataObj) {
+      initializeCall(callDataObj);
+    }
+    
+    return () => {
+      cleanup();
+    };
+  }, []);
+
+  // Timer de durée d'appel
+  useEffect(() => {
+    if (connectionStatus === 'connected') {
+      callStartTime.current = Date.now();
+      durationInterval.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - callStartTime.current) / 1000);
+        setCallDuration(elapsed);
+      }, 1000);
+    }
+
+    return () => {
+      if (durationInterval.current) {
+        clearInterval(durationInterval.current);
+        durationInterval.current = null;
+      }
+    };
+  }, [connectionStatus]);
+
+  const initializeCall = async (callDataObj) => {
+    try {
+      setConnectionStatus('checking_permissions');
+      setDebugInfo(prev => ({ ...prev, step: 'checking_permissions' }));
+      
+      // Vérifier que webRTCService existe
+      if (!webRTCService) {
+        throw new Error('Service WebRTC non disponible');
+      }
+      
+      // 1. Obtenir le stream local
+      console.log('🎥 Tentative d\'obtention du stream local...');
+      let stream;
+      try {
+        // Essayer getLocalStream d'abord, sinon checkAndRequestPermissions
+        if (typeof webRTCService.getLocalStream === 'function') {
+          stream = await webRTCService.getLocalStream();
+        } else if (typeof webRTCService.checkAndRequestPermissions === 'function') {
+          stream = await webRTCService.checkAndRequestPermissions();
+        } else {
+          // Fallback direct
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480 },
+            audio: true
+          });
+        }
+      } catch (streamError) {
+        console.error('❌ Erreur stream:', streamError);
+        throw new Error(`Accès média: ${streamError.message}`);
+      }
+      
+      if (!stream) {
+        throw new Error('Impossible d\'obtenir le flux média');
+      }
+      
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        console.log('✅ Stream local attaché');
+      }
+      
+      setConnectionStatus('creating_peer');
+      setDebugInfo(prev => ({ ...prev, step: 'creating_peer', hasLocalStream: true }));
+      
+      // 2. Créer la connexion peer
+      const currentUserId = user?._id;
+      const isInitiator = callDataObj.callerId === currentUserId;
+      const remoteUserId = isInitiator ? callDataObj.receiverId : callDataObj.callerId;
+      
+      console.log('🔗 Création peer:', { isInitiator, remoteUserId });
+      
+      // Vérifier que socketService existe
+      if (!socketService || !socketService.socket) {
+        throw new Error('Service Socket non disponible');
+      }
+      
+      // Créer le peer avec gestion des callbacks
+      const peerOptions = {
+        stream,
+        initiator: isInitiator,
+        trickle: false,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        }
+      };
+      
+      // Créer le peer directement avec simple-peer si webRTCService ne fonctionne pas
+      let peer;
+      if (typeof webRTCService.createPeer === 'function') {
+        peer = webRTCService.createPeer(
+          stream,
+          isInitiator,
+          // Signal callback
+          (signal) => {
+            console.log('📡 Signal WebRTC:', signal.type);
+            if (isInitiator) {
+              socketService.sendCallOffer?.(remoteUserId, signal);
+            } else {
+              socketService.sendCallAnswer?.(remoteUserId, signal);
+            }
+          },
+          // Stream callback
+          (remoteStream) => {
+            console.log('✅ Stream distant reçu');
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = remoteStream;
+            }
+            setConnectionStatus('connected');
+          },
+          // Error callback
+          (err) => {
+            console.error('💥 Erreur Peer:', err);
+            setConnectionStatus('error');
+            setError(`Erreur connexion: ${err.message}`);
+          },
+          // Close callback
+          () => {
+            console.log('📴 Connexion fermée');
+            handleEndCall();
+          }
+        );
+      } else {
+        // Fallback direct
+        const Peer = (await import('simple-peer')).default;
+        peer = new Peer(peerOptions);
+        
+        peer.on('signal', (signal) => {
+          console.log('📡 Signal WebRTC:', signal.type);
+          if (isInitiator) {
+            socketService.sendCallOffer?.(remoteUserId, signal);
+          } else {
+            socketService.sendCallAnswer?.(remoteUserId, signal);
+          }
+        });
+        
+        peer.on('stream', (remoteStream) => {
+          console.log('✅ Stream distant reçu');
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = remoteStream;
+          }
+          setConnectionStatus('connected');
+        });
+        
+        peer.on('error', (err) => {
+          console.error('💥 Erreur Peer:', err);
+          setConnectionStatus('error');
+          setError(`Erreur connexion: ${err.message}`);
+        });
+        
+        peer.on('close', () => {
+          console.log('📴 Connexion fermée');
+          handleEndCall();
+        });
+      }
+      
+      peerRef.current = peer;
+      
+      setConnectionStatus('waiting_connection');
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        step: 'waiting_connection',
+        peerCreated: true,
+        isInitiator,
+        remoteUserId
+      }));
+      
+      // Configurer les écouteurs socket
+      if (isInitiator) {
+        socketService.onCallAnswer?.((data) => {
+          console.log('📡 Réponse WebRTC reçue:', data);
+          if (data.receiverId === remoteUserId && peerRef.current) {
+            peerRef.current.signal(data.signal);
+          }
+        });
+      } else {
+        socketService.onCallOffer?.((data) => {
+          console.log('📡 Offre WebRTC reçue:', data);
+          if (data.callerId === remoteUserId && peerRef.current) {
+            peerRef.current.signal(data.signal);
+          }
+        });
+      }
+      
+      socketService.onCallEnded?.(() => {
+        console.log('📴 Appel terminé par l\'autre utilisateur');
+        handleEndCall();
+      });
+      
+    } catch (error) {
+      console.error('💥 Erreur initialisation appel:', error);
+      setConnectionStatus('error');
+      setError(error.message || 'Erreur lors de l\'initialisation de l\'appel');
+      
+      setDebugInfo(prev => ({
+        ...prev,
+        error: error.toString(),
+        errorStack: error.stack,
+        step: 'failed'
+      }));
+    }
   };
 
-  const [isMinimized, setIsMinimized] = React.useState(false);
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const cleanup = () => {
+    console.log('🧹 Nettoyage VideoCallScreen');
+    
+    if (peerRef.current) {
+      peerRef.current.destroy();
+      peerRef.current = null;
+    }
+    
+    if (typeof webRTCService?.stopAllStreams === 'function') {
+      webRTCService.stopAllStreams();
+    } else {
+      // Fallback manual cleanup
+      if (localVideoRef.current?.srcObject) {
+        const stream = localVideoRef.current.srcObject;
+        stream.getTracks().forEach(track => track.stop());
+        localVideoRef.current.srcObject = null;
+      }
+    }
+    
+    if (durationInterval.current) {
+      clearInterval(durationInterval.current);
+      durationInterval.current = null;
+    }
+    
+    // Retirer les écouteurs socket
+    socketService.off?.('call:answer');
+    socketService.off?.('call:offer');
+    socketService.off?.('call:ended');
+  };
+
+  const handleEndCall = () => {
+    console.log('📞 Fin d\'appel demandée');
+    
+    // Récupérer l'ID distant depuis les debug infos
+    const remoteUserId = debugInfo.remoteUserId;
+    if (remoteUserId) {
+      socketService.endCall?.(remoteUserId);
+    }
+    
+    cleanup();
+    onClose();
+  };
+
+  const toggleAudio = () => {
+    try {
+      let enabled = false;
+      if (typeof webRTCService?.toggleAudio === 'function') {
+        enabled = webRTCService.toggleAudio();
+      } else if (localVideoRef.current?.srcObject) {
+        const stream = localVideoRef.current.srcObject;
+        const audioTrack = stream.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = !audioTrack.enabled;
+          enabled = audioTrack.enabled;
+        }
+      }
+      setIsAudioEnabled(enabled);
+    } catch (err) {
+      console.error('Erreur toggle audio:', err);
+    }
+  };
+
+  const toggleVideo = () => {
+    try {
+      let enabled = false;
+      if (typeof webRTCService?.toggleVideo === 'function') {
+        enabled = webRTCService.toggleVideo();
+      } else if (localVideoRef.current?.srcObject) {
+        const stream = localVideoRef.current.srcObject;
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.enabled = !videoTrack.enabled;
+          enabled = videoTrack.enabled;
+        }
+      }
+      setIsVideoEnabled(enabled);
+    } catch (err) {
+      console.error('Erreur toggle video:', err);
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    setConnectionStatus('initializing');
+    setDebugInfo({});
+    
+    // Recréer les données d'appel
+    const callDataObj = callData || (selectedChat ? {
+      callId: `chat_${selectedChat._id}_${Date.now()}`,
+      callerId: user?._id,
+      callerName: user?.username || 'Vous',
+      receiverId: selectedChat.participants?.find(p => 
+        String(p._id) !== String(user?._id)
+      )?._id,
+      receiverName: selectedChat.participants?.find(p => 
+        String(p._id) !== String(user?._id)
+      )?.username || 'Utilisateur'
+    } : null);
+    
+    if (callDataObj) {
+      initializeCall(callDataObj);
+    }
+  };
+
+  // Écran d'erreur
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center text-white p-6">
+        <AlertCircle size={64} className="text-red-500 mb-6" />
+        <h2 className="text-2xl font-bold mb-4">Erreur d'appel</h2>
+        <p className="text-lg mb-2 text-center">{error}</p>
+        
+        <div className="bg-gray-800 p-4 rounded-lg mt-4 mb-6 w-full max-w-md">
+          <p className="text-sm font-semibold mb-2">Informations de débogage:</p>
+          <pre className="text-xs bg-gray-900 p-2 rounded overflow-auto max-h-40">
+            {JSON.stringify(debugInfo, null, 2)}
+          </pre>
+        </div>
+        
+        <div className="flex gap-4">
+          <button
+            onClick={handleRetry}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition"
+          >
+            Réessayer
+          </button>
+          <button
+            onClick={onClose}
+            className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={() => {
+              console.log('Debug info:', debugInfo);
+              navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                .then(stream => {
+                  alert('Permissions OK!');
+                  stream.getTracks().forEach(t => t.stop());
+                })
+                .catch(err => alert(`Erreur: ${err.message}`));
+            }}
+            className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg font-medium transition"
+          >
+            Tester Permissions
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-50">
-
-      <div
-        className={`
-          relative shadow-xl overflow-hidden bg-[#d9b899] 
-          transition-all duration-300 ease-in-out
-
-          ${isFullscreen 
-            ? "fixed inset-0 w-screen h-screen rounded-none z-[9999]" 
-            : "w-[92%] md:w-[72%] h-[87%] rounded-xl"
-          }
-
-          ${isMinimized 
-            ? "fixed bottom-6 right-6 w-48 h-32 rounded-xl z-[9999]" 
-            : ""
-          }
-        `}
-      >
-
-        {/* RESTORE BUTTON when minimized */}
-        {isMinimized && (
-          <button
-            onClick={() => setIsMinimized(false)}
-            className="absolute top-1 left-1 bg-black/60 text-white px-2 py-1 rounded-md text-xs z-[10000]"
-          >
-            ↖
-          </button>
-        )}
-
-        {/* TOP RIGHT ICONS */}
-        {!isMinimized && (
-          <div className="absolute top-4 right-4 z-50 flex items-center gap-3
-            bg-black/40 backdrop-blur-sm px-3 py-2 rounded-xl"
-          >
-
-            {/* MINIMIZE */}
-            <button
-              onClick={() => {
-                setIsMinimized(true);
-                setIsFullscreen(false);
-              }}
-            >
-              <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
-                <rect x="4" y="11" width="16" height="2" />
-              </svg>
-            </button>
-
-            {/* FULLSCREEN */}
-            <button
-              onClick={() => {
-                setIsFullscreen(!isFullscreen);
-                setIsMinimized(false);
-              }}
-            >
-              <svg width="22" height="22" fill="white" viewBox="0 0 24 24">
-                <path d="M7 14H5v5h5v-2H7v-3zm0-4h2V7h3V5H7v5zm10 9h-3v2h5v-5h-2v3zm0-9V5h-5v2h3v3h2z"/>
-              </svg>
-            </button>
-
+    <div className="fixed inset-0 bg-black z-[9999] flex flex-col">
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-10">
+        <div className="flex items-center justify-between text-white">
+          <div>
+            <h3 className="font-semibold text-lg">
+              {debugInfo.callData?.receiverName || 'Utilisateur'}
+            </h3>
+            <p className="text-sm text-gray-300">
+              {connectionStatus === 'initializing' && 'Initialisation...'}
+              {connectionStatus === 'checking_permissions' && 'Vérification permissions...'}
+              {connectionStatus === 'creating_peer' && 'Création connexion...'}
+              {connectionStatus === 'waiting_connection' && 'En attente de connexion...'}
+              {connectionStatus === 'connected' && formatDuration(callDuration)}
+              {connectionStatus === 'error' && 'Erreur de connexion'}
+            </p>
           </div>
-        )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => console.log('Debug:', debugInfo)}
+              className="p-2 hover:bg-white/10 rounded-full transition"
+              title="Debug"
+            >
+              <Settings size={16} />
+            </button>
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 hover:bg-white/10 rounded-full transition"
+            >
+              {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+            </button>
+          </div>
+        </div>
+      </div>
 
-        {/* VIDEO */}
-        <img
-          src={safeChat.avatar}
-          className="w-full h-full object-cover"
+      {/* Vidéos */}
+      <div className="flex-1 relative">
+        {/* Vidéo distante */}
+        <video
+          ref={remoteVideoRef}
+          autoPlay
+          playsInline
+          className="w-full h-full object-cover bg-gray-900"
         />
 
-        {/* MINI VIDEO */}
-        {!isMinimized && (
-          <div className="absolute right-6 top-1/2 -translate-y-1/2 
-            w-32 h-36 bg-white rounded-xl shadow-md overflow-hidden"
-          >
-            <img
-              src="https://i.pravatar.cc/150?img=12"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-
-        {/* NAME + TIMER */}
-        {!isMinimized && (
-          <div className="
-            absolute left-1/2 -translate-x-1/2 top-90
-            px-4 py-1.5 bg-black/30 text-black bg-white/22 backdrop-blur-md 
-            rounded-xl border border-myYellow flex items-center gap-8 md:gap-11 text-sm
-          ">
-            <div className="flex items-center gap-2">
-              <img
-                src={safeChat.avatar}
-                className="w-6 h-6 rounded-full"
-              />
-              <span className="font-medium">{safeChat.name}</span>
-            </div>
-
-            <div className="flex items-center gap-1 text-red-400 font-semibold">
-              <span className="text-[10px]">●</span>
-              <span>07:23</span>
+        {/* Placeholder vidéo distante */}
+        {connectionStatus !== 'connected' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+            <div className="text-center text-white">
+              <User size={80} className="mx-auto mb-4 opacity-50" />
+              <p className="text-lg">
+                {debugInfo.callData?.receiverName || 'Utilisateur'}
+              </p>
+              <p className="text-sm text-gray-300 mt-2">
+                {connectionStatus === 'waiting_connection' && 'En attente de connexion...'}
+                {connectionStatus === 'checking_permissions' && 'Vérification des permissions...'}
+                {connectionStatus === 'creating_peer' && 'Établissement de la connexion...'}
+              </p>
             </div>
           </div>
         )}
 
-        {/* BOTTOM CONTROLS */}
-        {!isMinimized && (
-          <div className="
-            absolute bottom-9 left-1/2 -translate-x-1/2 
-            w-[90%] sm:w-[85%] bg-white/25 backdrop-blur-md 
-            py-2 rounded-xl shadow-md flex flex-wrap
-            items-center justify-between gap-3 px-4 border border-myYellow
-          ">
-
-            {/* USERS */}
-            <div className="flex items-center gap-2 text-black font-semibold w-auto">
-              <svg width="20" height="20" fill="black" viewBox="0 0 24 24">
-                <path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm-8 0a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-2.67 0-8 1.34-8 4v2h8v-2c0-.69.1-1.35.29-2-.88-.63-1.46-1.64-1.46-2zm8 0c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-              </svg>
-              <span>2</span>
+        {/* Vidéo locale */}
+        <motion.div
+          drag
+          dragConstraints={{ top: 0, left: 0, right: 300, bottom: 500 }}
+          className="absolute top-20 right-4 w-32 h-48 rounded-lg overflow-hidden shadow-2xl border-2 border-white/30 cursor-move z-20"
+        >
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover mirror"
+          />
+          {!isVideoEnabled && (
+            <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+              <CameraOff size={32} className="text-white" />
             </div>
-
-            {/* ICONS CENTER (RESPONSIVE) */}
-            <div className="flex-1 flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
-
-              {/* Micro */}
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow">
-                <svg width="20" height="20" fill="black" viewBox="0 0 24 24">
-                  <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
-                  <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-3.08A7 7 0 0 0 19 11z"/>
-                </svg>
-              </div>
-
-              {/* Camera */}
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow">
-                <svg width="22" height="22" fill="black" viewBox="0 0 24 24">
-                  <path d="M17 10.5V7a2 2 0 0 0-2-2H5A2 2 0 0 0 3 7v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5l4 4v-11l-4 4z"/>
-                </svg>
-              </div>
-
-              {/* Volume */}
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow">
-                <svg width="22" height="22" fill="black" viewBox="0 0 24 24">
-                  <path d="M11 5 6.5 9H3v6h3.5L11 19V5z"/>
-                  <path d="M14.54 8.46a5 5 0 0 1 0 7.07l1.41 1.41a7 7 0 0 0 0-9.9l-1.41 1.42z"/>
-                </svg>
-              </div>
-
-              {/* Share */}
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow">
-                <svg width="25" height="25" fill="black" viewBox="0 0 24 24">
-                  <rect x="3" y="4" width="18" height="12" rx="2"/>
-                  <path d="M12 7l3 3h-2v5h-2v-5H9l3-3z" fill="white"/>
-                </svg>
-              </div>
-
-              {/* HANGUP */}
-              <button
-                onClick={onClose}
-                className="px-5 h-10 bg-red-600 rounded-full flex items-center justify-center shadow"
-              >
-                <svg width="22" height="22" fill="white" viewBox="0 0 24 24">
-                  <path d="M21.71 16.29l-3-3a1 1 0 0 0-1.41 0l-1.72 1.72a15 15 0 0 1-7.16-7.16L9.14 6.13a1 1 0 0 0 0-1.41l-3-3a1 1 0 0 0-1.41 0L2.29 4.16a3 3 0 0 0-.78 2.89 19 19 0 0 0 16.42 16.42 3 3 0 0 0 2.89-.78l2.44-2.44a1 1 0 0 0 0-1.41z"/>
-                </svg>
-              </button>
-
-            </div>
-          </div>
-        )}
-
+          )}
+        </motion.div>
       </div>
+
+      {/* Contrôles */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+        <div className="flex items-center justify-center gap-6">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleAudio}
+            className={`p-4 rounded-full ${
+              isAudioEnabled 
+                ? 'bg-gray-700 hover:bg-gray-600' 
+                : 'bg-red-500 hover:bg-red-600'
+            } text-white transition`}
+          >
+            {isAudioEnabled ? <Mic size={24} /> : <MicOff size={24} />}
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleVideo}
+            className={`p-4 rounded-full ${
+              isVideoEnabled 
+                ? 'bg-gray-700 hover:bg-gray-600' 
+                : 'bg-red-500 hover:bg-red-600'
+            } text-white transition`}
+          >
+            {isVideoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={handleEndCall}
+            className="p-5 rounded-full bg-red-600 hover:bg-red-700 text-white transition"
+          >
+            <PhoneOff size={28} />
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Debug overlay */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute top-16 left-4 bg-black/70 text-white text-xs p-2 rounded">
+          <div>Status: {connectionStatus}</div>
+          <div>Local stream: {localVideoRef.current?.srcObject ? '✅' : '❌'}</div>
+          <div>Remote stream: {remoteVideoRef.current?.srcObject ? '✅' : '❌'}</div>
+          <div>Peer: {peerRef.current ? '✅' : '❌'}</div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .mirror {
+          transform: scaleX(-1);
+        }
+      `}</style>
     </div>
   );
 }

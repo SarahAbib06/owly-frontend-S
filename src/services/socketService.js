@@ -381,7 +381,99 @@ class SocketService {
       this.socket.on('user_presence_changed', callback);
     }
   }
+// ==================== APPELS VIDÉO ====================
 
+  // Initier un appel vidéo
+  initiateCall(conversationId, receiverId, callType = 'video') {
+    if (this.socket) {
+      this.socket.emit('call:initiate', { 
+        conversationId, 
+        receiverId,
+        callType // 'video' ou 'audio'
+      });
+      console.log('📞 Appel initié vers:', receiverId);
+    }
+  }
+
+  // Recevoir une demande d'appel entrant
+  onIncomingCall(callback) {
+    if (this.socket) {
+      this.socket.on('call:incoming', callback);
+    }
+  }
+
+  // Accepter un appel
+  acceptCall(callId, callerId) {
+    if (this.socket) {
+      this.socket.emit('call:accept', { callId, callerId });
+      console.log('✅ Appel accepté');
+    }
+  }
+
+  // Rejeter un appel
+  rejectCall(callId, callerId) {
+    if (this.socket) {
+      this.socket.emit('call:reject', { callId, callerId });
+      console.log('❌ Appel rejeté');
+    }
+  }
+
+  // Envoyer l'offre WebRTC
+  sendCallOffer(receiverId, signal) {
+    if (this.socket) {
+      this.socket.emit('call:offer', { receiverId, signal });
+    }
+  }
+
+  // Recevoir une offre WebRTC
+  onCallOffer(callback) {
+    if (this.socket) {
+      this.socket.on('call:offer', callback);
+    }
+  }
+
+  // Envoyer la réponse WebRTC
+  sendCallAnswer(callerId, signal) {
+    if (this.socket) {
+      this.socket.emit('call:answer', { callerId, signal });
+    }
+  }
+
+  // Recevoir une réponse WebRTC
+  onCallAnswer(callback) {
+    if (this.socket) {
+      this.socket.on('call:answer', callback);
+    }
+  }
+
+  // Terminer un appel
+  endCall(userId) {
+    if (this.socket) {
+      this.socket.emit('call:end', { userId });
+      console.log('📴 Appel terminé');
+    }
+  }
+
+  // Écouter la fin d'appel
+  onCallEnded(callback) {
+    if (this.socket) {
+      this.socket.on('call:ended', callback);
+    }
+  }
+
+  // Appel rejeté
+  onCallRejected(callback) {
+    if (this.socket) {
+      this.socket.on('call:rejected', callback);
+    }
+  }
+
+  // Utilisateur occupé
+  onUserBusy(callback) {
+    if (this.socket) {
+      this.socket.on('call:user_busy', callback);
+    }
+  }
   // ==================== HISTORIQUE ====================
 
   // Récupérer l'historique d'une conversation
