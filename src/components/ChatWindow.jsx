@@ -354,7 +354,28 @@ export default function ChatWindow({ selectedChat, onBack }) {
     }
     
     // Utiliser le contexte d'appel global
-    startCall(selectedChat);
+    startCall(selectedChat, 'video');
+  };
+
+  // FONCTION POUR DÉMARRER UN APPEL VOCAL
+  const handleAudioCall = () => {
+    if (!selectedChat) {
+      alert('Aucune conversation sélectionnée');
+      return;
+    }
+    
+    if (selectedChat.isGroup) {
+      alert("Les appels de groupe ne sont pas encore disponibles");
+      return;
+    }
+    
+    if (!selectedChat.participants || selectedChat.participants.length < 2) {
+      alert('Impossible de trouver le destinataire');
+      return;
+    }
+    
+    // Utiliser le contexte d'appel global avec type 'audio'
+    startCall(selectedChat, 'audio');
   };
 
   const bubbleClasses = (fromMe) =>
@@ -700,6 +721,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
           <Phone
             size={16}
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 transition-colors"
+            onClick={handleAudioCall}
           />
           {/* BOUTON VIDÉO MODIFIÉ */}
           <Video

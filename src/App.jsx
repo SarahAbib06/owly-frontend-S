@@ -5,7 +5,8 @@ import { AuthProvider } from "./context/AuthContext";
 import { AppelProvider } from "./context/AppelContext";
 import IncomingCallModal from "./components/IncomingCallModal";
 import VideoCall from './components/VideoCall';
-import { useAppel } from "./context/AppelContext"; // Import pour le composant conditionnel
+import AudioCall from './components/AudioCall';
+import { useAppel } from "./context/AppelContext";
 
 import RockPaper from "./pages/RockPaper";
 import Register from "./pages/Register.jsx";
@@ -25,11 +26,16 @@ import GamesPage from "./pages/GamesPage";
 
 // Composant wrapper pour gérer l'interface principale
 function MainInterface() {
-  const { currentCall } = useAppel();
+  const { currentCall, callType } = useAppel();
   
-  // Si un appel est en cours, on affiche seulement VideoCall
-  if (currentCall) {
+  // Si un appel vidéo est en cours, on affiche VideoCall
+  if (currentCall && callType === 'video') {
     return <VideoCall />;
+  }
+  
+  // Si un appel audio est en cours, on affiche AudioCall
+  if (currentCall && callType === 'audio') {
+    return <AudioCall />;
   }
   
   // Sinon, on affiche les routes normales
@@ -51,7 +57,6 @@ function MainInterface() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/Settings"
           element={
@@ -60,7 +65,6 @@ function MainInterface() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/video-call"
           element={
@@ -69,7 +73,6 @@ function MainInterface() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/tic-tac-toe2"
           element={
@@ -78,7 +81,6 @@ function MainInterface() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/memory-game"
           element={
@@ -87,7 +89,6 @@ function MainInterface() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/games"
           element={
@@ -96,7 +97,6 @@ function MainInterface() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/rock-paper-scissors"
           element={
@@ -105,7 +105,6 @@ function MainInterface() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/owly-quiz"
           element={
@@ -127,9 +126,8 @@ export default function App() {
           {/* Interface principale conditionnelle */}
           <MainInterface />
           
-          {/* MODALS GLOBAUX (toujours visibles si nécessaires) */}
+          {/* MODALS GLOBAUX */}
           <IncomingCallModal />
-          
         </AppelProvider>
       </AuthProvider>
     </Router>

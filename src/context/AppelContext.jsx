@@ -68,6 +68,19 @@ export const AppelProvider = ({ children }) => {
       }
     });
 
+    // Événements WebRTC (à transmettre au VideoCall)
+    socketRef.current.on('offer', (data) => {
+      console.log('📞 OFFER reçue via contexte:', data);
+    });
+
+    socketRef.current.on('answer', (data) => {
+      console.log('📥 ANSWER reçue via contexte:', data);
+    });
+
+    socketRef.current.on('ice-candidate', (data) => {
+      console.log('🧊 ICE candidate reçu via contexte:', data);
+    });
+
     // Gestion des erreurs
     socketRef.current.on('connect_error', (error) => {
       console.error('❌ Erreur connexion socket:', error);
@@ -100,7 +113,7 @@ export const AppelProvider = ({ children }) => {
     }
   };
 
-  const startCall = useCallback((conversation) => {
+  const startCall = useCallback((conversation, callType = 'video') => {
     if (!socketRef.current?.connected || !user) {
       console.error('Socket non connecté ou utilisateur non authentifié');
       return;
@@ -116,12 +129,12 @@ export const AppelProvider = ({ children }) => {
       return;
     }
 
-    console.log('📞 Démarrage appel vers:', otherParticipant._id);
+    console.log('📞 Démarrage appel vers:', otherParticipant._id, 'type:', callType);
 
-    // CORRECTION: Envoyer seulement les paramètres attendus par le backend
+    // Envoyer les paramètres
     socketRef.current.emit('initiate-call', {
       conversationId: conversation._id,
-      callType: 'video'
+      callType: callType
     });
 
     // Définir l'appel en cours
@@ -129,7 +142,8 @@ export const AppelProvider = ({ children }) => {
       conversation,
       isInitiator: true,
       targetUserId: otherParticipant._id,
-      targetUsername: otherParticipant.username
+      targetUsername: otherParticipant.username,
+      callType: callType
     });
   }, [user]);
 
@@ -141,7 +155,7 @@ export const AppelProvider = ({ children }) => {
     // Arrêter le son
     stopRingtone();
 
-    // CORRECTION: Envoyer les bons paramètres
+    // Envoyer les bons paramètres
     socketRef.current.emit('answer-call', {
       conversationId: incomingCall.conversationId,
       fromUserId: incomingCall.fromUserId
@@ -155,7 +169,8 @@ export const AppelProvider = ({ children }) => {
       },
       isInitiator: false,
       targetUserId: incomingCall.fromUserId,
-      targetUsername: incomingCall.fromUsername
+      targetUsername: incomingCall.fromUsername,
+      callType: incomingCall.callType || 'video'
     });
 
     // Fermer le modal
@@ -168,7 +183,6 @@ export const AppelProvider = ({ children }) => {
 
     console.log('❌ Refus appel de:', incomingCall.fromUserId);
 
-    // CORRECTION: Envoyer les bons paramètres
     socketRef.current.emit('reject-call', {
       conversationId: incomingCall.conversationId,
       fromUserId: incomingCall.fromUserId
@@ -201,7 +215,8 @@ export const AppelProvider = ({ children }) => {
     acceptIncomingCall,
     rejectIncomingCall,
     endCall,
-    socket: socketRef.current
+    socket: socketRef.current,
+    callType: currentCall?.callType || incomingCall?.callType
   };
 
   return (

@@ -2,13 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppel } from "../context/AppelContext";
 import { useAuth } from "../hooks/useAuth";
-import io from "socket.io-client";
-
-const SIGNALING_SERVER = "http://localhost:5000";
 
 export default function VideoCall() {
   const { user } = useAuth();
-  const { currentCall, endCall } = useAppel();
+  const { currentCall, endCall, socket: contextSocket } = useAppel();
   
   const [status, setStatus] = useState(currentCall?.isInitiator ? "Appel en cours..." : "Appel accepté");
   const [isMuted, setIsMuted] = useState(false);
@@ -27,11 +24,20 @@ export default function VideoCall() {
   const durationIntervalRef = useRef(null);
   const pendingIceCandidatesRef = useRef([]);
   const isInitializedRef = useRef(false);
+  const offerSentRef = useRef(false);
 
   // Si pas d'appel en cours, ne rien afficher
   if (!currentCall) {
     return null;
   }
+
+  // Utiliser le socket du contexte
+  useEffect(() => {
+    if (contextSocket && !socketRef.current) {
+      socketRef.current = contextSocket;
+      console.log("✅ Socket du contexte utilisé pour WebRTC:", contextSocket.id);
+    }
+  }, [contextSocket]);
 
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -68,11 +74,7 @@ export default function VideoCall() {
       pcRef.current = null;
     }
 
-    if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-
+    // Ne pas fermer le socket (utilisé par le contexte)
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
     }
@@ -82,6 +84,7 @@ export default function VideoCall() {
 
     pendingIceCandidatesRef.current = [];
     isInitializedRef.current = false;
+    offerSentRef.current = false;
   };
 
   const handleEndCall = () => {
@@ -238,6 +241,7 @@ export default function VideoCall() {
       // Écouter les tracks distantes
       pc.ontrack = (event) => {
         console.log("🎬 Track distant reçue:", event.track.kind);
+        console.log("📊 Nombre de streams:", event.streams?.length);
         
         if (event.streams && event.streams[0]) {
           // Nettoyer les anciennes tracks
@@ -247,7 +251,7 @@ export default function VideoCall() {
           
           // Ajouter les nouvelles tracks
           event.streams[0].getTracks().forEach((track) => {
-            console.log("➕ Ajout track distant:", track.kind);
+            console.log("➕ Ajout track distant:", track.kind, "état:", track.readyState);
             remoteStreamRef.current.addTrack(track);
           });
           
@@ -272,7 +276,7 @@ export default function VideoCall() {
 
       // Gestion ICE candidates
       pc.onicecandidate = (event) => {
-        if (event.candidate && socketRef.current?.connected && currentCall?.targetUserId) {
+        if (event.candidate && socketRef.current?.connected) {
           console.log("🧊 ICE candidate généré:", event.candidate.type);
           
           socketRef.current.emit("ice-candidate", {
@@ -339,6 +343,7 @@ export default function VideoCall() {
 
     const handleOffer = async ({ sdp, fromUserId }) => {
       console.log("📞 OFFER reçue de:", fromUserId);
+      console.log("📦 SDP reçu:", sdp?.type, sdp?.sdp?.substring(0, 100));
       
       if (!pcRef.current) {
         console.error("❌ PeerConnection non initialisée");
@@ -362,8 +367,7 @@ export default function VideoCall() {
         
         socket.emit("answer", {
           conversationId: currentCall.conversation?._id,
-          sdp: answer,
-          fromUserId: user?._id
+          sdp: answer
         });
         
         setStatus("Connexion en cours...");
@@ -376,6 +380,7 @@ export default function VideoCall() {
 
     const handleAnswer = async ({ sdp, fromUserId }) => {
       console.log("📥 ANSWER reçue de:", fromUserId);
+      console.log("📦 SDP reçu:", sdp?.type);
       
       if (!pcRef.current) {
         console.error("❌ PeerConnection non initialisée");
@@ -470,55 +475,43 @@ export default function VideoCall() {
       try {
         isInitializedRef.current = true;
         console.log("🚀 Initialisation de l'appel...");
+        console.log("👤 Utilisateur:", user?._id, user?.username);
+        console.log("📱 Appel courant:", currentCall);
+        console.log("🎯 Cible:", currentCall?.targetUserId);
+        console.log("🔌 Socket:", socketRef.current?.id, "connecté:", socketRef.current?.connected);
 
-        // Obtenir le token
-        const token = localStorage.getItem('token') || user?.token;
-        if (!token) {
-          console.error("❌ Token non trouvé");
-          setStatus("Token non trouvé");
-          return;
-        }
-
-        // Initialiser le socket
+        // Vérifier le socket
         if (!socketRef.current) {
-          console.log("🔌 Connexion socket vidéo...");
-          socketRef.current = io(SIGNALING_SERVER, {
-            auth: { token },
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            reconnectionAttempts: 3,
-            reconnectionDelay: 1000
-          });
-
-          const socket = socketRef.current;
-
-          socket.on("connect", () => {
-            console.log("✅ Socket vidéo connecté:", socket.id);
-            // S'enregistrer auprès du serveur
-            socket.emit("register-user", user?._id);
-          });
-
-          socket.on("video-auth-success", (data) => {
-            console.log("🔐 Auth vidéo réussie pour:", data.userId);
-          });
-
-          socket.on("connect_error", (error) => {
-            console.error("❌ Erreur connexion socket:", error);
-            setStatus("Erreur de connexion au serveur");
-          });
+          console.error("❌ Socket non disponible");
+          setStatus("Erreur de connexion");
+          return;
         }
 
         // Attendre que le socket soit connecté
         if (!socketRef.current.connected) {
           console.log("⏳ En attente de connexion socket...");
-          await new Promise((resolve) => {
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error("Timeout connexion socket"));
+            }, 5000);
+
             if (socketRef.current.connected) {
+              clearTimeout(timeout);
               resolve();
             } else {
-              socketRef.current.once("connect", resolve);
+              socketRef.current.once("connect", () => {
+                clearTimeout(timeout);
+                resolve();
+              });
+              socketRef.current.once("connect_error", (error) => {
+                clearTimeout(timeout);
+                reject(error);
+              });
             }
           });
         }
+
+        console.log("✅ Socket connecté:", socketRef.current.id);
 
         // Obtenir le stream média local
         console.log("🎥 Demande des permissions média...");
@@ -554,18 +547,21 @@ export default function VideoCall() {
             };
             
             const offer = await pcRef.current.createOffer(offerOptions);
-            console.log("📦 OFFER créée");
+            console.log("📦 OFFER créée:", offer.type);
+            console.log("📝 SDP:", offer.sdp?.substring(0, 200));
             
             await pcRef.current.setLocalDescription(offer);
             console.log("📋 LocalDescription définie");
             
-            console.log("📤 Envoi de l'OFFER à:", currentCall.targetUserId);
+            console.log("📤 Envoi de l'OFFER...");
             
             socketRef.current.emit("offer", {
               conversationId: currentCall.conversation?._id,
-              sdp: offer,
-              fromUserId: user?._id
+              sdp: offer
             });
+            
+            offerSentRef.current = true;
+            console.log("✅ OFFER envoyée avec succès");
             
             setStatus(`Appel de ${currentCall.targetUsername || "Utilisateur"}...`);
           } catch (error) {
@@ -574,6 +570,7 @@ export default function VideoCall() {
           }
         } else {
           console.log("📞 En attente d'appel entrant...");
+          console.log("👂 En attente de l'OFFER de l'appelant...");
           setStatus("En attente d'appel entrant...");
         }
 
