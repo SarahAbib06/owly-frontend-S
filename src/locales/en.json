@@ -8,7 +8,8 @@
     "connect": "Login",
     "forgotPassword": "Forgot password?",
     "noAccount": "Don't have an account?",
-    "register": "Register"
+    "register": "Register",
+     "loading": "Logging in..."
   },
   "register": {
     "createAccount": "Create your account",
@@ -264,7 +265,14 @@
 
   "IncomingSound": "Incoming calls",
   "IncomingSoundDesc": "Play sound for incoming calls"
-}
+},
+"deleteAccount": {
+    "title": "Delete Account?",
+    "description": "This action is permanent Enter your password to confirm.",
+    "passwordPlaceholder": "Your password",
+    "cancel": "Cancel",
+    "confirm": "Delete"
+  }
  
 
 }

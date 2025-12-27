@@ -29,6 +29,7 @@ import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
+    
 
 const SeenIconGray = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 48 48">
@@ -101,6 +102,148 @@ const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥
 export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+   const [contactStatus, setContactStatus] = useState({
+  isOnline: false,
+  lastSeen: null,
+});
+
+const getUserStatusText = () => {
+  // 🟢 Online
+  if (contactStatus.isOnline) {
+    return "En ligne";
+  }
+
+  // ⚪ Offline avec lastSeen
+  if (contactStatus.lastSeen) {
+    const last = new Date(contactStatus.lastSeen);
+    const now = new Date();
+    const diffMs = now - last;
+
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHour = Math.floor(diffMin / 60);
+
+    if (diffMin < 1) return "En ligne il y a quelques secondes";
+    if (diffMin < 60) return `En ligne il y a ${diffMin} min`;
+    if (diffHour < 24) return `En ligne il y a ${diffHour} h`;
+
+    return "En ligne il y a longtemps";
+  }
+
+  return "En ligne il y a un moment";
+};
+useEffect(() => {
+  if (!contactStatus.lastSeen || contactStatus.isOnline) return;
+
+  const interval = setInterval(() => {
+    // force le recalcul du texte
+    setContactStatus((prev) => ({ ...prev }));
+  }, 60000); // toutes les 1 min
+
+  return () => clearInterval(interval);
+}, [contactStatus.lastSeen, contactStatus.isOnline]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+console.log("selectedChat:", selectedChat, "user:", user);
+const contactId = React.useMemo(() => {
+  if (!selectedChat || selectedChat.isGroup || !user) return null;
+  const other = selectedChat.participants.find(
+    (p) => String(p._id) !== String(user._id)
+  );
+  return other?._id || null;
+}, [selectedChat, user]);
+
+  console.log("contactId:", contactId);
+ // --- useEffect pour récupérer le statut initial ---
+useEffect(() => {
+  if (!contactId) return;
+  console.log("🧪 TEST contactId =", contactId);
+
+  //fetch(`/api/users/${contactId}/status`)
+  fetch(`http://localhost:5000/api/users/${contactId}/status`)
+    .then(res => res.json())
+    .then(data => {
+  console.log("🧪 REPONSE API STATUS =", data);
+
+      setContactStatus({
+        isOnline: data.isOnline,
+        lastSeen: data.lastSeen,
+      });
+    })
+    .catch(err => console.error("Erreur statut:", err));
+}, [contactId]);
+
+// --- useEffect pour écouter les changements en temps réel via socket ---
+useEffect(() => {
+  if (!socketService.socket || !contactId) return;
+  // 🔹 Rendre le socket accessible dans la console
+  window.socket = socketService.socket;
+  console.log("🌐 Socket accessible via window.socket");
+const handleOnline = ({ userId }) => {
+  if (!contactId) return;
+  if (String(userId) === String(contactId)) {
+    setContactStatus({
+      isOnline: true,
+      lastSeen: null,
+    });
+  }
+};
+
+
+  const handleOffline = ({ userId, lastSeen }) => {
+  console.log("🔴 user offline reçu:", userId, lastSeen, "contactId:", contactId);
+  if (!contactId) return;
+
+  if (String(userId) === String(contactId)) {
+    setContactStatus({
+      isOnline: false,
+      lastSeen: lastSeen ? new Date(lastSeen).toISOString() : new Date().toISOString(),
+    });
+  }
+};
+
+
+  socketService.socket.on("user:online", handleOnline);
+  socketService.socket.on("user:offline", handleOffline);
+
+  return () => {
+    socketService.socket.off("user:online", handleOnline);
+    socketService.socket.off("user:offline", handleOffline);
+  };
+}, [contactId]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
 
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
@@ -525,6 +668,23 @@ export default function ChatWindow({ selectedChat, onBack }) {
         }
       }
     };
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     return (
       <div className={`flex ${fromMe ? "justify-end" : "justify-start"} group`}>
@@ -750,17 +910,23 @@ export default function ChatWindow({ selectedChat, onBack }) {
             <div className="text-sm font-semibold truncate">
               {conversationName}
             </div>
-            <div className="text-xs truncate text-gray-700 dark:text-gray-300">
-              {isTyping && typingUsers.length > 0 ? (
-                <span className="text-green-500 font-medium">
-                  {t("chat.typing") || "En train d'écrire"}...
-                </span>
-              ) : selectedChat?.isGroup ? (
-                `${selectedChat?.participants?.length || 0} membres`
-              ) : (
-                t("chat.online") || "En ligne"
-              )}
-            </div>
+           <div className="text-xs truncate text-gray-700 dark:text-gray-300 flex items-center gap-1">
+  {isTyping && typingUsers.length > 0 ? (
+    <span className="text-green-500 font-medium">
+      {t("chat.typing") || "En train d'écrire"}...
+    </span>
+  ) : selectedChat?.isGroup ? (
+    `${selectedChat?.participants?.length || 0} membres`
+  ) : (
+    <span className="flex items-center gap-1">
+      {contactStatus.isOnline && (
+        <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+      )}
+      <span className="text-gray-500 text-xs">{getUserStatusText()}</span>
+    </span>
+  )}
+</div>
+
           </div>
         </div>
        <div className="flex items-center gap-2">
@@ -916,8 +1082,8 @@ export default function ChatWindow({ selectedChat, onBack }) {
           </div>
         )}
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 px-2 py-2 rounded-xl flex-1 bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
+        <div className="flex items-center gap-2  w-full">
+          <div className="flex-1 flex items-center gap-1 px-2 py-2 rounded-xl  bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
             <Smile
               size={18}
               className="text-gray-700 dark:text-gray-300 cursor-pointer"
@@ -936,7 +1102,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
             />
             <input
               type="text"
-              className="flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
+              className=" flex items-center flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
               placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
               value={inputText}
               onChange={handleInputChange}
