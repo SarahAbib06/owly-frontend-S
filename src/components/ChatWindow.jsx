@@ -100,7 +100,7 @@ const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥
 
 export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, socketConnected } = useAuth();
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
 
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
@@ -155,9 +155,9 @@ export default function ChatWindow({ selectedChat, onBack }) {
 
   // Gérer les appels entrants
   useEffect(() => {
-    // Vérifiez d'abord si socketService existe
-    if (!socketService || !socketService.socket) {
-      console.error('SocketService non initialisé');
+    // Vérifiez d'abord si socketService existe et est connecté
+    if (!socketService || !socketService.socket || !socketConnected) {
+      console.error('SocketService non initialisé ou non connecté');
       return;
     }
 
@@ -171,26 +171,51 @@ export default function ChatWindow({ selectedChat, onBack }) {
 
     socketService.socket.on('call:accepted', (data) => {
       console.log('✅ Appel accepté:', data);
-      setActiveCall(data);
+      // Pour l'appelant, mettre à jour les données d'appel avec l'ID réel
+      if (activeCall) {
+        setActiveCall(prev => ({
+          ...prev,
+          callId: data.callId,
+          status: 'active'
+        }));
+      } else {
+        // Pour le destinataire, créer activeCall avec les données reçues
+        setActiveCall({
+          callId: data.callId,
+          callerId: data.callerId,
+          receiverId: data.receiverId,
+          conversationId: data.conversationId,
+          callType: data.callType,
+          status: 'active'
+        });
+      }
+      // Ouvrir VideoCallScreen immédiatement après acceptation
       setIsVideoCallOpen(true);
     });
 
     socketService.socket.on('call:rejected', () => {
       console.log('❌ Appel rejeté');
       setIncomingCall(null);
+      setActiveCall(null);
+      setIsVideoCallOpen(false);
       alert('Appel rejeté');
     });
 
-    socketService.socket.on('call:user_busy', () => {
-      console.log('⏳ Utilisateur occupé');
-      alert('Utilisateur occupé');
-    });
-
+    
     socketService.socket.on('call:ended', () => {
       console.log('📞 Appel terminé');
       setActiveCall(null);
       setIsVideoCallOpen(false);
     });
+
+    socketService.socket.on('call:user_offline', () => {
+      console.log('Utilisateur hors ligne');
+      setActiveCall(null);
+      setIsVideoCallOpen(false);
+      alert('Utilisateur hors ligne');
+    });
+
+   
 
     return () => {
       // Nettoyage
@@ -198,11 +223,13 @@ export default function ChatWindow({ selectedChat, onBack }) {
         socketService.socket.off('call:incoming');
         socketService.socket.off('call:accepted');
         socketService.socket.off('call:rejected');
-        socketService.socket.off('call:user_busy');
+     
         socketService.socket.off('call:ended');
+        socketService.socket.off('call:user_offline');
+        
       }
     };
-  }, []);
+  }, [socketConnected]);
 
   // 🔥 Charger les messages épinglés
   useEffect(() => {
@@ -356,30 +383,30 @@ export default function ChatWindow({ selectedChat, onBack }) {
       console.error('Socket non disponible ou appel inexistant');
       return;
     }
-    
+
     console.log('✅ Acceptation de l\'appel:', incomingCall);
     socketService.socket.emit('call:accept', {
       callId: incomingCall.callId,
       callerId: incomingCall.callerId
     });
-    
+
     setActiveCall(incomingCall);
     setIncomingCall(null);
-    setIsVideoCallOpen(true);
+    // VideoCallScreen will be opened by the 'call:accepted' listener
   };
 
-  const handleRejectCall = () => {
+  const handleRejectCall = async () => {
     if (!socketService.socket || !incomingCall) {
       console.error('Socket non disponible ou appel inexistant');
       return;
     }
-    
+
     console.log('❌ Rejet de l\'appel:', incomingCall);
     socketService.socket.emit('call:reject', {
       callId: incomingCall.callId,
       callerId: incomingCall.callerId
     });
-    
+
     setIncomingCall(null);
   };
 
@@ -777,11 +804,11 @@ export default function ChatWindow({ selectedChat, onBack }) {
         console.error('Données manquantes pour initier un appel');
         return;
       }
-      
+
       const currentUserId = user._id || user.id || user.userId;
       console.log('Mon ID:', currentUserId);
       console.log('Participants du chat:', selectedChat.participants);
-      
+
       // Pour un chat individuel
       if (!selectedChat.isGroup) {
         // Trouver l'autre participant
@@ -789,27 +816,39 @@ export default function ChatWindow({ selectedChat, onBack }) {
           const participantId = participant._id || participant.id;
           return String(participantId) !== String(currentUserId);
         });
-        
+
         console.log('Autre participant trouvé:', otherParticipant);
-        
+
         if (otherParticipant && otherParticipant._id) {
           const receiverId = otherParticipant._id;
-          
+
           // Vérifier qu'on ne s'appelle pas soi-même
           if (String(receiverId) === String(currentUserId)) {
             console.error('ERREUR: ReceiverId est le même que callerId!');
             alert('Impossible de s\'appeler soi-même');
             return;
           }
-          
+
           console.log('📞 Initiation d\'un appel vidéo vers:', receiverId);
-          
+
           if (socketService.socket) {
             socketService.socket.emit('call:initiate', {
-              chatId: selectedChat._id,
+              conversationId: selectedChat._id,
               receiverId: receiverId,
-              type: 'video'
+              callType: 'video'
             });
+
+            // Ouvrir la fenêtre d'appel immédiatement pour l'appelant
+            setActiveCall({
+              callerId: currentUserId,
+              receiverId: receiverId,
+              conversationId: selectedChat._id,
+              callType: 'video',
+              callId: 'temp_' + Date.now(),
+              receiverName: otherParticipant.username,
+              receiverAvatar: otherParticipant.profilePicture
+            });
+            setIsVideoCallOpen(true);
           } else {
             console.error('Socket non connecté');
           }
@@ -976,7 +1015,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
         />
       )}
 
-      {isVideoCallOpen && activeCall && (
+      {isVideoCallOpen && activeCall && activeCall.callId && !activeCall.callId.startsWith('temp_') && (
   <VideoCallScreen
     callData={activeCall}  // Passez activeCall comme callData
     onClose={() => setIsVideoCallOpen(false)}
