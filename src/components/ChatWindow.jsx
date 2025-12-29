@@ -104,7 +104,7 @@ const { t } = useTranslation();
 
 const { user, socketConnected } = useAuth();
 
-const { user } = useAuth();
+
    const [contactStatus, setContactStatus] = useState({
   isOnline: false,
   lastSeen: null,
@@ -231,24 +231,7 @@ const handleOnline = ({ userId }) => {
   };
 }, [contactId]);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
->>>>>>> 49f4f30a316a70910d30445c56a0300b5cdf2564
-  const chatKey = `theme_${selectedChat?._id ?? "default"}`;
+ const chatKey = `theme_${selectedChat?._id ?? "default"}`;
 
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
