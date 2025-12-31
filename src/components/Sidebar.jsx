@@ -200,7 +200,7 @@ export default function Sidebar() {
         <div className="flex flex-col items-center gap-1 relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className={`p-2 rounded-md transition flex justify-center items-center w-14 h-6
+            className={`p-2 rounded-md transition flex justify-center items-center w-14 h-6 mt-7
               ${menuOpen ? "bg-black dark:bg-[#F9EE34]" : ""}`}
           >
             <FaBars className={`w-6 h-6 ${menuOpen ? "text-white dark:text-black" : "text-myBlack dark:text-white"}`} />

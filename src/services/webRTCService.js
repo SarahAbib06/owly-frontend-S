@@ -7,6 +7,7 @@ class WebRTCService {
     this.dataChannel = null;
     this.onSignalCallback = null;
     this.onStreamCallback = null;
+    this.onScreenShareStopCallback = null;
   }
 
   async getLocalStream() {
@@ -123,72 +124,33 @@ class WebRTCService {
       console.log('📨 Message reçu:', event.data);
     };
   }
+   async createOffer() {
+  const offer = await this.peerConnection.createOffer();
+  await this.peerConnection.setLocalDescription(offer);
 
-  async createOffer() {
-    if (!this.peerConnection) {
-      throw new Error('PeerConnection non initialisée');
-    }
-    
-    try {
-      const offer = await this.peerConnection.createOffer();
-      await this.peerConnection.setLocalDescription(offer);
-      
-      console.log('📡 Offre créée:', offer.type);
-      
-      if (this.onSignalCallback) {
-        this.onSignalCallback({
-          type: 'offer',
-          sdp: offer.sdp
-        });
-      }
-      
-      return offer;
-      
-    } catch (error) {
-      console.error('❌ Erreur création offre:', error);
-      throw error;
-    }
-  }
+  this.onSignalCallback({
+    type: 'offer',
+    sdp: offer
+  });
+}
+//
+async createAnswer() {
+  const answer = await this.peerConnection.createAnswer();
+  await this.peerConnection.setLocalDescription(answer);
 
-  async createAnswer() {
-    if (!this.peerConnection) {
-      throw new Error('PeerConnection non initialisée');
-    }
-    
-    try {
-      const answer = await this.peerConnection.createAnswer();
-      await this.peerConnection.setLocalDescription(answer);
-      
-      console.log('📡 Réponse créée:', answer.type);
-      
-      if (this.onSignalCallback) {
-        this.onSignalCallback({
-          type: 'answer',
-          sdp: answer.sdp
-        });
-      }
-      
-      return answer;
-      
-    } catch (error) {
-      console.error('❌ Erreur création réponse:', error);
-      throw error;
-    }
-  }
+  this.onSignalCallback({
+    type: 'answer',
+    sdp: answer
+  });
+}
+ async setRemoteDescription(signal) {
+  if (!this.peerConnection) return;
 
-  async setRemoteDescription(sdp) {
-    if (!this.peerConnection) {
-      throw new Error('PeerConnection non initialisée');
-    }
-    
-    try {
-      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
-      console.log('✅ Description distante définie:', sdp.type);
-    } catch (error) {
-      console.error('❌ Erreur définition description distante:', error);
-      throw error;
-    }
-  }
+  await this.peerConnection.setRemoteDescription(
+    new RTCSessionDescription(signal.sdp)
+  );
+}
+
 
   async addIceCandidate(candidate) {
     if (!this.peerConnection) {
@@ -202,6 +164,11 @@ class WebRTCService {
       console.error('❌ Erreur ajout candidat ICE:', error);
     }
   }
+  async handleAnswer(signal) {
+  await this.peerConnection.setRemoteDescription(
+    new RTCSessionDescription(signal.sdp)
+  );
+}
 
   onSignal(callback) {
     this.onSignalCallback = callback;
@@ -209,6 +176,10 @@ class WebRTCService {
 
   onStream(callback) {
     this.onStreamCallback = callback;
+  }
+
+  onScreenShareStop(callback) {
+    this.onScreenShareStopCallback = callback;
   }
 
   stopAllStreams() {
@@ -254,6 +225,98 @@ class WebRTCService {
       }
     }
     return false;
+  }
+
+  async startScreenShare(remoteUserId) {
+    try {
+      console.log('🖥️ Démarrage partage d\'écran...');
+
+      // Obtenir le stream d'écran
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 }
+        },
+        audio: false // Pas d'audio pour le partage d'écran
+      });
+
+      // Sauvegarder la track vidéo originale
+      this.originalVideoTrack = this.localStream.getVideoTracks()[0];
+
+      // Remplacer la track vidéo dans le stream local
+      const screenVideoTrack = screenStream.getVideoTracks()[0];
+      this.localStream.removeTrack(this.originalVideoTrack);
+      this.localStream.addTrack(screenVideoTrack);
+
+      // Remplacer la track dans la connexion peer
+      if (this.peerConnection) {
+        const sender = this.peerConnection.getSenders().find(s => s.track.kind === 'video');
+        if (sender) {
+          await sender.replaceTrack(screenVideoTrack);
+        }
+      }
+
+      // Écouter la fin du partage d'écran
+      screenVideoTrack.onended = () => {
+        console.log('🖥️ Partage d\'écran terminé par l\'utilisateur');
+        this.stopScreenShare();
+      };
+
+      console.log('✅ Partage d\'écran démarré');
+      return screenStream;
+
+    } catch (error) {
+      console.error('❌ Erreur démarrage partage d\'écran:', error);
+      throw error;
+    }
+  }
+
+  async stopScreenShare() {
+    try {
+      console.log('🖥️ Arrêt partage d\'écran...');
+
+      if (!this.originalVideoTrack) {
+        console.warn('⚠️ Aucune track vidéo originale trouvée');
+        return;
+      }
+
+      // Récupérer la track d'écran actuelle
+      const screenTrack = this.localStream.getVideoTracks()[0];
+
+      // Remplacer dans le stream local
+      this.localStream.removeTrack(screenTrack);
+      this.localStream.addTrack(this.originalVideoTrack);
+
+      // Remplacer dans la connexion peer
+      if (this.peerConnection) {
+        const sender = this.peerConnection.getSenders().find(s => s.track.kind === 'video');
+        if (sender) {
+          await sender.replaceTrack(this.originalVideoTrack);
+        }
+      }
+
+      // Arrêter la track d'écran
+      screenTrack.stop();
+
+      // Nettoyer
+      this.originalVideoTrack = null;
+
+      // Notifier l'arrêt du partage d'écran
+      if (this.onScreenShareStopCallback) {
+        this.onScreenShareStopCallback();
+      }
+
+      console.log('✅ Partage d\'écran arrêté');
+
+    } catch (error) {
+      console.error('❌ Erreur arrêt partage d\'écran:', error);
+      throw error;
+    }
+  }
+
+  isScreenSharing() {
+    return this.originalVideoTrack !== null && this.originalVideoTrack !== undefined;
   }
 }
 

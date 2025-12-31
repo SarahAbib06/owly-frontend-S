@@ -8,7 +8,8 @@
     "connect": "Connecter",
     "forgotPassword": "Mot de passe oublié ?",
     "noAccount": "Vous n'avez pas de compte ?",
-    "register": "S’inscrire"
+    "register": "S’inscrire",
+    "loading": "Connexion en cours..."
   },
   
   "register": {
@@ -288,6 +289,7 @@
     "nomedia":"Aucun Medias",
     "nodocuments":"Aucun document"
   },
+
   
   "confirmBlockModal": {
     "blockTitle": "Bloquer {{name}} ?",
@@ -299,6 +301,14 @@
     "cancel": "Annuler",
     "block": "Bloquer",
     "unblock": "Débloquer"
+  },
+   "deleteAccount": {
+    "title": "Supprimer le compte ?",
+    "description": "Cette action est définitive Entrez votre mot de passe pour confirmer.",
+    "passwordPlaceholder": "Votre mot de passe",
+    "cancel": "Annuler",
+    "confirm": "Supprimer"
+
   }
 
 

@@ -8,7 +8,8 @@
     "connect": "Login",
     "forgotPassword": "Forgot password?",
     "noAccount": "Don't have an account?",
-    "register": "Register"
+    "register": "Register",
+     "loading": "Logging in..."
   },
   "register": {
     "createAccount": "Create your account",
@@ -275,18 +276,26 @@
   "IncomingSoundDesc": "Play sound for incoming calls"
 },
 
+
   "confirmBlockModal": {
-    "blockTitle": "Block {{name}}?",
-    "blockDescription": "By blocking this person, they will no longer be able to send you messages or call you. They won’t be notified that you blocked them.",
+  "blockTitle": "Block {{name}}?",
+  "blockDescription": "By blocking this person, they will no longer be able to send you messages or call you. They won't be notified that you blocked them.",
+  "unblockTitle": "Unblock {{name}}?",
+  "unblockDescription": "This person will be able to message and call you again.",
+  "cancel": "Cancel",
+  "block": "Block",
+  "unblock": "Unblock"
+},
 
-    "unblockTitle": "Unblock {{name}}?",
-    "unblockDescription": "This person will be able to message and call you again.",
 
+
+"deleteAccount": {
+    "title": "Delete Account?",
+    "description": "This action is permanent Enter your password to confirm.",
+    "passwordPlaceholder": "Your password",
     "cancel": "Cancel",
-    "block": "Block",
-    "unblock": "Unblock"
+    "confirm": "Delete"
   }
-
 
  
 

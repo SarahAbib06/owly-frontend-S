@@ -8,14 +8,14 @@ class SocketService {
   }
 
   // Connexion au serveur Socket.IO
-  connect(token) {
+  async connect(token) {
     if (this.socket?.connected) {
       console.log('✅ Socket déjà connecté');
       return this.socket;
     }
 
     const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    
+
     console.log('🔌 Connexion Socket.IO à:', SOCKET_URL);
 
     this.socket = io(SOCKET_URL, {
@@ -26,26 +26,34 @@ class SocketService {
       reconnectionDelay: 1000
     });
 
-    // Événements de connexion
-    this.socket.on('connect', () => {
-      console.log('✅ Socket connecté - ID:', this.socket.id);
-      this.isConnected = true;
-    });
+    return new Promise((resolve, reject) => {
+      // Événements de connexion
+      this.socket.on('connect', () => {
+        console.log('✅ Socket connecté - ID:', this.socket.id);
+        this.isConnected = true;
+        resolve(this.socket);
+      });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('❌ Socket déconnecté:', reason);
-      this.isConnected = false;
-    });
+      this.socket.on('disconnect', (reason) => {
+        console.log('❌ Socket déconnecté:', reason);
+        this.isConnected = false;
+      });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('💥 Erreur connexion Socket:', error.message);
-    });
+      this.socket.on('connect_error', (error) => {
+        console.error('💥 Erreur connexion Socket:', error.message);
+        reject(error);
+      });
 
-    this.socket.on('error', (error) => {
-      console.error('💥 Erreur Socket:', error);
-    });
+      this.socket.on('error', (error) => {
+        console.error('💥 Erreur Socket:', error);
+        reject(error);
+      });
 
-    return this.socket;
+      // Timeout après 10 secondes
+      setTimeout(() => {
+        reject(new Error('Timeout de connexion Socket'));
+      }, 10000);
+    });
   }
 
   // Déconnexion
@@ -468,12 +476,15 @@ class SocketService {
     }
   }
 
-  // Utilisateur occupé
-  onUserBusy(callback) {
+  // Appel accepté
+  onCallAccepted(callback) {
     if (this.socket) {
-      this.socket.on('call:user_busy', callback);
+      this.socket.on('call:accepted', callback);
     }
   }
+
+  
+  
   // socketService.js
 sendIceCandidate(receiverId, candidate) {
   if (this.socket) {
@@ -486,6 +497,34 @@ onIceCandidate(callback) {
     this.socket.on('call:ice-candidate', callback);
   }
 }
+// Ajoutez ces méthodes dans la classe SocketService
+// Émetteurs sécurisés
+emitScreenShareStart(remoteUserId, sharerId) {
+  if (this.socket && this.socket.connected) {
+    this.socket.emit('call:screen-share-start', { sharerId, remoteUserId });
+  } else {
+    console.warn("⚠️ Socket non connecté : impossible d'envoyer le signal de début");
+  }
+}
+
+emitScreenShareStop(remoteUserId, sharerId) {
+  if (this.socket && this.socket.connected) {
+    console.log('📡 Envoi signal arrêt partage écran:', { sharerId, remoteUserId });
+    this.socket.emit('call:screen-share-stop', { sharerId, remoteUserId });
+  } else {
+    console.warn("⚠️ Socket non connecté : impossible d'envoyer le signal d'arrêt");
+  }
+}
+
+// Écouteurs
+onScreenShareStarted(callback) {
+  if (this.socket) this.socket.on('call:screen-share-start', callback);
+}
+
+onScreenShareStopped(callback) {
+  if (this.socket) this.socket.on('call:screen-share-stop', callback);
+}
+
   // ==================== HISTORIQUE ====================
 
   // Récupérer l'historique d'une conversation

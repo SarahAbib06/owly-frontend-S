@@ -29,8 +29,12 @@ import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
+
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
+
+    
+
 
 const SeenIconGray = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 48 48">
@@ -101,8 +105,10 @@ const fileToBase64 = (file) =>
 const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "🎉"];
 
 export default function ChatWindow({ selectedChat, onBack }) {
+
   const { t } = useTranslation();
-  const { user } = useAuth();
+ const { user, socketConnected } = useAuth();
+
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
 //  Récupérer le userId de l'autre utilisateur
   const otherUserId = selectedChat?.isGroup 
@@ -126,8 +132,141 @@ export default function ChatWindow({ selectedChat, onBack }) {
       )?.username;
 
   //  Hook pour vérifier le blocage
-// Dans ChatWindow.jsx, modifie cette ligne :
+
 const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
+
+
+
+
+
+
+   const [contactStatus, setContactStatus] = useState({
+  isOnline: false,
+  lastSeen: null,
+});
+
+const getUserStatusText = () => {
+  // 🟢 Online
+  if (contactStatus.isOnline) {
+    return "En ligne";
+  }
+
+  // ⚪ Offline avec lastSeen
+  if (contactStatus.lastSeen) {
+    const last = new Date(contactStatus.lastSeen);
+    const now = new Date();
+    const diffMs = now - last;
+
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHour = Math.floor(diffMin / 60);
+
+    if (diffMin < 1) return "En ligne il y a quelques secondes";
+    if (diffMin < 60) return `En ligne il y a ${diffMin} min`;
+    if (diffHour < 24) return `En ligne il y a ${diffHour} h`;
+
+    return "En ligne il y a longtemps";
+  }
+
+  return "En ligne il y a un moment";
+};
+useEffect(() => {
+  if (!contactStatus.lastSeen || contactStatus.isOnline) return;
+
+  const interval = setInterval(() => {
+    // force le recalcul du texte
+    setContactStatus((prev) => ({ ...prev }));
+  }, 60000); // toutes les 1 min
+
+  return () => clearInterval(interval);
+}, [contactStatus.lastSeen, contactStatus.isOnline]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+console.log("selectedChat:", selectedChat, "user:", user);
+const contactId = React.useMemo(() => {
+  if (!selectedChat || selectedChat.isGroup || !user) return null;
+  const other = selectedChat.participants.find(
+    (p) => String(p._id) !== String(user._id)
+  );
+  return other?._id || null;
+}, [selectedChat, user]);
+
+  console.log("contactId:", contactId);
+ // --- useEffect pour récupérer le statut initial ---
+useEffect(() => {
+  if (!contactId) return;
+  console.log("🧪 TEST contactId =", contactId);
+
+  //fetch(`/api/users/${contactId}/status`)
+  fetch(`http://localhost:5000/api/users/${contactId}/status`)
+    .then(res => res.json())
+    .then(data => {
+  console.log("🧪 REPONSE API STATUS =", data);
+
+      setContactStatus({
+        isOnline: data.isOnline,
+        lastSeen: data.lastSeen,
+      });
+    })
+    .catch(err => console.error("Erreur statut:", err));
+}, [contactId]);
+
+// --- useEffect pour écouter les changements en temps réel via socket ---
+useEffect(() => {
+  if (!socketService.socket || !contactId) return;
+  // 🔹 Rendre le socket accessible dans la console
+  window.socket = socketService.socket;
+  console.log("🌐 Socket accessible via window.socket");
+const handleOnline = ({ userId }) => {
+  if (!contactId) return;
+  if (String(userId) === String(contactId)) {
+    setContactStatus({
+      isOnline: true,
+      lastSeen: null,
+    });
+  }
+};
+
+
+  const handleOffline = ({ userId, lastSeen }) => {
+  console.log("🔴 user offline reçu:", userId, lastSeen, "contactId:", contactId);
+  if (!contactId) return;
+
+  if (String(userId) === String(contactId)) {
+    setContactStatus({
+      isOnline: false,
+      lastSeen: lastSeen ? new Date(lastSeen).toISOString() : new Date().toISOString(),
+    });
+  }
+};
+
+
+  socketService.socket.on("user:online", handleOnline);
+  socketService.socket.on("user:offline", handleOffline);
+
+  return () => {
+    socketService.socket.off("user:online", handleOnline);
+    socketService.socket.off("user:offline", handleOffline);
+  };
+}, [contactId]);
+
+
 
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -183,9 +322,9 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
   // Gérer les appels entrants
   useEffect(() => {
-    // Vérifiez d'abord si socketService existe
-    if (!socketService || !socketService.socket) {
-      console.error('SocketService non initialisé');
+    // Vérifiez d'abord si socketService existe et est connecté
+    if (!socketService || !socketService.socket || !socketConnected) {
+      console.error('SocketService non initialisé ou non connecté');
       return;
     }
 
@@ -199,39 +338,69 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
     socketService.socket.on('call:accepted', (data) => {
       console.log('✅ Appel accepté:', data);
-      setActiveCall(data);
+      // Pour l'appelant, mettre à jour les données d'appel avec l'ID réel
+      if (activeCall) {
+        setActiveCall(prev => ({
+          ...prev,
+          callId: data.callId,
+          status: 'active'
+        }));
+      } else {
+        // Pour le destinataire, créer activeCall avec les données reçues
+        setActiveCall({
+          callId: data.callId,
+          callerId: data.callerId,
+          receiverId: data.receiverId,
+          conversationId: data.conversationId,
+          callType: data.callType,
+          status: 'active'
+        });
+      }
+      // Ouvrir VideoCallScreen immédiatement après acceptation
       setIsVideoCallOpen(true);
     });
 
     socketService.socket.on('call:rejected', () => {
       console.log('❌ Appel rejeté');
       setIncomingCall(null);
+      setActiveCall(null);
+      setIsVideoCallOpen(false);
       alert('Appel rejeté');
     });
 
-    socketService.socket.on('call:user_busy', () => {
-      console.log('⏳ Utilisateur occupé');
-      alert('Utilisateur occupé');
-    });
-
+    
     socketService.socket.on('call:ended', () => {
       console.log('📞 Appel terminé');
       setActiveCall(null);
       setIsVideoCallOpen(false);
     });
 
+
   
+
+    socketService.socket.on('call:user_offline', () => {
+      console.log('Utilisateur hors ligne');
+      setActiveCall(null);
+      setIsVideoCallOpen(false);
+      alert('Utilisateur hors ligne');
+    });
+
+   
+
+
     return () => {
       // Nettoyage
       if (socketService.socket) {
         socketService.socket.off('call:incoming');
         socketService.socket.off('call:accepted');
         socketService.socket.off('call:rejected');
-        socketService.socket.off('call:user_busy');
+     
         socketService.socket.off('call:ended');
+        socketService.socket.off('call:user_offline');
+        
       }
     };
-  }, []);
+  }, [socketConnected]);
 
   // 🔥 Charger les messages épinglés
   useEffect(() => {
@@ -385,30 +554,30 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
       console.error('Socket non disponible ou appel inexistant');
       return;
     }
-    
+
     console.log('✅ Acceptation de l\'appel:', incomingCall);
     socketService.socket.emit('call:accept', {
       callId: incomingCall.callId,
       callerId: incomingCall.callerId
     });
-    
+
     setActiveCall(incomingCall);
     setIncomingCall(null);
-    setIsVideoCallOpen(true);
+    // VideoCallScreen will be opened by the 'call:accepted' listener
   };
 
-  const handleRejectCall = () => {
+  const handleRejectCall = async () => {
     if (!socketService.socket || !incomingCall) {
       console.error('Socket non disponible ou appel inexistant');
       return;
     }
-    
+
     console.log('❌ Rejet de l\'appel:', incomingCall);
     socketService.socket.emit('call:reject', {
       callId: incomingCall.callId,
       callerId: incomingCall.callerId
     });
-    
+
     setIncomingCall(null);
   };
 
@@ -554,6 +723,23 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
         }
       }
     };
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     return (
       <div className={`flex ${fromMe ? "justify-end" : "justify-start"} group`}>
@@ -779,17 +965,23 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
             <div className="text-sm font-semibold truncate">
               {conversationName}
             </div>
-            <div className="text-xs truncate text-gray-700 dark:text-gray-300">
-              {isTyping && typingUsers.length > 0 ? (
-                <span className="text-green-500 font-medium">
-                  {t("chat.typing") || "En train d'écrire"}...
-                </span>
-              ) : selectedChat?.isGroup ? (
-                `${selectedChat?.participants?.length || 0} membres`
-              ) : (
-                t("chat.online") || "En ligne"
-              )}
-            </div>
+           <div className="text-xs truncate text-gray-700 dark:text-gray-300 flex items-center gap-1">
+  {isTyping && typingUsers.length > 0 ? (
+    <span className="text-green-500 font-medium">
+      {t("chat.typing") || "En train d'écrire"}...
+    </span>
+  ) : selectedChat?.isGroup ? (
+    `${selectedChat?.participants?.length || 0} membres`
+  ) : (
+    <span className="flex items-center gap-1">
+      {contactStatus.isOnline && (
+        <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+      )}
+      <span className="text-gray-500 text-xs">{getUserStatusText()}</span>
+    </span>
+  )}
+</div>
+
           </div>
         </div>
        <div className="flex items-center gap-2">
@@ -806,11 +998,11 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
         console.error('Données manquantes pour initier un appel');
         return;
       }
-      
+
       const currentUserId = user._id || user.id || user.userId;
       console.log('Mon ID:', currentUserId);
       console.log('Participants du chat:', selectedChat.participants);
-      
+
       // Pour un chat individuel
       if (!selectedChat.isGroup) {
         // Trouver l'autre participant
@@ -818,27 +1010,39 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
           const participantId = participant._id || participant.id;
           return String(participantId) !== String(currentUserId);
         });
-        
+
         console.log('Autre participant trouvé:', otherParticipant);
-        
+
         if (otherParticipant && otherParticipant._id) {
           const receiverId = otherParticipant._id;
-          
+
           // Vérifier qu'on ne s'appelle pas soi-même
           if (String(receiverId) === String(currentUserId)) {
             console.error('ERREUR: ReceiverId est le même que callerId!');
             alert('Impossible de s\'appeler soi-même');
             return;
           }
-          
+
           console.log('📞 Initiation d\'un appel vidéo vers:', receiverId);
-          
+
           if (socketService.socket) {
             socketService.socket.emit('call:initiate', {
-              chatId: selectedChat._id,
+              conversationId: selectedChat._id,
               receiverId: receiverId,
-              type: 'video'
+              callType: 'video'
             });
+
+            // Ouvrir la fenêtre d'appel immédiatement pour l'appelant
+            setActiveCall({
+              callerId: currentUserId,
+              receiverId: receiverId,
+              conversationId: selectedChat._id,
+              callType: 'video',
+              callId: 'temp_' + Date.now(),
+              receiverName: otherParticipant.username,
+              receiverAvatar: otherParticipant.profilePicture
+            });
+            setIsVideoCallOpen(true);
           } else {
             console.error('Socket non connecté');
           }
@@ -931,6 +1135,7 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
       </main>
 
       {/* INPUT */}
+
 <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
   {/* ✅ SI BLOQUÉ : Afficher le message de blocage */}
   {isBlocked && blockedBy === 'me' ? (
@@ -955,10 +1160,10 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
     <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
       <p className="text-sm text-center text-gray-600 dark:text-gray-400">
         {t("chat.blockedByOther") || "Vous ne pouvez pas envoyer de message à cette personne"}
-      </p>
-    </div>
+      </p>    
+     </div>
   ) : (
-    // ✅ SINON : Afficher la barre d'input normale
+     
     <>
       {isRecording && (
         <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
@@ -969,62 +1174,64 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
           </span>
           <button onClick={cancelRecording} className="ml-4 text-xs underline">
             Annuler
-          </button>
-        </div>
-      )}
+            </button>
+          </div>
+        )}
 
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1 px-2 py-2 rounded-xl flex-1 bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
-          <Smile
-            size={18}
-            className="text-gray-700 dark:text-gray-300 cursor-pointer"
-          />
-          <Paperclip
-            size={18}
-            className="text-gray-700 dark:text-gray-300 cursor-pointer"
-            onClick={() => fileInputRef.current?.click()}
-          />
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            className="hidden"
-            accept="image/*,video/*,application/*"
-          />
-          <input
-            type="text"
-            className="flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
-            placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
-            value={inputText}
-            onChange={handleInputChange}
-            onKeyPress={(e) =>
-              e.key === "Enter" && !isRecording && handleSendMessage()
-            }
-            disabled={isRecording}
-          />
-        </div>
-        <button
-          className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
-          style={{ background: sendBtnColor || "#FFD700" }}
-          onClick={
-            inputText.trim() === "" ? handleMicClick : handleSendMessage
-          }
-        >
-          {inputText.trim() === "" ? (
-            <Mic
+        <div className="flex items-center gap-2  w-full">
+          <div className="flex-1 flex items-center gap-1 px-2 py-2 rounded-xl  bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
+            <Smile
               size={18}
-              className={`text-gray-700 dark:text-gray-300 ${
-                isRecording ? "animate-pulse text-red-500" : ""
-              }`}
+              className="text-gray-700 dark:text-gray-300 cursor-pointer"
             />
-          ) : (
-            <Send size={18} />
-          )}
-        </button>
-      </div>
+            <Paperclip
+              size={18}
+              className="text-gray-700 dark:text-gray-300 cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            />
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              className="hidden"
+              accept="image/*,video/*,application/*"
+            />
+            <input
+              type="text"
+              className=" flex items-center flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
+              placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
+              value={inputText}
+              onChange={handleInputChange}
+              onKeyPress={(e) =>
+                e.key === "Enter" && !isRecording && handleSendMessage()
+              }
+              disabled={isRecording}
+            />
+          </div>
+          <button
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
+            style={{ background: sendBtnColor || "#FFD700" }}
+            onClick={
+              inputText.trim() === "" ? handleMicClick : handleSendMessage
+            }
+          >
+            {inputText.trim() === "" ? (
+              <Mic
+                size={18}
+                className={`text-gray-700 dark:text-gray-300 ${
+                  isRecording ? "animate-pulse text-red-500" : ""
+                }`}
+              />
+            ) : (
+              <Send size={18} />
+            )}
+          </button>
+       </div>
+      
     </>
   )}
 </footer>
+
 
       {/* Composants pour les appels */}
       {incomingCall && (
@@ -1035,7 +1242,7 @@ const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
         />
       )}
 
-      {isVideoCallOpen && activeCall && (
+      {isVideoCallOpen && activeCall && activeCall.callId && !activeCall.callId.startsWith('temp_') && (
   <VideoCallScreen
     callData={activeCall}  // Passez activeCall comme callData
     onClose={() => setIsVideoCallOpen(false)}
