@@ -8,4 +8,22 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
+  define: {
+    global: 'globalThis',
+    'process.env': {}
+  },
+  resolve: {
+    alias: {
+      global: 'globalThis',
+    }
+  },
+  optimizeDeps: {
+    include: ['simple-peer'],
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+      },
+      plugins: [],
+    },
+  },
 })

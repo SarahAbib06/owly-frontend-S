@@ -154,139 +154,7 @@ socketRef.current.on("stop-screen-share", () => {
   };
 
 
-  // le partage d'ecran
-  const startScreenShare = async () => {
-    // Émettre immédiatement pour demander le verrouillage au backend
-    socketRef.current.emit("start-screen-share", { to: targetId });
-
-    try {
-      // Récupérer le flux de l'écran
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true, 
-        audio: false , // Audio inclus pour le partage, si disponible
-      });
-
-      // Trouver les senders vidéo et audio
-      const videoSender = pcRef.current.getSenders().find((s) => s.track && s.track.kind === 'video');
-      const audioSender = pcRef.current.getSenders().find((s) => s.track && s.track.kind === 'audio');
-      setIsSharing(true);
-
-      if (videoSender) {
-        // Arrêter la piste vidéo actuelle avant de la remplacer
-        if (videoSender.track) {
-          videoSender.track.stop();
-        }
-
-        // Remplacer la piste vidéo par celle de l'écran
-        const videoTrack = screenStream.getVideoTracks()[0];
-        await videoSender.replaceTrack(videoTrack);
-
-        // Gérer l'arrêt automatique (Arrêt via le bandeau du navigateur)
-        videoTrack.onended = () => {
-             // 1. Émettre le signal au correspondant pour débloquer son bouton
-             if (targetId) {
-                socketRef.current.emit("stop-screen-share", { to: targetId });
-             }
-             // 2. Exécuter le nettoyage local. Le flag est 'false' car le signal a déjà été envoyé.
-             stopScreenShare(false);
-        }; 
-      }
-
-      if (audioSender && screenStream.getAudioTracks().length > 0) {
-        // Arrêter la piste audio actuelle avant de la remplacer
-        if (audioSender.track) {
-          audioSender.track.stop();
-        }
-
-        // Remplacer la piste audio par celle de l'écran
-        const audioTrack = screenStream.getAudioTracks()[0];
-        await audioSender.replaceTrack(audioTrack);
-      }
-      
-      // Stocker la référence pour pouvoir l'arrêter plus tard
-      localStreamRef.current = screenStream;
-
-      // Mettre à jour l'élément vidéo local pour afficher l'écran
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = screenStream;
-      }
-
-      setStatus("Screen sharing in progress 🖥️");
-
-    } catch (error) {
-      console.error("Erreur lors du partage d'écran :", error);
-      // Si l'utilisateur annule (dans le sélecteur) ou si erreur, on nettoie.
-      setIsSharing(false);
-      if (targetId) {
-          socketRef.current.emit("stop-screen-share", { to: targetId }); // Assurez-vous que l'autre côté est débloqué.
-      }
-      setStatus("Screen share cancelled or failed.");
-    }
-  };
-
-// function pour arreter le screenShare
-// Ajout d'un paramètre pour gérer l'émission du signal Socket.io
-const stopScreenShare = async (emitSignal = true) => {
-    
-    // **MODIFICATION 1 : Prévention des crashs**
-    if (!pcRef.current) {
-        setIsSharing(false); 
-        return;
-    }
-    
-    // Si l'arrêt vient du bandeau (onended), isSharing peut être déjà faux, mais on continue le nettoyage.
-    if (emitSignal && !isSharing) return; 
-
-    // Arrêter tous les tracks du flux actuel (écran)
-    if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => track.stop());
-    }
-
-    try {
-        // Obtenir un nouveau flux caméra (le flux d'origine)
-        const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-
-        // Trouver les senders vidéo et audio
-        const videoSender = pcRef.current.getSenders().find((s) => s.track && s.track.kind === 'video');
-        const audioSender = pcRef.current.getSenders().find((s) => s.track && s.track.kind === 'audio');
-
-        if (videoSender) {
-            // Remplacer par la nouvelle piste caméra vidéo
-            await videoSender.replaceTrack(cameraStream.getVideoTracks()[0]);
-        }
-
-        if (audioSender) {
-            // Remplacer par la nouvelle piste caméra audio
-            await audioSender.replaceTrack(cameraStream.getAudioTracks()[0]);
-        }
-
-        // Mettre à jour la vidéo locale
-        localVideoRef.current.srcObject = cameraStream;
-        localStreamRef.current = cameraStream;
-
-        // Mettre à jour l'état de l'UI
-        setIsSharing(false); 
-        setCameraOff(false); 
-
-        // Émettre le signal au correspondant uniquement si la fonction a été appelée par l'utilisateur (bouton)
-        if (emitSignal && targetId) {
-             socketRef.current.emit("stop-screen-share", { to: targetId });
-        }
-        
-        setStatus("Back to camera video call.");
-    } catch (error) {
-        console.error("Error stopping screen share and resuming camera:", error);
-        // En cas d'erreur, on réinitialise l'état pour permettre un nouveau partage.
-        setIsSharing(false);
-        setCameraOff(false);
-        if (emitSignal && targetId) {
-             socketRef.current.emit("stop-screen-share", { to: targetId });
-        }
-    }
-};
-
-
-
+  
   // ========================
   // Start Call
   // ========================
@@ -306,7 +174,7 @@ const stopScreenShare = async (emitSignal = true) => {
 
     socketRef.current.emit("offer", { to: targetId, sdp: offer });
   };
-
+// Ajoute ces fonctions juste avant ton "const initializeCall = ..."
 
     //affichage de muniteur 
     const formatDuration = (seconds) => {
@@ -363,9 +231,7 @@ durationIntervalRef.current = setInterval(() => {
     localStreamRef.current.getVideoTracks().forEach((t) => (t.enabled = !t.enabled));
     setCameraOff((prev) => !prev);
   };
-
-
-
+ 
 
   // Hang up
   // ========================

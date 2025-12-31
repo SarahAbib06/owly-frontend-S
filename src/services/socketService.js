@@ -8,14 +8,14 @@ class SocketService {
   }
 
   // Connexion au serveur Socket.IO
-  connect(token) {
+  async connect(token) {
     if (this.socket?.connected) {
       console.log('✅ Socket déjà connecté');
       return this.socket;
     }
 
     const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    
+
     console.log('🔌 Connexion Socket.IO à:', SOCKET_URL);
 
     this.socket = io(SOCKET_URL, {
@@ -26,26 +26,34 @@ class SocketService {
       reconnectionDelay: 1000
     });
 
-    // Événements de connexion
-    this.socket.on('connect', () => {
-      console.log('✅ Socket connecté - ID:', this.socket.id);
-      this.isConnected = true;
-    });
+    return new Promise((resolve, reject) => {
+      // Événements de connexion
+      this.socket.on('connect', () => {
+        console.log('✅ Socket connecté - ID:', this.socket.id);
+        this.isConnected = true;
+        resolve(this.socket);
+      });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('❌ Socket déconnecté:', reason);
-      this.isConnected = false;
-    });
+      this.socket.on('disconnect', (reason) => {
+        console.log('❌ Socket déconnecté:', reason);
+        this.isConnected = false;
+      });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('💥 Erreur connexion Socket:', error.message);
-    });
+      this.socket.on('connect_error', (error) => {
+        console.error('💥 Erreur connexion Socket:', error.message);
+        reject(error);
+      });
 
-    this.socket.on('error', (error) => {
-      console.error('💥 Erreur Socket:', error);
-    });
+      this.socket.on('error', (error) => {
+        console.error('💥 Erreur Socket:', error);
+        reject(error);
+      });
 
-    return this.socket;
+      // Timeout après 10 secondes
+      setTimeout(() => {
+        reject(new Error('Timeout de connexion Socket'));
+      }, 10000);
+    });
   }
 
   // Déconnexion
@@ -381,6 +389,141 @@ class SocketService {
       this.socket.on('user_presence_changed', callback);
     }
   }
+// ==================== APPELS VIDÉO ====================
+
+  // Initier un appel vidéo
+  initiateCall(conversationId, receiverId, callType = 'video') {
+    if (this.socket) {
+      this.socket.emit('call:initiate', { 
+        conversationId, 
+        receiverId,
+        callType // 'video' ou 'audio'
+      });
+      console.log('📞 Appel initié vers:', receiverId);
+    }
+  }
+
+  // Recevoir une demande d'appel entrant
+  onIncomingCall(callback) {
+    if (this.socket) {
+      this.socket.on('call:incoming', callback);
+    }
+  }
+
+  // Accepter un appel
+  acceptCall(callId, callerId) {
+    if (this.socket) {
+      this.socket.emit('call:accept', { callId, callerId });
+      console.log('✅ Appel accepté');
+    }
+  }
+
+  // Rejeter un appel
+  rejectCall(callId, callerId) {
+    if (this.socket) {
+      this.socket.emit('call:reject', { callId, callerId });
+      console.log('❌ Appel rejeté');
+    }
+  }
+
+  // Envoyer l'offre WebRTC
+  sendCallOffer(receiverId, signal) {
+    if (this.socket) {
+      this.socket.emit('call:offer', { receiverId, signal });
+    }
+  }
+
+  // Recevoir une offre WebRTC
+  onCallOffer(callback) {
+    if (this.socket) {
+      this.socket.on('call:offer', callback);
+    }
+  }
+
+  // Envoyer la réponse WebRTC
+  sendCallAnswer(callerId, signal) {
+    if (this.socket) {
+      this.socket.emit('call:answer', { callerId, signal });
+    }
+  }
+
+  // Recevoir une réponse WebRTC
+  onCallAnswer(callback) {
+    if (this.socket) {
+      this.socket.on('call:answer', callback);
+    }
+  }
+
+  // Terminer un appel
+  endCall(userId) {
+    if (this.socket) {
+      this.socket.emit('call:end', { userId });
+      console.log('📴 Appel terminé');
+    }
+  }
+
+  // Écouter la fin d'appel
+  onCallEnded(callback) {
+    if (this.socket) {
+      this.socket.on('call:ended', callback);
+    }
+  }
+
+  // Appel rejeté
+  onCallRejected(callback) {
+    if (this.socket) {
+      this.socket.on('call:rejected', callback);
+    }
+  }
+
+  // Appel accepté
+  onCallAccepted(callback) {
+    if (this.socket) {
+      this.socket.on('call:accepted', callback);
+    }
+  }
+
+  
+  
+  // socketService.js
+sendIceCandidate(receiverId, candidate) {
+  if (this.socket) {
+    this.socket.emit('call:ice-candidate', { receiverId, candidate });
+  }
+}
+
+onIceCandidate(callback) {
+  if (this.socket) {
+    this.socket.on('call:ice-candidate', callback);
+  }
+}
+// Ajoutez ces méthodes dans la classe SocketService
+// Émetteurs sécurisés
+emitScreenShareStart(remoteUserId, sharerId) {
+  if (this.socket && this.socket.connected) {
+    this.socket.emit('call:screen-share-start', { sharerId, remoteUserId });
+  } else {
+    console.warn("⚠️ Socket non connecté : impossible d'envoyer le signal de début");
+  }
+}
+
+emitScreenShareStop(remoteUserId, sharerId) {
+  if (this.socket && this.socket.connected) {
+    console.log('📡 Envoi signal arrêt partage écran:', { sharerId, remoteUserId });
+    this.socket.emit('call:screen-share-stop', { sharerId, remoteUserId });
+  } else {
+    console.warn("⚠️ Socket non connecté : impossible d'envoyer le signal d'arrêt");
+  }
+}
+
+// Écouteurs
+onScreenShareStarted(callback) {
+  if (this.socket) this.socket.on('call:screen-share-start', callback);
+}
+
+onScreenShareStopped(callback) {
+  if (this.socket) this.socket.on('call:screen-share-stop', callback);
+}
 
   // ==================== HISTORIQUE ====================
 

@@ -22,6 +22,7 @@ import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
 import socketService from "../services/socketService";
 import VideoCallScreen from "./VideoCallScreen";
+import IncomingCallModal from './IncomingCallModal';
 import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
@@ -30,6 +31,12 @@ import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
 import { Archive } from "lucide-react";
 import { useChat } from "../context/ChatContext"; // ← AJOUTE CET IMPORT
+
+import { useBlockStatus } from "../hooks/useBlockStatut";
+import ConfirmBlockModal from "./ConfirmBlockModal";
+
+    
+
 
 const SeenIconGray = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 48 48">
@@ -100,14 +107,157 @@ const fileToBase64 = (file) =>
 const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "🎉"];
 
 export default function ChatWindow({ selectedChat, onBack }) {
+
   const { t } = useTranslation();
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const isFromArchived = selectedChat?.isFromArchived === true;
   const { conversations, archivedConversations } = useChat(); // ← AJOUT
   const isArchived = isFromArchived || archivedConversations.some(c => c._id === selectedChat?._id);
   console.log("isArchived ?", isArchived, selectedChat?._id);
   const { archiveConversation, unarchiveConversation } = useChat();
+ const { user, socketConnected } = useAuth();
+
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
+//  Récupérer le userId de l'autre utilisateur
+  const otherUserId = selectedChat?.isGroup 
+    ? null 
+    : selectedChat?.participants?.find(
+        participant => {
+          const participantId = participant._id || participant.id;
+          const currentUserId = user?._id || user?.id || user?.userId;
+          return String(participantId) !== String(currentUserId);
+        }
+      )?._id;
+
+  const otherUserName = selectedChat?.isGroup
+    ? null
+    : selectedChat?.participants?.find(
+        participant => {
+          const participantId = participant._id || participant.id;
+          const currentUserId = user?._id || user?.id || user?.userId;
+          return String(participantId) !== String(currentUserId);
+        }
+      )?.username;
+
+  //  Hook pour vérifier le blocage
+
+const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
+
+
+
+
+
+
+   const [contactStatus, setContactStatus] = useState({
+  isOnline: false,
+  lastSeen: null,
+});
+
+const getUserStatusText = () => {
+  // 🟢 Online
+  if (contactStatus.isOnline) {
+    return "En ligne";
+  }
+
+  // ⚪ Offline avec lastSeen
+  if (contactStatus.lastSeen) {
+    const last = new Date(contactStatus.lastSeen);
+    const now = new Date();
+    const diffMs = now - last;
+
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHour = Math.floor(diffMin / 60);
+
+    if (diffMin < 1) return "En ligne il y a quelques secondes";
+    if (diffMin < 60) return `En ligne il y a ${diffMin} min`;
+    if (diffHour < 24) return `En ligne il y a ${diffHour} h`;
+
+    return "En ligne il y a longtemps";
+  }
+
+  return "En ligne il y a un moment";
+};
+useEffect(() => {
+  if (!contactStatus.lastSeen || contactStatus.isOnline) return;
+
+  const interval = setInterval(() => {
+    // force le recalcul du texte
+    setContactStatus((prev) => ({ ...prev }));
+  }, 60000); // toutes les 1 min
+
+  return () => clearInterval(interval);
+}, [contactStatus.lastSeen, contactStatus.isOnline]);
+
+
+console.log("selectedChat:", selectedChat, "user:", user);
+const contactId = React.useMemo(() => {
+  if (!selectedChat || selectedChat.isGroup || !user) return null;
+  const other = selectedChat.participants.find(
+    (p) => String(p._id) !== String(user._id)
+  );
+  return other?._id || null;
+}, [selectedChat, user]);
+
+  console.log("contactId:", contactId);
+ // --- useEffect pour récupérer le statut initial ---
+useEffect(() => {
+  if (!contactId) return;
+  console.log("🧪 TEST contactId =", contactId);
+
+  //fetch(`/api/users/${contactId}/status`)
+  fetch(`http://localhost:5000/api/users/${contactId}/status`)
+    .then(res => res.json())
+    .then(data => {
+  console.log("🧪 REPONSE API STATUS =", data);
+
+      setContactStatus({
+        isOnline: data.isOnline,
+        lastSeen: data.lastSeen,
+      });
+    })
+    .catch(err => console.error("Erreur statut:", err));
+}, [contactId]);
+
+// --- useEffect pour écouter les changements en temps réel via socket ---
+useEffect(() => {
+  if (!socketService.socket || !contactId) return;
+  // 🔹 Rendre le socket accessible dans la console
+  window.socket = socketService.socket;
+  console.log("🌐 Socket accessible via window.socket");
+const handleOnline = ({ userId }) => {
+  if (!contactId) return;
+  if (String(userId) === String(contactId)) {
+    setContactStatus({
+      isOnline: true,
+      lastSeen: null,
+    });
+  }
+};
+
+
+  const handleOffline = ({ userId, lastSeen }) => {
+  console.log("🔴 user offline reçu:", userId, lastSeen, "contactId:", contactId);
+  if (!contactId) return;
+
+  if (String(userId) === String(contactId)) {
+    setContactStatus({
+      isOnline: false,
+      lastSeen: lastSeen ? new Date(lastSeen).toISOString() : new Date().toISOString(),
+    });
+  }
+};
+
+
+  socketService.socket.on("user:online", handleOnline);
+  socketService.socket.on("user:offline", handleOffline);
+
+  return () => {
+    socketService.socket.off("user:online", handleOnline);
+    socketService.socket.off("user:offline", handleOffline);
+  };
+}, [contactId]);
+
+
 
 
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
@@ -124,6 +274,10 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showPinnedSection, setShowPinnedSection] = useState(false);
+  
+  // États pour les appels
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [activeCall, setActiveCall] = useState(null);
 
   // États pour les interactions
   const [selectedMessage, setSelectedMessage] = useState(null);
@@ -131,7 +285,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const [showMessageMenu, setShowMessageMenu] = useState(null);
 
     // 🔥 AJOUT : Détection si c'est une demande de message
-    const otherUserId = selectedChat?.participants?.[0]?._id?.replace('direct_', '') || selectedChat?.participants?.[0]?._id || null;
+    // const otherUserId = selectedChat?.participants?.[0]?._id?.replace('direct_', '') || selectedChat?.participants?.[0]?._id || null;
     // || selectedChat?.participants?.[0]?._id; // ← fallback important pour nouvelles conversations
      // fallback si c'est une nouvelle conversation
   // dernier recours si la clé contient l'ID
@@ -144,6 +298,8 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  //pour le modal debloquer 
+  const [isConfirmUnblockModalOpen, setIsConfirmUnblockModalOpen] = useState(false);
 
   // Hooks pour la messagerie
   const {
@@ -166,6 +322,88 @@ export default function ChatWindow({ selectedChat, onBack }) {
   // Hook pour l'enregistrement audio
   const { isRecording, recordingTime, startRecording, stopAndSend, cancelRecording } =
     useAudioRecorder(selectedChat?._id);
+
+  // Gérer les appels entrants
+  useEffect(() => {
+    // Vérifiez d'abord si socketService existe et est connecté
+    if (!socketService || !socketService.socket || !socketConnected) {
+      console.error('SocketService non initialisé ou non connecté');
+      return;
+    }
+
+    console.log('🔌 Configuration des écouteurs d\'appel...');
+
+    // Utilisez les méthodes standard Socket.io
+    socketService.socket.on('call:incoming', (call) => {
+      console.log('📞 Appel entrant:', call);
+      setIncomingCall(call);
+    });
+
+    socketService.socket.on('call:accepted', (data) => {
+      console.log('✅ Appel accepté:', data);
+      // Pour l'appelant, mettre à jour les données d'appel avec l'ID réel
+      if (activeCall) {
+        setActiveCall(prev => ({
+          ...prev,
+          callId: data.callId,
+          status: 'active'
+        }));
+      } else {
+        // Pour le destinataire, créer activeCall avec les données reçues
+        setActiveCall({
+          callId: data.callId,
+          callerId: data.callerId,
+          receiverId: data.receiverId,
+          conversationId: data.conversationId,
+          callType: data.callType,
+          status: 'active'
+        });
+      }
+      // Ouvrir VideoCallScreen immédiatement après acceptation
+      setIsVideoCallOpen(true);
+    });
+
+    socketService.socket.on('call:rejected', () => {
+      console.log('❌ Appel rejeté');
+      setIncomingCall(null);
+      setActiveCall(null);
+      setIsVideoCallOpen(false);
+      alert('Appel rejeté');
+    });
+
+    
+    socketService.socket.on('call:ended', () => {
+      console.log('📞 Appel terminé');
+      setActiveCall(null);
+      setIsVideoCallOpen(false);
+    });
+
+
+  
+
+    socketService.socket.on('call:user_offline', () => {
+      console.log('Utilisateur hors ligne');
+      setActiveCall(null);
+      setIsVideoCallOpen(false);
+      alert('Utilisateur hors ligne');
+    });
+
+   
+
+
+    return () => {
+      // Nettoyage
+      if (socketService.socket) {
+        socketService.socket.off('call:incoming');
+        socketService.socket.off('call:accepted');
+        socketService.socket.off('call:rejected');
+     
+        socketService.socket.off('call:ended');
+        socketService.socket.off('call:user_offline');
+        
+      }
+    };
+  }, [socketConnected]);
 
   // 🔥 Charger les messages épinglés
   useEffect(() => {
@@ -323,6 +561,39 @@ useEffect(() => {
     localStorage.removeItem(chatKey);
   };
 
+  // Gérer l'appel entrant
+  const handleAcceptCall = () => {
+    if (!socketService.socket || !incomingCall) {
+      console.error('Socket non disponible ou appel inexistant');
+      return;
+    }
+
+    console.log('✅ Acceptation de l\'appel:', incomingCall);
+    socketService.socket.emit('call:accept', {
+      callId: incomingCall.callId,
+      callerId: incomingCall.callerId
+    });
+
+    setActiveCall(incomingCall);
+    setIncomingCall(null);
+    // VideoCallScreen will be opened by the 'call:accepted' listener
+  };
+
+  const handleRejectCall = async () => {
+    if (!socketService.socket || !incomingCall) {
+      console.error('Socket non disponible ou appel inexistant');
+      return;
+    }
+
+    console.log('❌ Rejet de l\'appel:', incomingCall);
+    socketService.socket.emit('call:reject', {
+      callId: incomingCall.callId,
+      callerId: incomingCall.callerId
+    });
+
+    setIncomingCall(null);
+  };
+
   // Charger le thème sauvegardé
   useEffect(() => {
     const savedTheme = localStorage.getItem(chatKey);
@@ -407,7 +678,7 @@ useEffect(() => {
     const fromMe =
       currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
 
-    console.log("🔍 message from", { currentUserId, messageSenderId, fromMe, msg });
+   
 
     const { reactions, addReaction, removeReaction } = useReactions(msg._id);
 
@@ -465,6 +736,23 @@ useEffect(() => {
         }
       }
     };
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     return (
       <div className={`flex ${fromMe ? "justify-end" : "justify-start"} group`}>
@@ -690,17 +978,23 @@ useEffect(() => {
             <div className="text-sm font-semibold truncate">
               {conversationName}
             </div>
-            <div className="text-xs truncate text-gray-700 dark:text-gray-300">
-              {isTyping && typingUsers.length > 0 ? (
-                <span className="text-green-500 font-medium">
-                  {t("chat.typing") || "En train d'écrire"}...
-                </span>
-              ) : selectedChat?.isGroup ? (
-                `${selectedChat?.participants?.length || 0} membres`
-              ) : (
-                t("chat.online") || "En ligne"
-              )}
-            </div>
+           <div className="text-xs truncate text-gray-700 dark:text-gray-300 flex items-center gap-1">
+  {isTyping && typingUsers.length > 0 ? (
+    <span className="text-green-500 font-medium">
+      {t("chat.typing") || "En train d'écrire"}...
+    </span>
+  ) : selectedChat?.isGroup ? (
+    `${selectedChat?.participants?.length || 0} membres`
+  ) : (
+    <span className="flex items-center gap-1">
+      {contactStatus.isOnline && (
+        <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+      )}
+      <span className="text-gray-500 text-xs">{getUserStatusText()}</span>
+    </span>
+  )}
+</div>
+
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -709,10 +1003,72 @@ useEffect(() => {
             className="text-gray-600 dark:text-gray-300 cursor-pointer"
           />
           <Video
-            size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer"
-            onClick={() => setIsVideoCallOpen(true)}
-          />
+    size={16}
+    className="text-gray-600 dark:text-gray-300 cursor-pointer"
+    onClick={() => {
+      // Vérification de base
+      if (!selectedChat || !selectedChat.participants || !user) {
+        console.error('Données manquantes pour initier un appel');
+        return;
+      }
+
+      const currentUserId = user._id || user.id || user.userId;
+      console.log('Mon ID:', currentUserId);
+      console.log('Participants du chat:', selectedChat.participants);
+
+      // Pour un chat individuel
+      if (!selectedChat.isGroup) {
+        // Trouver l'autre participant
+        const otherParticipant = selectedChat.participants.find(participant => {
+          const participantId = participant._id || participant.id;
+          return String(participantId) !== String(currentUserId);
+        });
+
+        console.log('Autre participant trouvé:', otherParticipant);
+
+        if (otherParticipant && otherParticipant._id) {
+          const receiverId = otherParticipant._id;
+
+          // Vérifier qu'on ne s'appelle pas soi-même
+          if (String(receiverId) === String(currentUserId)) {
+            console.error('ERREUR: ReceiverId est le même que callerId!');
+            alert('Impossible de s\'appeler soi-même');
+            return;
+          }
+
+          console.log('📞 Initiation d\'un appel vidéo vers:', receiverId);
+
+          if (socketService.socket) {
+            socketService.socket.emit('call:initiate', {
+              conversationId: selectedChat._id,
+              receiverId: receiverId,
+              callType: 'video'
+            });
+
+            // Ouvrir la fenêtre d'appel immédiatement pour l'appelant
+            setActiveCall({
+              callerId: currentUserId,
+              receiverId: receiverId,
+              conversationId: selectedChat._id,
+              callType: 'video',
+              callId: 'temp_' + Date.now(),
+              receiverName: otherParticipant.username,
+              receiverAvatar: otherParticipant.profilePicture
+            });
+            setIsVideoCallOpen(true);
+          } else {
+            console.error('Socket non connecté');
+          }
+        } else {
+          console.error('Impossible de trouver l\'autre participant');
+          alert('Impossible de trouver le contact');
+        }
+      } else {
+        // Pour un chat de groupe
+        alert('Les appels de groupe ne sont pas encore disponibles');
+      }
+    }}
+  />
           
           {/* BOUTON ARCHIVER */}
           <button
@@ -810,22 +1166,51 @@ useEffect(() => {
       </main>
 
       {/* INPUT */}
-      <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
-        {isRecording && (
-          <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">
-              {Math.floor(recordingTime / 60)}:
-              {(recordingTime % 60).toString().padStart(2, "0")}
-            </span>
-            <button onClick={cancelRecording} className="ml-4 text-xs underline">
-              Annuler
+
+<footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
+  {/* ✅ SI BLOQUÉ : Afficher le message de blocage */}
+  {isBlocked && blockedBy === 'me' ? (
+    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+      <div className="text-center space-y-3">
+        <p className="text-sm text-red-800 dark:text-red-200 font-medium">
+          {t("chat.youBlocked") || "Vous avez bloqué"} {otherUserName || "cet utilisateur"}
+        </p>
+        <p className="text-xs text-red-600 dark:text-red-300">
+          {t("chat.blockMessage") || "Vous ne pouvez pas contacter cette personne ou l'appeler dans cette discussion. Vous ne recevez pas ses messages ou appels."}
+        </p>
+         <button
+        onClick={() => setIsConfirmUnblockModalOpen(true)}
+        className="px-4 py-2 bg-myYellow hover:bg-yellow-400 text-white rounded-lg text-sm font-medium transition-colors"
+      >
+        {t("chat.unblock") || "Débloquer"}
+      </button>
+      </div>
+    </div>
+  ) : isBlocked && blockedBy === 'them' ? (
+    // ✅ SI BLOQUÉ PAR L'AUTRE : Afficher un message simple
+    <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+      <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+        {t("chat.blockedByOther") || "Vous ne pouvez pas envoyer de message à cette personne"}
+      </p>    
+     </div>
+  ) : (
+     
+    <>
+      {isRecording && (
+        <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
+          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+          <span className="text-sm font-medium">
+            {Math.floor(recordingTime / 60)}:
+            {(recordingTime % 60).toString().padStart(2, "0")}
+          </span>
+          <button onClick={cancelRecording} className="ml-4 text-xs underline">
+            Annuler
             </button>
           </div>
         )}
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 px-2 py-2 rounded-xl flex-1 bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
+        <div className="flex items-center gap-2  w-full">
+          <div className="flex-1 flex items-center gap-1 px-2 py-2 rounded-xl  bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
             <Smile
               size={18}
               className="text-gray-700 dark:text-gray-300 cursor-pointer"
@@ -844,7 +1229,7 @@ useEffect(() => {
             />
             <input
               type="text"
-              className="flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
+              className=" flex items-center flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
               placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
               value={inputText}
               onChange={handleInputChange}
@@ -872,38 +1257,63 @@ useEffect(() => {
               <Send size={18} />
             )}
           </button>
-        </div>
-      </footer>
+       </div>
+      
+    </>
+  )}
+</footer>
 
-      {isVideoCallOpen && (
-        <VideoCallScreen
-          selectedChat={selectedChat}
-          onClose={() => setIsVideoCallOpen(false)}
+
+      {/* Composants pour les appels */}
+      {incomingCall && (
+        <IncomingCallModal
+          call={incomingCall}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
         />
       )}
 
-      {isOptionsOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/30 z-30"
-            onClick={() => setIsOptionsOpen(false)}
-          ></div>
-          <ChatOptionsMenu
-            selectedChat={{
-              ...selectedChat,
-              openInfo: () => setIsInfoOpen(true),
-              openTheme: () => {
-                setShowThemeSelector(true);
-                setIsOptionsOpen(false);
-              },
-            }}
-            onClose={() => setIsOptionsOpen(false)}
-            onOpenSearch={() => setOpenSearch(true)}
-          />
-        </>
-      )}
+      {isVideoCallOpen && activeCall && activeCall.callId && !activeCall.callId.startsWith('temp_') && (
+  <VideoCallScreen
+    callData={activeCall}  // Passez activeCall comme callData
+    onClose={() => setIsVideoCallOpen(false)}
+  />
+)}
 
+     {isOptionsOpen && (
+  <>
+    <div
+      className="fixed inset-0 bg-black/30 z-30"
+      onClick={() => setIsOptionsOpen(false)}
+    ></div>
+    <ChatOptionsMenu
+      selectedChat={{
+        ...selectedChat,
+        //  AJOUTER le userId de l'autre utilisateur
+        userId: selectedChat?.isGroup 
+          ? null // Pas de blocage pour les groupes
+          : selectedChat?.participants?.find(
+              participant => {
+                const participantId = participant._id || participant.id;
+                const currentUserId = user?._id || user?.id || user?.userId;
+                return String(participantId) !== String(currentUserId);
+              }
+            )?._id,
+        openInfo: () => setIsInfoOpen(true),
+        openTheme: () => {
+          setShowThemeSelector(true);
+          setIsOptionsOpen(false);
+        },
+      }}
+      onClose={() => setIsOptionsOpen(false)}
+      onOpenSearch={() => setOpenSearch(true)}
+      // ✅ Ajouter le callback pour refresh
+      onBlockStatusChange={() => refresh()}
+    />
+  </>
+)}
       {isInfoOpen && (
+
   <InfoContactModal
     chat={{
       ...selectedChat,
@@ -922,8 +1332,10 @@ useEffect(() => {
       isArchived: isArchived,
     }}
     onClose={() => setIsInfoOpen(false)}
+      onBlockStatusChange={() => refresh()}
   />
 )}
+
 
       {openSearch && (
         <>
@@ -949,7 +1361,7 @@ useEffect(() => {
       )}
 
             {/* 🔥 BANDEAU DEMANDE DE MESSAGE 🔥 */}
-      {isMessageRequest && (
+      {/* {isMessageRequest && (
         <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-4 text-center">
           <p className="font-bold text-lg">Demande de message</p>
           <p className="text-sm mt-1 opacity-90">
@@ -989,12 +1401,22 @@ useEffect(() => {
       )}
     </div>
   );
+} */}
+
+
+      <ConfirmBlockModal
+        isOpen={isConfirmUnblockModalOpen}
+        onClose={() => setIsConfirmUnblockModalOpen(false)}
+        onConfirm={async () => {
+          setIsConfirmUnblockModalOpen(false);
+          await unblock();
+        }}
+        actionType="unblock"
+        userInfo={{
+          name: otherUserName,
+          avatar: conversationAvatar
+        }}
+      />
+    </div>
+  );
 }
-
-
-
-
-
-
-
-
