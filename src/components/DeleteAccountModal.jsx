@@ -12,7 +12,7 @@ export default function DeleteAccountModal({
       <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-lg p-6">
 
         {/* Title */}
-        <h2 className="text-xl font-bold text-center text-myBlack mb-2">
+        <h2 className="text-xl font-bold text-center text-myBlack dark:text-myWhite mb-2">
           Supprimer le compte ?
         </h2>
 

@@ -29,6 +29,8 @@ import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
+import { useBlockStatus } from "../hooks/useBlockStatut";
+import ConfirmBlockModal from "./ConfirmBlockModal";
 
 const SeenIconGray = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 48 48">
@@ -102,6 +104,30 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
+//  Récupérer le userId de l'autre utilisateur
+  const otherUserId = selectedChat?.isGroup 
+    ? null 
+    : selectedChat?.participants?.find(
+        participant => {
+          const participantId = participant._id || participant.id;
+          const currentUserId = user?._id || user?.id || user?.userId;
+          return String(participantId) !== String(currentUserId);
+        }
+      )?._id;
+
+  const otherUserName = selectedChat?.isGroup
+    ? null
+    : selectedChat?.participants?.find(
+        participant => {
+          const participantId = participant._id || participant.id;
+          const currentUserId = user?._id || user?.id || user?.userId;
+          return String(participantId) !== String(currentUserId);
+        }
+      )?.username;
+
+  //  Hook pour vérifier le blocage
+// Dans ChatWindow.jsx, modifie cette ligne :
+const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -130,6 +156,8 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  //pour le modal debloquer 
+  const [isConfirmUnblockModalOpen, setIsConfirmUnblockModalOpen] = useState(false);
 
   // Hooks pour la messagerie
   const {
@@ -192,6 +220,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
       setIsVideoCallOpen(false);
     });
 
+  
     return () => {
       // Nettoyage
       if (socketService.socket) {
@@ -902,70 +931,100 @@ export default function ChatWindow({ selectedChat, onBack }) {
       </main>
 
       {/* INPUT */}
-      <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
-        {isRecording && (
-          <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">
-              {Math.floor(recordingTime / 60)}:
-              {(recordingTime % 60).toString().padStart(2, "0")}
-            </span>
-            <button onClick={cancelRecording} className="ml-4 text-xs underline">
-              Annuler
-            </button>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 px-2 py-2 rounded-xl flex-1 bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
-            <Smile
-              size={18}
-              className="text-gray-700 dark:text-gray-300 cursor-pointer"
-            />
-            <Paperclip
-              size={18}
-              className="text-gray-700 dark:text-gray-300 cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
-              accept="image/*,video/*,application/*"
-            />
-            <input
-              type="text"
-              className="flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
-              placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
-              value={inputText}
-              onChange={handleInputChange}
-              onKeyPress={(e) =>
-                e.key === "Enter" && !isRecording && handleSendMessage()
-              }
-              disabled={isRecording}
-            />
-          </div>
-          <button
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
-            style={{ background: sendBtnColor || "#FFD700" }}
-            onClick={
-              inputText.trim() === "" ? handleMicClick : handleSendMessage
-            }
-          >
-            {inputText.trim() === "" ? (
-              <Mic
-                size={18}
-                className={`text-gray-700 dark:text-gray-300 ${
-                  isRecording ? "animate-pulse text-red-500" : ""
-                }`}
-              />
-            ) : (
-              <Send size={18} />
-            )}
+<footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
+  {/* ✅ SI BLOQUÉ : Afficher le message de blocage */}
+  {isBlocked && blockedBy === 'me' ? (
+    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+      <div className="text-center space-y-3">
+        <p className="text-sm text-red-800 dark:text-red-200 font-medium">
+          {t("chat.youBlocked") || "Vous avez bloqué"} {otherUserName || "cet utilisateur"}
+        </p>
+        <p className="text-xs text-red-600 dark:text-red-300">
+          {t("chat.blockMessage") || "Vous ne pouvez pas contacter cette personne ou l'appeler dans cette discussion. Vous ne recevez pas ses messages ou appels."}
+        </p>
+         <button
+        onClick={() => setIsConfirmUnblockModalOpen(true)}
+        className="px-4 py-2 bg-myYellow hover:bg-yellow-400 text-white rounded-lg text-sm font-medium transition-colors"
+      >
+        {t("chat.unblock") || "Débloquer"}
+      </button>
+      </div>
+    </div>
+  ) : isBlocked && blockedBy === 'them' ? (
+    // ✅ SI BLOQUÉ PAR L'AUTRE : Afficher un message simple
+    <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+      <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+        {t("chat.blockedByOther") || "Vous ne pouvez pas envoyer de message à cette personne"}
+      </p>
+    </div>
+  ) : (
+    // ✅ SINON : Afficher la barre d'input normale
+    <>
+      {isRecording && (
+        <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
+          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+          <span className="text-sm font-medium">
+            {Math.floor(recordingTime / 60)}:
+            {(recordingTime % 60).toString().padStart(2, "0")}
+          </span>
+          <button onClick={cancelRecording} className="ml-4 text-xs underline">
+            Annuler
           </button>
         </div>
-      </footer>
+      )}
+
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 px-2 py-2 rounded-xl flex-1 bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
+          <Smile
+            size={18}
+            className="text-gray-700 dark:text-gray-300 cursor-pointer"
+          />
+          <Paperclip
+            size={18}
+            className="text-gray-700 dark:text-gray-300 cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}
+          />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            accept="image/*,video/*,application/*"
+          />
+          <input
+            type="text"
+            className="flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
+            placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
+            value={inputText}
+            onChange={handleInputChange}
+            onKeyPress={(e) =>
+              e.key === "Enter" && !isRecording && handleSendMessage()
+            }
+            disabled={isRecording}
+          />
+        </div>
+        <button
+          className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
+          style={{ background: sendBtnColor || "#FFD700" }}
+          onClick={
+            inputText.trim() === "" ? handleMicClick : handleSendMessage
+          }
+        >
+          {inputText.trim() === "" ? (
+            <Mic
+              size={18}
+              className={`text-gray-700 dark:text-gray-300 ${
+                isRecording ? "animate-pulse text-red-500" : ""
+              }`}
+            />
+          ) : (
+            <Send size={18} />
+          )}
+        </button>
+      </div>
+    </>
+  )}
+</footer>
 
       {/* Composants pour les appels */}
       {incomingCall && (
@@ -983,27 +1042,38 @@ export default function ChatWindow({ selectedChat, onBack }) {
   />
 )}
 
-      {isOptionsOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/30 z-30"
-            onClick={() => setIsOptionsOpen(false)}
-          ></div>
-          <ChatOptionsMenu
-            selectedChat={{
-              ...selectedChat,
-              openInfo: () => setIsInfoOpen(true),
-              openTheme: () => {
-                setShowThemeSelector(true);
-                setIsOptionsOpen(false);
-              },
-            }}
-            onClose={() => setIsOptionsOpen(false)}
-            onOpenSearch={() => setOpenSearch(true)}
-          />
-        </>
-      )}
-
+     {isOptionsOpen && (
+  <>
+    <div
+      className="fixed inset-0 bg-black/30 z-30"
+      onClick={() => setIsOptionsOpen(false)}
+    ></div>
+    <ChatOptionsMenu
+      selectedChat={{
+        ...selectedChat,
+        //  AJOUTER le userId de l'autre utilisateur
+        userId: selectedChat?.isGroup 
+          ? null // Pas de blocage pour les groupes
+          : selectedChat?.participants?.find(
+              participant => {
+                const participantId = participant._id || participant.id;
+                const currentUserId = user?._id || user?.id || user?.userId;
+                return String(participantId) !== String(currentUserId);
+              }
+            )?._id,
+        openInfo: () => setIsInfoOpen(true),
+        openTheme: () => {
+          setShowThemeSelector(true);
+          setIsOptionsOpen(false);
+        },
+      }}
+      onClose={() => setIsOptionsOpen(false)}
+      onOpenSearch={() => setOpenSearch(true)}
+      // ✅ Ajouter le callback pour refresh
+      onBlockStatusChange={() => refresh()}
+    />
+  </>
+)}
       {isInfoOpen && (
         <InfoContactModal
           chat={{
@@ -1011,6 +1081,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
             openTheme: () => setShowThemeSelector(true),
           }}
           onClose={() => setIsInfoOpen(false)}
+             onBlockStatusChange={() => refresh()}
         />
       )}
 
@@ -1036,6 +1107,19 @@ export default function ChatWindow({ selectedChat, onBack }) {
           </motion.div>
         </>
       )}
+      <ConfirmBlockModal
+        isOpen={isConfirmUnblockModalOpen}
+        onClose={() => setIsConfirmUnblockModalOpen(false)}
+        onConfirm={async () => {
+          setIsConfirmUnblockModalOpen(false);
+          await unblock();
+        }}
+        actionType="unblock"
+        userInfo={{
+          name: otherUserName,
+          avatar: conversationAvatar
+        }}
+      />
     </div>
   );
 }

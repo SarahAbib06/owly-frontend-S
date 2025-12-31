@@ -1,15 +1,79 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Star, Archive, Lock, Ban, Trash2 } from "lucide-react";
 import {  FaChevronRight } from "react-icons/fa";
 import MediaDocument from "./MediaDocument";
+import { relationService } from "../services/relationService";
+import { useAuth } from "../hooks/useAuth"; 
+import { useBlockStatus } from "../hooks/useBlockStatut";
+import ConfirmBlockModal from "./ConfirmBlockModal";
 
-export default function InfoContactModal({ chat, onClose }) {
+export default function InfoContactModal({ chat, onClose,onBlockStatusChange }) {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState("info");
+  const { user } = useAuth();
+  const otherUserId = chat?.isGroup ? null : chat?.participants?.find(
+  participant => {
+    const participantId = participant._id || participant.id;
+    const currentUserId = user?._id || user?.id || user?.userId;
+    return String(participantId) !== String(currentUserId);
+  }
+)?._id;
 
+const { isBlocked, unblock, refresh } = useBlockStatus(otherUserId);
   //  état pour le zoom image
   const [isImageOpen, setIsImageOpen] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
+  const [localIsBlocked, setLocalIsBlocked] = useState(isBlocked);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [actionType, setActionType] = useState("block"); // "block" ou "unblock"
+  const [modalUserInfo, setModalUserInfo] = useState({ name: "", avatar: "" });
+
+
+  
+
+ 
+useEffect(() => {
+  setLocalIsBlocked(isBlocked);
+}, [isBlocked]);
+// Ouvrir le modal de confirmation
+const handleBlockClick = () => {
+  setActionType(localIsBlocked ? "unblock" : "block");
+   setModalUserInfo({
+    name: chat.name,
+    avatar: chat.avatar
+  });
+  setIsConfirmModalOpen(true);
+};
+
+// Confirmer l'action de blocage/déblocage
+const handleConfirmBlock = async () => {
+  setIsConfirmModalOpen(false); // fermer le modal
+  setIsBlocking(true);
+
+  try {
+    if (localIsBlocked) {
+      // Débloquer
+      await unblock();
+      setLocalIsBlocked(false);
+    } else {
+      // Bloquer
+      await relationService.blockUser(otherUserId);
+      setLocalIsBlocked(true);
+      refresh();
+    }
+
+    if (onBlockStatusChange) {
+      onBlockStatusChange();
+    }
+
+  } catch (error) {
+    console.error("Erreur:", error);
+  } finally {
+    setIsBlocking(false);
+  }
+};
+
 
   return (
     <>
@@ -115,12 +179,32 @@ export default function InfoContactModal({ chat, onClose }) {
                 <Lock size={15} />
                 <span>{t("infoContactModal.lockConversation")}</span>
               </div>
+               {/* ✅ BOUTON BLOQUER - masquer pour les groupes */}
+              {!chat.isGroup && (
+  <div
+  className={`cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md ${
+    localIsBlocked 
+      ? "text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700"
+      : "text-red-600 hover:bg-red-100 dark:hover:bg-red-700"
+  }`}
+  onClick={handleBlockClick} // <-- ouverture modal
+>
+  <Ban size={15} />
+  <span>
+    {isBlocking
+      ? (localIsBlocked
+          ? (t("infoContactModal.unblocking") || "Déblocage...")
+          : (t("infoContactModal.blocking") || "Blocage...")
+        )
+      : (localIsBlocked
+          ? (t("infoContactModal.unblock") || "Débloquer")
+          : (t("infoContactModal.block") || "Bloquer")
+        )
+    }
+  </span>
+</div>
 
-              <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md text-red-600 hover:bg-red-100 dark:hover:bg-red-700">
-                <Ban size={15} />
-                <span>{t("infoContactModal.block")}</span>
-              </div>
-
+)}
               <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md text-red-600 hover:bg-red-100 dark:hover:bg-red-700">
                 <Trash2 size={15} />
                 <span>{t("infoContactModal.deleteConversation")}</span>
@@ -129,8 +213,18 @@ export default function InfoContactModal({ chat, onClose }) {
             </div>
           </div>
         )}
+<ConfirmBlockModal
+  isOpen={isConfirmModalOpen}
+  onClose={() => setIsConfirmModalOpen(false)}
+  onConfirm={handleConfirmBlock}
+  actionType={actionType}
+  userInfo={modalUserInfo}
+/>
 
       </div>
+      
     </>
+    
   );
+  
 }
