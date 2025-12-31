@@ -299,29 +299,27 @@ const handleOnline = ({ userId }) => {
       setIncomingCall(call);
     });
 
-    socketService.socket.on('call:accepted', (data) => {
-      console.log('✅ Appel accepté:', data);
-      // Pour l'appelant, mettre à jour les données d'appel avec l'ID réel
-      if (activeCall) {
-        setActiveCall(prev => ({
-          ...prev,
-          callId: data.callId,
-          status: 'active'
-        }));
-      } else {
-        // Pour le destinataire, créer activeCall avec les données reçues
-        setActiveCall({
-          callId: data.callId,
-          callerId: data.callerId,
-          receiverId: data.receiverId,
-          conversationId: data.conversationId,
-          callType: data.callType,
-          status: 'active'
-        });
-      }
-      // Ouvrir VideoCallScreen immédiatement après acceptation
-      setIsVideoCallOpen(true);
-    });
+socketService.socket.on('call:accepted', (data) => {
+  console.log('✅ Appel accepté:', data);
+  
+  // Toujours mettre à jour activeCall avec les vraies données du serveur
+  setActiveCall({
+    callId: data.callId,
+    callerId: data.callerId,
+    receiverId: data.receiverId,
+    conversationId: data.conversationId,
+    callType: data.callType,
+    status: 'active',
+    // Conserver les infos du destinataire si elles existent déjà
+    ...(activeCall?.receiverName && {
+      receiverName: activeCall.receiverName,
+      receiverAvatar: activeCall.receiverAvatar
+    })
+  });
+  
+  // Ouvrir VideoCallScreen immédiatement
+  setIsVideoCallOpen(true);
+});
 
     socketService.socket.on('call:rejected', () => {
       console.log('❌ Appel rejeté');
@@ -508,22 +506,30 @@ const handleOnline = ({ userId }) => {
   };
 
   // Gérer l'appel entrant
-  const handleAcceptCall = () => {
-    if (!socketService.socket || !incomingCall) {
-      console.error('Socket non disponible ou appel inexistant');
-      return;
-    }
+const handleAcceptCall = () => {
+  if (!socketService.socket || !incomingCall) {
+    console.error('Socket non disponible ou appel inexistant');
+    return;
+  }
 
-    console.log('✅ Acceptation de l\'appel:', incomingCall);
-    socketService.socket.emit('call:accept', {
-      callId: incomingCall.callId,
-      callerId: incomingCall.callerId
-    });
+  console.log('✅ Acceptation de l\'appel:', incomingCall);
+  
+  // ⚠️ NE ÉMETTRE call:accept QU'UNE SEULE FOIS
+  // Désactiver immédiatement pour éviter les doubles clics
+  const callToAccept = { ...incomingCall };
+  setIncomingCall(null); // Fermer la modal AVANT d'émettre
+  
+  socketService.socket.emit('call:accept', {
+    callId: callToAccept.callId,
+    callerId: callToAccept.callerId
+  });
 
-    setActiveCall(incomingCall);
-    setIncomingCall(null);
-    // VideoCallScreen will be opened by the 'call:accepted' listener
-  };
+  // Définir activeCall
+  setActiveCall({
+    ...callToAccept,
+    status: 'accepted'
+  });
+};
 
   const handleRejectCall = async () => {
     if (!socketService.socket || !incomingCall) {
@@ -999,9 +1005,9 @@ const handleOnline = ({ userId }) => {
               callType: 'video',
               callId: 'temp_' + Date.now(),
               receiverName: otherParticipant.username,
-              receiverAvatar: otherParticipant.profilePicture
+              receiverAvatar: otherParticipant.profilePicture,
+              status: 'calling'
             });
-            setIsVideoCallOpen(true);
           } else {
             console.error('Socket non connecté');
           }
@@ -1168,11 +1174,42 @@ const handleOnline = ({ userId }) => {
         />
       )}
 
-      {isVideoCallOpen && activeCall && activeCall.callId && !activeCall.callId.startsWith('temp_') && (
-  <VideoCallScreen
-    callData={activeCall}  // Passez activeCall comme callData
-    onClose={() => setIsVideoCallOpen(false)}
-  />
+{activeCall && (
+  <>
+    {/* Écran d'attente pour l'appelant */}
+    {activeCall.status === 'calling' && (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center">
+          <div className="animate-pulse mb-4 text-4xl">📞</div>
+          <p className="text-lg mb-2 text-gray-900 dark:text-white">Appel en cours...</p>
+          <p className="text-sm text-gray-500">{activeCall.receiverName}</p>
+          <button
+            onClick={() => {
+              if (socketService.socket) {
+                socketService.socket.emit('call:cancel', { callId: activeCall.callId });
+              }
+              setActiveCall(null);
+              setIsVideoCallOpen(false);
+            }}
+            className="mt-4 px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    )}
+    
+    {/* Interface vidéo une fois accepté */}
+    {isVideoCallOpen && activeCall.status === 'active' && (
+      <VideoCallScreen
+        callData={activeCall}
+        onClose={() => {
+          setIsVideoCallOpen(false);
+          setActiveCall(null);
+        }}
+      />
+    )}
+  </>
 )}
 
       {isOptionsOpen && (

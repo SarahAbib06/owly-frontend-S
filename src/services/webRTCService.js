@@ -41,73 +41,74 @@ class WebRTCService {
     }
   }
 
-  createPeerConnection(isInitiator = false) {
-    console.log('🔗 Création RTCPeerConnection, initiator:', isInitiator);
-    
-    // Configuration STUN/ICE
-    const configuration = {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' }
-      ]
-    };
-    
-    this.peerConnection = new RTCPeerConnection(configuration);
-    
-    // Ajouter le stream local
-    if (this.localStream) {
-      this.localStream.getTracks().forEach(track => {
-        this.peerConnection.addTrack(track, this.localStream);
-      });
-    }
-    
-    // Gérer les candidats ICE
-    this.peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log('📡 Candidat ICE:', event.candidate);
-        if (this.onSignalCallback) {
-          this.onSignalCallback({
-            type: 'candidate',
-            candidate: event.candidate
-          });
-        }
-      }
-    };
-    
-    // Gérer le stream distant
-    this.peerConnection.ontrack = (event) => {
-      console.log('✅ Stream distant reçu');
-      this.remoteStream = event.streams[0];
-      if (this.onStreamCallback) {
-        this.onStreamCallback(this.remoteStream);
-      }
-    };
-    
-    // Gérer les erreurs
-    this.peerConnection.oniceconnectionstatechange = () => {
-      console.log('🌐 État ICE:', this.peerConnection.iceConnectionState);
-      
-      if (this.peerConnection.iceConnectionState === 'failed' ||
-          this.peerConnection.iceConnectionState === 'disconnected' ||
-          this.peerConnection.iceConnectionState === 'closed') {
-        console.error('❌ Connexion ICE échouée');
-      }
-    };
-    
-    // Créer un canal de données pour la signalisation
-    if (isInitiator) {
-      this.dataChannel = this.peerConnection.createDataChannel('chat');
-      this.setupDataChannel();
-    } else {
-      this.peerConnection.ondatachannel = (event) => {
-        this.dataChannel = event.channel;
-        this.setupDataChannel();
-      };
-    }
-    
-    return this.peerConnection;
+createPeerConnection(isInitiator = false) {
+  // Fermer l'ancienne connexion si elle existe
+  if (this.peerConnection) {
+    console.log('⚠️ Fermeture PeerConnection existante');
+    this.peerConnection.close();
+    this.peerConnection = null;
   }
+
+  console.log('🔗 Création RTCPeerConnection, initiator:', isInitiator);
+  
+  const configuration = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+  };
+  
+  this.peerConnection = new RTCPeerConnection(configuration);
+  
+  // Ajouter le stream local
+  if (this.localStream) {
+    this.localStream.getTracks().forEach(track => {
+      console.log(`📤 Ajout track ${track.kind} à la connexion`);
+      this.peerConnection.addTrack(track, this.localStream);
+    });
+  }
+  
+  // Gérer les candidats ICE
+  this.peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      console.log('📡 Nouveau candidat ICE');
+      if (this.onSignalCallback) {
+        this.onSignalCallback({
+          type: 'candidate',
+          candidate: event.candidate
+        });
+      }
+    }
+  };
+  
+  // Gérer le stream distant
+  this.peerConnection.ontrack = (event) => {
+    console.log('✅ Track distant reçu:', event.track.kind);
+    
+    if (!this.remoteStream) {
+      this.remoteStream = new MediaStream();
+    }
+    
+    this.remoteStream.addTrack(event.track);
+    
+    if (this.onStreamCallback) {
+      this.onStreamCallback(this.remoteStream);
+    }
+  };
+  
+  // Gérer les états
+  this.peerConnection.oniceconnectionstatechange = () => {
+    console.log('🌐 État ICE:', this.peerConnection.iceConnectionState);
+    
+    if (this.peerConnection.iceConnectionState === 'connected') {
+      console.log('✅ Connexion WebRTC établie !');
+    } else if (this.peerConnection.iceConnectionState === 'failed') {
+      console.error('❌ Connexion ICE échouée');
+    }
+  };
+  
+  return this.peerConnection;
+}
 
   setupDataChannel() {
     if (!this.dataChannel) return;

@@ -28,6 +28,7 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
   const remoteVideoRef = useRef(null);
   const callStartTime = useRef(null);
   const durationInterval = useRef(null);
+  const isInitializedRef = useRef(false);
 
   // Fonctions de partage d'écran
   const startScreenShare = async () => {
@@ -63,54 +64,63 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
   };
 
   // Initialisation et écouteurs socket
-  useEffect(() => {
-    console.log('🎬 Initialisation VideoCallScreen');
+useEffect(() => {
+  if (isInitializedRef.current) {
+    console.log('⚠️ Déjà initialisé, skip');
+    return;
+  }
 
-    // Écouter les événements de partage d'écran
-    const handleRemoteStart = ({ sharerId }) => {
-      console.log("🔒 L'autre utilisateur partage son écran");
-      setScreenSharerId(sharerId);
-    };
+  isInitializedRef.current = true;
+  console.log('🎬 Initialisation VideoCallScreen');
 
-    const handleRemoteStop = (data) => {
-      console.log("🔓 Le partage d'écran est à nouveau libre");
-      setScreenSharerId(null);
-      setIsScreenSharing(false);
-    };
+  // --- Screen share handlers ---
+  const handleRemoteStart = ({ sharerId }) => {
+    console.log("🔒 L'autre utilisateur partage son écran");
+    setScreenSharerId(sharerId);
+  };
 
-    // Écouter l'arrêt du partage d'écran depuis le service WebRTC
-    webRTCService.onScreenShareStop(() => {
-      console.log('🖥️ Arrêt du partage d\'écran détecté par le service');
-      setIsScreenSharing(false);
-      setScreenSharerId(null);
-      const remoteId = remoteUserIdRef.current;
-      if (remoteId) {
-        socketService.emitScreenShareStop(remoteId, user?._id);
-      }
-    });
+  const handleRemoteStop = () => {
+    console.log("🔓 Le partage d'écran est à nouveau libre");
+    setScreenSharerId(null);
+    setIsScreenSharing(false);
+  };
 
-    // S'abonner aux événements socket
-    socketService.onScreenShareStarted(handleRemoteStart);
-    socketService.onScreenShareStopped(handleRemoteStop);
+  // --- WebRTC ---
+  webRTCService.onScreenShareStop(() => {
+    console.log('🖥️ Arrêt du partage d\'écran détecté par le service');
+    setIsScreenSharing(false);
+    setScreenSharerId(null);
 
-    // Initialiser l'appel
-    initializeCall();
+    const remoteId = remoteUserIdRef.current;
+    if (remoteId) {
+      socketService.emitScreenShareStop(remoteId, user?._id);
+    }
+  });
 
-    return () => {
-      console.log('🧹 Nettoyage VideoCallScreen');
-      // Nettoyer tous les écouteurs
-      if (socketService.socket) {
-        socketService.socket.off('call:answer');
-        socketService.socket.off('call:offer');
-        socketService.socket.off('call:accepted');
-        socketService.socket.off('call:ended');
-        socketService.socket.off('call:ice-candidate');
-        socketService.socket.off('call:screen-share-start');
-        socketService.socket.off('call:screen-share-stop');
-      }
-      cleanup();
-    };
-  }, []); // Un seul useEffect pour tout initialiser
+  // --- Socket listeners ---
+  socketService.onScreenShareStarted(handleRemoteStart);
+  socketService.onScreenShareStopped(handleRemoteStop);
+
+  // --- Init call ---
+  initializeCall();
+
+  return () => {
+    console.log('🧹 Nettoyage VideoCallScreen');
+
+    if (socketService.socket) {
+      socketService.socket.off('call:answer');
+      socketService.socket.off('call:offer');
+      socketService.socket.off('call:accepted');
+      socketService.socket.off('call:ended');
+      socketService.socket.off('call:ice-candidate');
+      socketService.socket.off('call:screen-share-start');
+      socketService.socket.off('call:screen-share-stop');
+    }
+
+    cleanup();
+    isInitializedRef.current = false;
+  };
+}, []);
 
   // Timer de durée d'appel
   useEffect(() => {
@@ -143,15 +153,28 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
     return () => clearInterval(interval);
   }, [isScreenSharing]);
 
-  const initializeCall = async () => {
-    try {
-      setConnectionStatus('getting_stream');
+  useEffect(() => {
+  return () => {
+    console.log('🧹 Nettoyage VideoCallScreen');
+    socketService.off('call:offer');
+    socketService.off('call:answer');
+    socketService.off('call:accepted');
+    socketService.off('call:ice-candidate');
+    socketService.off('call:ended');
+    webRTCService.stopAllStreams();
+  };
+}, []);
 
-      // 1. Obtenir le stream local avec gestion d'erreurs améliorée
-      let stream;
-      try {
-        stream = await webRTCService.getLocalStream();
-      } catch (mediaError) {
+
+const initializeCall = async () => {
+  try {
+    setConnectionStatus('gettingstream');
+    
+    // 1. Stream local
+    let stream;
+    try {
+      stream = await webRTCService.getLocalStream();
+    } catch (mediaError) {
         console.error('❌ Erreur accès média:', mediaError);
 
         if (mediaError.name === 'NotAllowedError') {
@@ -164,149 +187,135 @@ export default function VideoCallScreen({ selectedChat, callData, onClose }) {
           throw new Error('Erreur d\'accès aux périphériques média: ' + mediaError.message);
         }
       }
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-
-      setConnectionStatus('creating_connection');
-
-      // 2. Déterminer le rôle de manière simplifiée
-      const currentUserId = user?._id;
-      const actualCallData = callData || (selectedChat ? {
-        callerId: currentUserId,
-        receiverId: selectedChat.participants?.find(p =>
-          String(p._id) !== String(currentUserId)
-        )?._id
-      } : null);
-
-      const isInitiator = actualCallData?.callerId === currentUserId;
-      const remoteUserId = isInitiator ? actualCallData.receiverId : actualCallData.callerId;
-
-      // Stocker l'ID distant
-      setRemoteUserId(remoteUserId);
-      remoteUserIdRef.current = remoteUserId;
-
-      console.log('📱 Rôle déterminé:', { isInitiator, remoteUserId, callData: actualCallData });
-
-      // 3. Configurer les callbacks de signalisation
-      webRTCService.onSignal(async (signal) => {
-        console.log('📡 Signal à envoyer:', signal.type);
-
-        if (isInitiator) {
-          if (signal.type === 'offer') {
-            socketService.sendCallOffer?.(remoteUserId, signal);
-          } else if (signal.type === 'candidate') {
-            socketService.socket?.emit('call:ice-candidate', {
-              receiverId: remoteUserId,
-              candidate: signal.candidate
-            });
-          }
-        } else {
-          if (signal.type === 'answer') {
-            socketService.sendCallAnswer?.(remoteUserId, signal);
-          } else if (signal.type === 'candidate') {
-            socketService.socket?.emit('call:ice-candidate', {
-              receiverId: remoteUserId,
-              candidate: signal.candidate
-            });
-          }
-        }
-      });
-
-      webRTCService.onStream((remoteStream) => {
-        console.log('✅ Stream distant reçu');
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteStream;
-        }
-        setConnectionStatus('connected');
-      });
-
-      socketService.onCallAccepted((data) => {
-  console.log('📞 Appel accepté, création OFFER');
-  
-  webRTCService.createPeerConnection(true);
-  webRTCService.createOffer();
-  setConnectionStatus('waiting_answer');
-});
-socketService.onCallOffer((data) => {
-  console.log('📡 Offre reçue');
-  
-  webRTCService.createPeerConnection(false);
-  webRTCService.setRemoteDescription(data.signal)
-    .then(() => webRTCService.createAnswer());
-});
-
-     
-
-      // 5. Configurer les écouteurs selon le rôle
-      if (isInitiator) {
-        // CALLER: Attendre l'acceptation puis créer l'offre
-        socketService.onCallAccepted?.((data) => {
-          console.log('📞 Appel accepté, création de l\'offre');
-          if (data.callId) {
-            setTimeout(async () => {
-              try {
-                await webRTCService.createOffer();
-                setConnectionStatus('waiting_answer');
-              } catch (err) {
-                console.error('❌ Erreur création offre:', err);
-                setError('Erreur création appel');
-              }
-            }, 500);
-          }
-        });
-
-        // Écouter les réponses
-        socketService.onCallAnswer?.((data) => {
-          console.log('📡 Réponse reçue');
-          if (data.callerId === remoteUserId) {
-            webRTCService.handleAnswer(data.signal);
-          }
-        });
-
-        setConnectionStatus('waiting_accept');
-
-      } else {
-        // RECEIVER: Accepter et attendre l'offre
-        if (actualCallData.callId) {
-          socketService.acceptCall(actualCallData.callId, actualCallData.callerId);
-        }
-
-        // Écouter les offres
-        socketService.onCallOffer?.((data) => {
-          console.log('📡 Offre reçue');
-          if (data.callerId === remoteUserId) {
-            webRTCService.setRemoteDescription(data.signal)
-              .then(() => webRTCService.createAnswer())
-              .catch(err => {
-                console.error('Erreur réponse:', err);
-                setError('Erreur réponse appel');
-              });
-          }
-        });
-
-        setConnectionStatus('waiting_offer');
-      }
-
-      // 6. Écouteurs communs
-      socketService.socket?.on('call:ice-candidate', (data) => {
-        if (data.callerId === remoteUserId || data.receiverId === remoteUserId) {
-          webRTCService.addIceCandidate(data.candidate);
-        }
-      });
-
-      socketService.onCallEnded?.(() => {
-        console.log('📴 Appel terminé à distance');
-        handleEndCall();
-      });
-
-    } catch (error) {
-      console.error('💥 Erreur initialisation appel:', error);
-      setConnectionStatus('error');
-      setError(error.message || 'Erreur initialisation appel');
+    
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
     }
-  };
+    
+    setConnectionStatus('creatingconnection');
+    
+    // 2. CORRECTION: Déterminer rôle SANS selectedChat
+    const currentUserId = user?.id;
+    if (!currentUserId) {
+      throw new Error('ID utilisateur manquant');
+    }
+    
+    const isReceiver = callData.receiverId === currentUserId;
+    const isInitiator = !isReceiver; // Caller = Initiator WebRTC
+    
+    const remoteUserId = isInitiator ? callData.callerId : callData.receiverId;
+    
+    setRemoteUserId(remoteUserId);
+    remoteUserIdRef.current = remoteUserId;
+    
+    console.log('✅ RÔLE DÉTERMINÉ:', {
+      isReceiver,
+      isInitiator,
+      remoteUserId,
+      currentUserId,
+      callData
+    });
+    
+    // 3. Configurer callbacks WebRTC
+    webRTCService.onSignal = async (signal) => {
+      console.log('📡 Signal à envoyer:', signal.type);
+      const callId = callData.callId;
+      
+      if (signal.type === 'offer') {
+        socketService.socket?.emit('call:offer', {
+          callId,
+          receiverId: remoteUserId,
+          signal
+        });
+      } else if (signal.type === 'answer') {
+        socketService.socket?.emit('call:answer', {
+          callId,
+          callerId: remoteUserId,
+          signal
+        });
+      } else if (signal.type === 'candidate') {
+        socketService.socket?.emit('call:ice-candidate', {
+          callId,
+          candidate: signal.candidate
+        });
+      }
+    };
+    
+    webRTCService.onStream = (remoteStream) => {
+      console.log('✅ Stream distant reçu');
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStream;
+      }
+      setConnectionStatus('connected');
+    };
+    
+    // 4. Écouteurs socket communs
+    socketService.onCallIceCandidate = (data) => {
+      console.log('🧊 ICE candidate reçu:', data.candidate);
+      if (data.candidate) {
+        webRTCService.addIceCandidate(data.candidate);
+      }
+    };
+    
+    socketService.onCallEnded = handleEndCall;
+    
+    // 5. Logique selon rôle
+    if (isInitiator) {
+      // CALLER: Crée PeerConnection et attend ANSWER
+      console.log('📞 CALLER: J\'attends une OFFER/ANSWER');
+      setConnectionStatus('waitingoffer');
+      
+      socketService.onCallOffer = async (data) => {
+        if (webRTCService.peerConnection) {
+          console.log('PeerConnection existe déjà');
+          return;
+        }
+        console.log('📨 OFFER reçue');
+        webRTCService.createPeerConnection(false);
+        await webRTCService.setRemoteDescription(data.signal);
+        await webRTCService.createAnswer();
+      };
+      
+      socketService.onCallAnswer = async (data) => {
+        console.log('📨 ANSWER reçue');
+        await webRTCService.setRemoteDescription(data.signal);
+        setConnectionStatus('connected');
+      };
+      
+    } else {
+      // RECEIVER: Attend call:accepted puis crée OFFER
+      console.log('📱 RECEIVER: J\'attends call:accepted');
+      setConnectionStatus('waitingaccept');
+      
+      const handleCallAccepted = async (data) => {
+        if (webRTCService.peerConnection) {
+          console.log('PeerConnection existe déjà');
+          return;
+        }
+        console.log('✅ call:accepted reçu - Création OFFER');
+        webRTCService.createPeerConnection(true);
+        setTimeout(() => {
+          webRTCService.createOffer();
+          setConnectionStatus('waitinganswer');
+        }, 100);
+      };
+      
+      socketService.onCallAccepted = handleCallAccepted;
+      
+      socketService.onCallAnswer = async (data) => {
+        console.log('📨 ANSWER reçue (receiver side)');
+        await webRTCService.setRemoteDescription(data.signal);
+        setConnectionStatus('connected');
+      };
+    }
+    
+  } catch (error) {
+    console.error('❌ Erreur initialisation:', error);
+    setConnectionStatus('error');
+    setError(error.message);
+  }
+};
+
 
   const cleanup = () => {
     console.log('🧹 Nettoyage appel');
