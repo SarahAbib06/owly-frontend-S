@@ -28,6 +28,8 @@ import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
+import { Archive } from "lucide-react";
+import { useChat } from "../context/ChatContext"; // ← AJOUTE CET IMPORT
 
 const SeenIconGray = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 48 48">
@@ -100,7 +102,13 @@ const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥
 export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const isFromArchived = selectedChat?.isFromArchived === true;
+  const { conversations, archivedConversations } = useChat(); // ← AJOUT
+  const isArchived = isFromArchived || archivedConversations.some(c => c._id === selectedChat?._id);
+  console.log("isArchived ?", isArchived, selectedChat?._id);
+  const { archiveConversation, unarchiveConversation } = useChat();
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
+
 
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -121,6 +129,17 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
+
+    // 🔥 AJOUT : Détection si c'est une demande de message
+    const otherUserId = selectedChat?.participants?.[0]?._id?.replace('direct_', '') || selectedChat?.participants?.[0]?._id || null;
+    // || selectedChat?.participants?.[0]?._id; // ← fallback important pour nouvelles conversations
+     // fallback si c'est une nouvelle conversation
+  // dernier recours si la clé contient l'ID
+      console.log("selectedChat:", selectedChat);
+  console.log("otherUserId:", otherUserId);
+
+  const isMessageRequest = selectedChat?.isMessageRequest === true ||
+    selectedChat?.messageRequestForMe === true;
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -160,6 +179,13 @@ export default function ChatWindow({ selectedChat, onBack }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Force la mise à jour quand on change de conversation (surtout depuis les archivées)
+// Force la détection correcte du statut archivé quand la conversation change
+useEffect(() => {
+  // Ce useEffect vide dépend de selectedChat et archivedConversations
+  // Il force React à recalculer isArchived à chaque changement
+}, [selectedChat, archivedConversations]);
+
   // Gérer la saisie avec typing indicator
   const handleInputChange = (e) => {
     setInputText(e.target.value);
@@ -173,7 +199,10 @@ export default function ChatWindow({ selectedChat, onBack }) {
     if (!inputText.trim()) return;
 
     try {
-      await sendMessage(inputText);
+      await sendMessage({
+      content: inputText.trim(),
+      Id_receiver: otherUserId,
+    });
       setInputText("");
     } catch (error) {
       console.error("Erreur envoi message:", error);
@@ -684,6 +713,24 @@ export default function ChatWindow({ selectedChat, onBack }) {
             className="text-gray-600 dark:text-gray-300 cursor-pointer"
             onClick={() => setIsVideoCallOpen(true)}
           />
+          
+          {/* BOUTON ARCHIVER */}
+          <button
+            onClick={async () => {
+              if (window.confirm("Archiver cette conversation ?")) {
+                try {
+                  await archiveConversation(selectedChat._id);
+                  onBack(); // Ferme le chat et retourne à la liste
+                } catch (err) {
+                  alert("Erreur lors de l'archivage");
+                }
+              }
+            }}
+            className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+          >
+            <Archive size={16} />
+          </button>
+
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
               size={16}
@@ -857,14 +904,26 @@ export default function ChatWindow({ selectedChat, onBack }) {
       )}
 
       {isInfoOpen && (
-        <InfoContactModal
-          chat={{
-            ...selectedChat,
-            openTheme: () => setShowThemeSelector(true),
-          }}
-          onClose={() => setIsInfoOpen(false)}
-        />
-      )}
+  <InfoContactModal
+    chat={{
+      ...selectedChat,
+      openTheme: () => setShowThemeSelector(true),
+      onArchive: async () => {
+        try {
+          if (isArchived) {
+            await unarchiveConversation(selectedChat._id);
+          } else {
+            await archiveConversation(selectedChat._id);
+          }
+        } catch (err) {
+          alert("Erreur lors de l'opération");
+        }
+      },
+      isArchived: isArchived,
+    }}
+    onClose={() => setIsInfoOpen(false)}
+  />
+)}
 
       {openSearch && (
         <>
@@ -888,6 +947,54 @@ export default function ChatWindow({ selectedChat, onBack }) {
           </motion.div>
         </>
       )}
+
+            {/* 🔥 BANDEAU DEMANDE DE MESSAGE 🔥 */}
+      {isMessageRequest && (
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-4 text-center">
+          <p className="font-bold text-lg">Demande de message</p>
+          <p className="text-sm mt-1 opacity-90">
+            {conversationName} veut discuter avec vous
+          </p>
+          <div className="flex justify-center gap-4 mt-4">
+            <button
+              onClick={async () => {
+                try {
+                  await fetch("/api/relations/accept-from-chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contactId: otherUserId }),
+                  });
+                  alert("Demande acceptée ! Vous pouvez maintenant répondre.");
+                  window.location.reload();
+                } catch (err) {
+                  alert("Erreur lors de l'acceptation");
+                }
+              }}
+              className="bg-white text-indigo-600 px-8 py-2.5 rounded-full font-semibold hover:scale-105 transition"
+            >
+              Accepter
+            </button>
+            <button
+              onClick={() => {
+                if (confirm("Supprimer cette demande de message ?")) {
+                  onBack();
+                }
+              }}
+              className="border border-white px-8 py-2.5 rounded-full font-semibold hover:bg-white/20 transition"
+            >
+              Supprimer
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
+
+
+
+
+
+

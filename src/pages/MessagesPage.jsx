@@ -13,10 +13,14 @@ export default function Messages() {
 
   const { setChatOpen } = useOutletContext();
 
-  const openChat = (chat) => {
-    setSelectedChat(chat);
-    setChatOpen(true);
-  };
+  const openChat = (chat, isFromArchived = false) => {
+  setSelectedChat({
+    ...chat,
+    isFromArchived,
+  });
+  setChatOpen(true);
+};
+
 
   const closeChat = () => {
     setSelectedChat(null);
