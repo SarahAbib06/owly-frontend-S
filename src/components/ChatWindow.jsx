@@ -301,25 +301,17 @@ const handleOnline = ({ userId }) => {
 
 socketService.socket.on('call:accepted', (data) => {
   console.log('✅ Appel accepté:', data);
+  setActiveCall({ ...data, status: 'active' });
   
-  // Toujours mettre à jour activeCall avec les vraies données du serveur
-  setActiveCall({
-    callId: data.callId,
-    callerId: data.callerId,
-    receiverId: data.receiverId,
-    conversationId: data.conversationId,
-    callType: data.callType,
-    status: 'active',
-    // Conserver les infos du destinataire si elles existent déjà
-    ...(activeCall?.receiverName && {
-      receiverName: activeCall.receiverName,
-      receiverAvatar: activeCall.receiverAvatar
-    })
-  });
-  
-  // Ouvrir VideoCallScreen immédiatement
+  // ✅ FORCER l'ouverture IMMÉDIATEMENT pour CALLER ET RECEIVER
   setIsVideoCallOpen(true);
+  
+  // Ouvrir aussi côté CALLER si pas déjà ouvert
+  if (!isVideoCallOpen) {
+    console.log('🚀 FORCAGE VideoCallScreen pour CALLER');
+  }
 });
+
 
     socketService.socket.on('call:rejected', () => {
       console.log('❌ Appel rejeté');

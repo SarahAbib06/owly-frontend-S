@@ -153,17 +153,7 @@ useEffect(() => {
     return () => clearInterval(interval);
   }, [isScreenSharing]);
 
-  useEffect(() => {
-  return () => {
-    console.log('🧹 Nettoyage VideoCallScreen');
-    socketService.off('call:offer');
-    socketService.off('call:answer');
-    socketService.off('call:accepted');
-    socketService.off('call:ice-candidate');
-    socketService.off('call:ended');
-    webRTCService.stopAllStreams();
-  };
-}, []);
+
 
 
 const initializeCall = async () => {
