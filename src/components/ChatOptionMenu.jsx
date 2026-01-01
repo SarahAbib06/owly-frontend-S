@@ -4,16 +4,19 @@ import { relationService } from "../services/relationService";
 import { useState,useEffect } from "react";
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
+import { useChat } from "../context/ChatContext";
 
 
 export default function ChatOptionsMenu({ selectedChat, onClose, onOpenSearch, onBlockStatusChange }) {
   const { t } = useTranslation();
+  const { archiveConversation, unarchiveConversation } = useChat();
   const [isBlocking, setIsBlocking] = useState(false);
 const { isBlocked, unblock, refresh } = useBlockStatus(selectedChat?.userId);
 const [localIsBlocked, setLocalIsBlocked] = useState(isBlocked);
 const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 const [actionType, setActionType] = useState("block"); // block | unblock
 const [modalUserInfo, setModalUserInfo] = useState({ name: "", avatar: "" });
+
 
 useEffect(() => {
   setLocalIsBlocked(isBlocked);
@@ -81,9 +84,31 @@ const handleConfirmBlock = async () => {
           <span>{t("chatOptions.addToFavorites")}</span>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-200 cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
+                <div
+          className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-200 cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
+          onClick={async () => {
+            const message = selectedChat.isArchived
+              ? "Désarchiver cette conversation ?"
+              : "Archiver cette conversation ?";
+
+            if (window.confirm(message)) {
+              try {
+                if (selectedChat.isArchived) {
+                  await unarchiveConversation(selectedChat._id);
+                } else {
+                  await archiveConversation(selectedChat._id);
+                }
+                onClose(); // Ferme le menu
+              } catch (err) {
+                alert("Erreur lors de l'opération");
+              }
+            }
+          }}
+        >
           <Archive size={15} />
-          <span>{t("chatOptions.archiveConversation")}</span>
+          <span>
+            {selectedChat.isArchived ? "Désarchiver la conversation" : "Archiver la conversation"}
+          </span>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-200 cursor-pointer py-2 px-2 rounded-md border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">

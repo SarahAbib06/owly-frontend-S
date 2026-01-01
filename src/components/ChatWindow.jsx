@@ -34,7 +34,8 @@ import { useChat } from "../context/ChatContext"; // ← AJOUTE CET IMPORT
 
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
-
+import ForwardModal from "./ForwardModal";
+import { useConversations } from "../hooks/useConversations";
     
 
 
@@ -116,6 +117,11 @@ export default function ChatWindow({ selectedChat, onBack }) {
   console.log("isArchived ?", isArchived, selectedChat?._id);
   const { archiveConversation, unarchiveConversation } = useChat();
  const { user, socketConnected } = useAuth();
+const [selectedTargetConversation, setSelectedTargetConversation] = useState(null);
+const [showForwardModal, setShowForwardModal] = useState(false);
+const [messageToForward, setMessageToForward] = useState(null);
+
+const { conversations: myConversations, loading: convLoading } = useConversations();
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
 //  Récupérer le userId de l'autre utilisateur
@@ -765,6 +771,7 @@ useEffect(() => {
 
           <div className="relative">
             <div
+              id={`message-${msg._id}`}
               className={`${bubbleClasses(fromMe)} ${
                 isMatch ? "ring-2 ring-blue-400" : ""
               } cursor-pointer`}
@@ -848,8 +855,10 @@ useEffect(() => {
                 </button>
                 <button
                   onClick={() => {
-                    alert("Sélectionnez une conversation de destination");
-                    setShowMessageMenu(null);
+                    setMessageToForward(msg);                    // On garde le message à transférer
+                    setSelectedTargetConversation(null);          // Réinitialise la sélection
+                    setShowForwardModal(true);                    // Ouvre la modale
+                    setShowMessageMenu(null);                     // Ferme le menu
                   }}
                   className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
                 >
@@ -914,6 +923,7 @@ useEffect(() => {
         </div>
       </div>
     );
+    
   };
 
   if (loading) {
@@ -1071,21 +1081,7 @@ useEffect(() => {
   />
           
           {/* BOUTON ARCHIVER */}
-          <button
-            onClick={async () => {
-              if (window.confirm("Archiver cette conversation ?")) {
-                try {
-                  await archiveConversation(selectedChat._id);
-                  onBack(); // Ferme le chat et retourne à la liste
-                } catch (err) {
-                  alert("Erreur lors de l'archivage");
-                }
-              }
-            }}
-            className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-          >
-            <Archive size={16} />
-          </button>
+      
 
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
@@ -1097,26 +1093,61 @@ useEffect(() => {
       </header>
 
       {/* SECTION MESSAGES ÉPINGLÉS */}
-      {showPinnedSection && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 px-3 py-2 z-20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            {/* SECTION MESSAGES ÉPINGLÉS - VERSION SCROLLABLE HORIZONTALE */}
+            {/* SECTION MESSAGES ÉPINGLÉS - UNE SEULE LIGNE SCROLLABLE */}
+            {/* SECTION MESSAGES ÉPINGLÉS - LISTE VERTICALE SCROLLABLE */}
+            {/* SECTION MESSAGES ÉPINGLÉS - VERSION COMPACTE VERTICALE */}
+            {/* SECTION MESSAGES ÉPINGLÉS - VERSION ULTRA-COMPACTE */}
+      {showPinnedSection && pinnedMessages.length > 0 && (
+        <div className="border-b border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/40 z-20">
+          {/* Header ultra-minimaliste */}
+          <div className="flex items-center justify-between px-3 py-1.5">
+            <div className="flex items-center gap-1.5">
               <Pin size={14} className="text-yellow-600 dark:text-yellow-400" />
               <span className="text-xs font-medium text-yellow-800 dark:text-yellow-300">
-                {pinnedMessages.length} message
-                {pinnedMessages.length > 1 ? "s" : ""} épinglé
-                {pinnedMessages.length > 1 ? "s" : ""}
+                {pinnedMessages.length} épinglé{pinnedMessages.length > 1 ? "s" : ""}
               </span>
             </div>
             <button
               onClick={() => setShowPinnedSection(false)}
-              className="text-yellow-600 dark:text-yellow-400"
+              className="text-yellow-600 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-800/50 rounded p-0.5 transition"
             >
               <X size={14} />
             </button>
           </div>
-          <div className="mt-1 text-xs text-gray-700 dark:text-gray-300 truncate">
-            {pinnedMessages[0]?.content || "Message épinglé"}
+
+          {/* Liste ultra-compacte avec scrollbar */}
+          <div className="max-h-28 overflow-y-auto px-3 pb-2 scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-yellow-100 dark:scrollbar-thumb-yellow-300 dark:scrollbar-track-yellow-900/50">
+            <div className="space-y-1.5">
+              {pinnedMessages.map((msg) => (
+                <button
+                  key={msg._id}
+                  onClick={() => {
+                    const element = document.getElementById(`message-${msg._id}`);
+                    if (element) {
+                      element.scrollIntoView({ behavior: "smooth", block: "center" });
+                      element.classList.add("ring-3", "ring-yellow-400");
+                      setTimeout(() => element.classList.remove("ring-3", "ring-yellow-400"), 1500);
+                    }
+                  }}
+                  className="w-full text-left bg-white dark:bg-gray-800 rounded shadow-sm hover:shadow transition p-2 text-xs border border-yellow-200 dark:border-yellow-700 block"
+                >
+                  <div className="line-clamp-1 text-gray-800 dark:text-gray-200 font-medium">
+                    {msg.typeMessage === "text" && msg.content}
+                    {msg.typeMessage === "image" && "📷 Photo"}
+                    {msg.typeMessage === "video" && "🎥 Vidéo"}
+                    {msg.typeMessage === "audio" && "🎤 Vocal"}
+                    {msg.typeMessage === "file" && `📎 ${msg.fileName || "Fichier"}`}
+                  </div>
+                  <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                    {new Date(msg.createdAt).toLocaleTimeString("fr-FR", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1165,7 +1196,15 @@ useEffect(() => {
         <div ref={messagesEndRef} />
       </main>
 
+
+      
+
       {/* INPUT */}
+
+
+
+
+      
 
 <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
   {/* ✅ SI BLOQUÉ : Afficher le message de blocage */}
@@ -1415,6 +1454,24 @@ useEffect(() => {
         userInfo={{
           name: otherUserName,
           avatar: conversationAvatar
+        }}
+      />
+      {console.log("Conversations disponibles pour transfert :", conversations)}
+      {console.log("Mes conversations chargées :", myConversations)}
+      {console.log("Conversations passées au modal :", myConversations)}
+{console.log("Conversation actuelle ID :", selectedChat?._id)}
+
+      <ForwardModal
+        isOpen={showForwardModal}
+        onClose={() => {
+          setShowForwardModal(false);
+          setMessageToForward(null);
+        }}
+        message={messageToForward}
+        conversations={myConversations}  // ← TES CONVERSATIONS CHARGÉES DIRECTEMENT
+        currentConversationId={selectedChat?._id}
+        onForward={(targetConversationId) => {
+          forwardMessage(messageToForward?._id, targetConversationId);
         }}
       />
     </div>
