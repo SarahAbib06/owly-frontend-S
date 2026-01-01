@@ -36,6 +36,7 @@ import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
+
     
 
 
@@ -149,6 +150,11 @@ const { conversations: myConversations, loading: convLoading } = useConversation
 
 const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
+const isIncomingMessageRequest = 
+  selectedChat?.isMessageRequest === true && 
+  selectedChat?.messageRequestFor?.toString() === user?._id?.toString();
+
+// 🔥 NOUVEAU : Bannière Demande de message (comme Messenger)
 
 
 
@@ -1091,6 +1097,61 @@ useEffect(() => {
           </button>
         </div>
       </header>
+
+      {/* 🔥 DEMANDE DE MESSAGE - Bannière propre et réutilisable */}
+      {isIncomingMessageRequest && (
+        <MessageRequestBanner
+          conversationName={conversationName}
+          conversationAvatar={conversationAvatar}
+          onAccept={async () => {
+            const token = localStorage.getItem("token");
+            try {
+              const res = await fetch("http://localhost:5000/api/relations/accept-request", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ conversationId: selectedChat._id }),
+              });
+
+              if (res.ok) {
+                window.location.reload(); // ou une meilleure méthode plus tard
+              } else {
+                const err = await res.json();
+                alert(err.error || "Erreur lors de l'acceptation");
+              }
+            } catch (err) {
+              alert("Erreur réseau");
+            }
+          }}
+          onDelete={async () => {
+            if (!confirm("Supprimer cette demande de message ?")) return;
+
+            const token = localStorage.getItem("token");
+            try {
+              const res = await fetch("http://localhost:5000/api/relations/delete-request", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ conversationId: selectedChat._id }),
+              });
+
+              if (res.ok) {
+                onBack(); // Retour à la liste
+              } else {
+                alert("Erreur lors de la suppression");
+              }
+            } catch (err) {
+              alert("Erreur réseau");
+            }
+          }}
+        />
+      )}
+
+      {/* SECTION MESSAGES ÉPINGLÉS */}
 
       {/* SECTION MESSAGES ÉPINGLÉS */}
             {/* SECTION MESSAGES ÉPINGLÉS - VERSION SCROLLABLE HORIZONTALE */}

@@ -54,13 +54,14 @@ const fetchContacts = async () => {
   }
 };
   // RECHERCHE PAR USERNAME
-  const handleSearch = async () => {
+    const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
     try {
       setLoading(true);
       setError('');
-      
+      setUsers([]); // ← LIGNE AJOUTÉE : VIDE LE STATE AVANT NOUVELLE RECHERCHE
+
       const token = localStorage.getItem('token');
       const response = await fetch(
         `http://localhost:5000/api/search/users?username=${encodeURIComponent(searchQuery)}`,
@@ -76,6 +77,8 @@ const fetchContacts = async () => {
       }
       
       const data = await response.json();
+      console.log("Résultats de recherche reçus :", data); // ← AJOUTÉ POUR VOIR CE QUE TU REÇOIS
+
       setUsers(data);
       
       if (data.length === 0) {
@@ -352,12 +355,48 @@ const fetchContacts = async () => {
                           </div>
                         </div>
                         <button
-                          onClick={() => onUserSelect && onUserSelect(contact.contact || contact)}
-                          className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
-                          title="Envoyer un message"
-                        >
-                          <MessageCircle size={18} />
-                        </button>
+  onClick={async () => {
+    console.log("CLIC SUR UTILISATEUR :", user); // Tu verras exactement ce que tu cliques
+    console.log("ID QUE JE VAIS ENVOYER :", user._id);
+
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await fetch('http://localhost:5000/api/conversations/private', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ receiverId: user._id })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur serveur');
+      }
+
+      const data = await res.json();
+
+      if (data.success && data.conversation) {
+        // GARDE TOUJOURS LE USER D'ORIGINE POUR LES PARTICIPANTS
+        onUserSelect({
+          _id: data.conversation._id,
+          participants: [user], // ← user d'origine, pas modifié
+          type: "private"
+        });
+        onClose();
+      }
+    } catch (err) {
+      console.error("ERREUR :", err);
+      alert("Impossible d'ouvrir la conversation : " + err.message);
+    }
+  }}
+  className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
+  title="Envoyer un message"
+>
+  <MessageCircle size={18} />
+</button>
                       </div>
                     ))}
                   </div>
@@ -418,21 +457,48 @@ const fetchContacts = async () => {
                           </div>
                         </div>
                         <button
-                          onClick={() => {
-                          if (onUserSelect) {
-                            const tempChat = {
-                              _id: `direct_${user._id}`,
-                              participants: [user],
-                              type: "private",
-                            };
-                            onUserSelect(tempChat);
-                          }
-                        }}
-                          className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
-                          title="Envoyer un message"
-                        >
-                          <MessageCircle size={18} />
-                        </button>
+  onClick={async () => {
+    console.log("CLIC SUR UTILISATEUR :", user); // Tu verras exactement ce que tu cliques
+    console.log("ID QUE JE VAIS ENVOYER :", user._id);
+
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await fetch('http://localhost:5000/api/conversations/private', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ receiverId: user._id })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur serveur');
+      }
+
+      const data = await res.json();
+
+      if (data.success && data.conversation) {
+        // GARDE TOUJOURS LE USER D'ORIGINE POUR LES PARTICIPANTS
+        onUserSelect({
+          _id: data.conversation._id,
+          participants: [user], // ← user d'origine, pas modifié
+          type: "private"
+        });
+        onClose();
+      }
+    } catch (err) {
+      console.error("ERREUR :", err);
+      alert("Impossible d'ouvrir la conversation : " + err.message);
+    }
+  }}
+  className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
+  title="Envoyer un message"
+>
+  <MessageCircle size={18} />
+</button>
                       </div>
                     ))}
                   </div>
