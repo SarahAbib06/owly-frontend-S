@@ -12,6 +12,8 @@ class AgoraService {
     // Callback pour notifier les nouvelles vidéos
     this.onRemoteVideoAdded = null;
     this.onRemoteVideoRemoved = null;
+       this.onRemoteAudioAdded = null; // <-- NOUVEAU : pour l'audio
+    this.onRemoteAudioRemoved = null; // <-- NOUVEAU : pour l'audio
   }
 
   // Initialiser le client
@@ -33,15 +35,21 @@ class AgoraService {
   }
 
   // Rejoindre un canal
-  async joinChannel(channelName, token, uid) {
-    console.log("🔗 Tentative de connexion:", { channelName, uid, appId: this.appId });
+   // Rejoindre un canal (version modifiée)
+  // Rejoindre un canal
+  async joinChannel(channelName, token, uid, audioOnly = false) {
+    console.log("🔗 Tentative de connexion:", { 
+      channelName, 
+      uid, 
+      audioOnly,
+      appId: this.appId 
+    });
     
     if (!this.client) {
       await this.initializeClient();
     }
 
     try {
-      // Convertir uid en nombre si c'est une chaîne
       const numericUid = Number(uid) || 0;
       
       await this.client.join(
@@ -52,13 +60,31 @@ class AgoraService {
       );
 
       this.isJoined = true;
-      console.log(`✅ Canal ${channelName} rejoint, uid: ${numericUid}`);
+      console.log(`✅ Canal ${channelName} rejoint, uid: ${numericUid}, audioOnly: ${audioOnly}`);
       
-      // Créer et publier les tracks locaux
+      // Créer les tracks
       await this.createLocalTracks();
-      await this.publishLocalTracks();
       
-      console.log("🎥 Tracks locaux publiés");
+      if (audioOnly) {
+        // Pour les appels audio, désactiver la caméra
+        if (this.localVideoTrack) {
+          await this.localVideoTrack.setEnabled(false);
+          console.log("📹 Caméra désactivée pour appel audio");
+        }
+        
+        // Publier seulement l'audio si on veut
+        if (this.localAudioTrack) {
+          await this.client.publish([this.localAudioTrack]);
+          console.log("📤 Track audio publié");
+        }
+      } else {
+        // Pour les appels vidéo, publier audio + vidéo
+        if (this.localAudioTrack && this.localVideoTrack) {
+          await this.client.publish([this.localAudioTrack, this.localVideoTrack]);
+          console.log("🎥 Tracks audio+vidéo publiés");
+        }
+      }
+      
       return { success: true, uid: numericUid };
       
     } catch (error) {
@@ -70,7 +96,6 @@ class AgoraService {
       return { success: false, error };
     }
   }
-
   // Créer les tracks audio/vidéo locaux
   async createLocalTracks() {
     try {
@@ -137,11 +162,11 @@ class AgoraService {
   }
 
   // Gérer les utilisateurs distants - CORRIGÉ
+    // Gérer les utilisateurs distants - VERSION AMÉLIORÉE
   async handleUserPublished(user, mediaType) {
     console.log(`👤 User ${user.uid} published ${mediaType}`);
     
     try {
-      // S'abonner à l'utilisateur distant
       await this.client.subscribe(user, mediaType);
       console.log(`✅ Abonné à ${user.uid} pour ${mediaType}`);
       
@@ -155,31 +180,31 @@ class AgoraService {
             audioTrack 
           });
           
-          // Jouer l'audio
+          // Jouer l'audio IMMÉDIATEMENT
           audioTrack.play();
           console.log(`🔊 Audio joué pour ${user.uid}`);
+          
+          // Pour les appels audio, on pourrait notifier le composant
+          if (this.onRemoteAudioAdded) {
+            this.onRemoteAudioAdded(user.uid, audioTrack);
+          }
         }
       }
       
       if (mediaType === 'video') {
         const videoTrack = user.videoTrack;
         if (videoTrack) {
-          console.log(`🎥 Video track reçue pour ${user.uid}`, {
-            trackId: videoTrack.trackId,
-            enabled: videoTrack.enabled
-          });
+          console.log(`🎥 Video track reçue pour ${user.uid}`);
           
           this.remoteUsers.set(user.uid, { 
             ...this.remoteUsers.get(user.uid), 
             videoTrack 
           });
           
-          // Notifier le composant React qu'une nouvelle vidéo est disponible
+          // Notifier le composant React
           if (this.onRemoteVideoAdded) {
             this.onRemoteVideoAdded(user.uid, videoTrack);
           }
-          
-          console.log(`🎥 Video track stockée pour ${user.uid}`);
         }
       }
     } catch (error) {
