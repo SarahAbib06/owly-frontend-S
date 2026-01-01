@@ -1,4 +1,3 @@
-// frontend/src/components/ChatWindow.jsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   Phone,
@@ -20,6 +19,7 @@ import { useTyping } from "../hooks/useTyping";
 import { useReactions } from "../hooks/useReactions";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
+import { useCall } from "../context/CallContext";
 import socketService from "../services/socketService";
 import VideoCallScreen from "./VideoCallScreen";
 import ThemeSelector from "./ThemeSelector";
@@ -100,6 +100,8 @@ const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥
 export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { incomingCall, getPendingCall, clearPendingCall } = useCall();
+  
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
 
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
@@ -147,6 +149,57 @@ export default function ChatWindow({ selectedChat, onBack }) {
   // Hook pour l'enregistrement audio
   const { isRecording, recordingTime, startRecording, stopAndSend, cancelRecording } =
     useAudioRecorder(selectedChat?._id);
+
+  // 🔥 DÉTECTION AUTOMATIQUE DES APPELS ENTRANTS
+  useEffect(() => {
+    console.log('🔍 [ChatWindow] Vérification appels entrants pour le chat:', selectedChat?._id);
+    
+    // 1. Vérifier s'il y a un appel entrant direct dans le contexte
+    if (incomingCall && incomingCall.chatId === selectedChat?._id) {
+      console.log('📞 [ChatWindow] Appel entrant direct détecté:', incomingCall);
+      
+      // Attendre un peu pour s'assurer que le modal se ferme
+      setTimeout(() => {
+        console.log('🚀 [ChatWindow] Ouverture automatique VideoCallScreen');
+        setIsVideoCallOpen(true);
+      }, 300);
+    }
+    
+    // 2. Vérifier s'il y a un appel en attente (après acceptation via modal global)
+    const checkPendingCall = () => {
+      const pendingCall = getPendingCall();
+      if (pendingCall && pendingCall.chatId === selectedChat?._id) {
+        console.log('📞 [ChatWindow] Appel en attente détecté:', pendingCall);
+        setIsVideoCallOpen(true);
+        clearPendingCall();
+      }
+    };
+    
+    checkPendingCall();
+    
+    // 3. Vérifier aussi dans localStorage (fallback)
+    try {
+      const savedCall = localStorage.getItem('pendingVideoCall');
+      if (savedCall) {
+        const callData = JSON.parse(savedCall);
+        if (callData && callData.chatId === selectedChat?._id) {
+          console.log('📞 [ChatWindow] Appel en attente (localStorage):', callData);
+          setIsVideoCallOpen(true);
+          localStorage.removeItem('pendingVideoCall');
+        }
+      }
+    } catch (error) {
+      console.error('Erreur parsing localStorage:', error);
+    }
+    
+    // 4. Vérifier dans window (fallback immédiat)
+    if (window.pendingVideoCall && window.pendingVideoCall.chatId === selectedChat?._id) {
+      console.log('📞 [ChatWindow] Appel en attente (window):', window.pendingVideoCall);
+      setIsVideoCallOpen(true);
+      window.pendingVideoCall = null;
+    }
+    
+  }, [incomingCall, selectedChat, getPendingCall, clearPendingCall]);
 
   // 🔥 Charger les messages épinglés
   useEffect(() => {
@@ -682,7 +735,10 @@ export default function ChatWindow({ selectedChat, onBack }) {
           <Video
             size={16}
             className="text-gray-600 dark:text-gray-300 cursor-pointer"
-            onClick={() => setIsVideoCallOpen(true)}
+            onClick={() => {
+              console.log('🎬 [ChatWindow] Bouton vidéo cliqué pour le chat:', selectedChat?._id);
+              setIsVideoCallOpen(true);
+            }}
           />
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
@@ -828,10 +884,20 @@ export default function ChatWindow({ selectedChat, onBack }) {
         </div>
       </footer>
 
-      {isVideoCallOpen && (
+      {/* MODAL APPEL VIDÉO */}
+      {isVideoCallOpen && selectedChat && (
         <VideoCallScreen
           selectedChat={selectedChat}
-          onClose={() => setIsVideoCallOpen(false)}
+          onClose={() => {
+            console.log('📞 [ChatWindow] Fermeture VideoCallScreen');
+            setIsVideoCallOpen(false);
+            // Nettoyer les appels en attente
+            clearPendingCall();
+            localStorage.removeItem('pendingVideoCall');
+            if (window.pendingVideoCall) {
+              window.pendingVideoCall = null;
+            }
+          }}
         />
       )}
 

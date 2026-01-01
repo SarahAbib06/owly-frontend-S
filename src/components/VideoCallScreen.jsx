@@ -4,10 +4,13 @@ import agoraService from '../services/agoraService';
 import socketService from '../services/socketService';
 import axios from 'axios';
 import { useAuth } from '../hooks/useAuth';
+import { useCall } from '../context/CallContext';
 import './VideoCallScreen.css';
 
 const VideoCallScreen = ({ selectedChat, onClose }) => {
   const { user } = useAuth();
+  const { incomingCall, acceptCall, rejectCall, setShowIncomingCallModal } = useCall();
+  
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -22,6 +25,23 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
   const remoteVideoRefs = useRef({});
   const callTimerRef = useRef(null);
   const channelNameRef = useRef(`call_${selectedChat?._id}_${Date.now()}`);
+  const ringtoneAudioRef = useRef(null);
+
+  // Gérer l'appel entrant depuis le contexte global
+  useEffect(() => {
+    if (incomingCall && selectedChat?._id === incomingCall.chatId) {
+      console.log('📞 [VideoCallScreen] Appel entrant correspond au chat ouvert:', incomingCall);
+      
+      // Cacher le modal global
+      setShowIncomingCallModal(false);
+      
+      // Traiter l'appel directement dans ce composant
+      setIncomingCallData(incomingCall);
+      setCallStatus('ringing');
+      setDebugInfo('Appel entrant détecté');
+      playRingtone();
+    }
+  }, [incomingCall, selectedChat]);
 
   // Initialiser Agora et écouter les événements
   useEffect(() => {
@@ -71,22 +91,26 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       return;
     }
 
-    // Écouter les événements d'appel
+    // Écouter les événements d'appel spécifiques à ce composant
     socket.on('incoming-video-call', (data) => {
-      console.log('📞 Appel entrant reçu:', data);
+      console.log('📞 Appel entrant reçu dans VideoCallScreen:', data);
+      
+      // Ne traiter que si c'est pour ce chat spécifique
       if (data.chatId === selectedChat?._id) {
         setIncomingCallData(data);
         setCallStatus('ringing');
         setDebugInfo('Appel entrant détecté');
+        playRingtone();
       }
     });
 
     socket.on('video-call-accepted', (data) => {
       console.log('✅ Appel accepté:', data);
       setDebugInfo('Appel accepté par le destinataire');
-      if (data.channelName === channelNameRef.current) {
-        fetchTokenAndStartCall(channelNameRef.current);
-      }
+      
+      // Vérifier le channel name
+      const targetChannel = data.channelName || (incomingCallData && incomingCallData.channelName) || channelNameRef.current;
+      fetchTokenAndStartCall(targetChannel);
     });
 
     socket.on('video-call-rejected', (data) => {
@@ -95,11 +119,13 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       setDebugInfo('Appel refusé');
       alert(`L'appel a été refusé: ${data.reason || 'Par l\'utilisateur'}`);
       setIsCalling(false);
+      stopRingtone();
     });
 
     socket.on('video-call-ended', (data) => {
       console.log('📞 Appel terminé:', data);
-      if (data.channelName === channelNameRef.current) {
+      const targetChannel = data.channelName || (incomingCallData && incomingCallData.channelName) || channelNameRef.current;
+      if (data.channelName === targetChannel) {
         handleEndCall();
       }
     });
@@ -113,9 +139,34 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     socket.on('call-error', (data) => {
       console.error('💥 Erreur appel:', data);
       setDebugInfo(`Erreur: ${data.error}`);
-      alert(`Erreur: ${data.error}`);
+      
+      // Gestion spécifique pour CALLER_OFFLINE
+      if (data.code === 'CALLER_OFFLINE') {
+        console.log('⚠️ L\'appelant semble déconnecté, tentative de reconnexion...');
+        // Réessayer automatiquement
+        setTimeout(() => {
+          if (incomingCallData) {
+            console.log('🔄 Réessai d\'acceptation de l\'appel...');
+            acceptIncomingCall();
+          } else if (isCalling) {
+            console.log('🔄 Réessai de démarrage d\'appel...');
+            startOutgoingCall();
+          }
+        }, 2000);
+        alert('Problème de connexion avec l\'appelant. Nouvelle tentative...');
+      } else {
+        alert(`Erreur: ${data.error}`);
+      }
+      
       setIsCalling(false);
       setCallStatus('idle');
+      stopRingtone();
+    });
+
+    // Écouter l'événement de reconnexion socket
+    socket.on('connect', () => {
+      console.log('✅ Socket reconnecté');
+      setDebugInfo('Connexion rétablie');
     });
 
     return () => {
@@ -130,8 +181,10 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
         socket.off('video-call-ended');
         socket.off('call-initiated');
         socket.off('call-error');
+        socket.off('connect');
       }
       clearInterval(callTimerRef.current);
+      stopRingtone();
     };
   }, [selectedChat]);
 
@@ -187,6 +240,8 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       if (token && (!socketService.socket || !socketService.socket.connected)) {
         console.log('🔄 Tentative de connexion socket...');
         socketService.connect(token);
+        // Petit délai pour laisser la connexion s'établir
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     };
     
@@ -232,7 +287,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
         const token = localStorage.getItem('token');
         if (token) {
           socketService.connect(token);
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       }
       
@@ -243,7 +298,11 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
         channelName: channelName,
         callerId: currentUserId,
         callerName: user.username || 'Utilisateur',
-        recipientId: otherParticipant._id || otherParticipant.id
+        recipientId: otherParticipant._id || otherParticipant.id,
+        recipientName: otherParticipant.username || 'Utilisateur',
+        timestamp: Date.now(),
+        type: 'video',
+        callerSocketId: socketService.socket.id
       };
       
       socketService.socket.emit('initiate-video-call', callData);
@@ -281,14 +340,29 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       setCallStatus('connecting');
       setDebugInfo('Acceptation appel en cours...');
       
+      // Fermer le modal global s'il est ouvert
+      setShowIncomingCallModal(false);
+      
+      console.log('📤 Acceptation appel, données:', {
+        channelName: incomingCallData.channelName,
+        callerId: incomingCallData.callerId,
+        callerSocketId: incomingCallData.callerSocketId,
+        recipientId: user._id || user.id
+      });
+      
+      // Émettre l'événement d'acceptation
       socketService.socket.emit('accept-video-call', {
         channelName: incomingCallData.channelName,
         callerId: incomingCallData.callerId,
-        callerSocketId: incomingCallData.callerSocketId
+        callerSocketId: incomingCallData.callerSocketId,
+        recipientId: user._id || user.id,
+        recipientName: user.username || 'Utilisateur',
+        chatId: incomingCallData.chatId
       });
       
       channelNameRef.current = incomingCallData.channelName;
       
+      // Démarrer immédiatement l'appel Agora
       await fetchTokenAndStartCall(incomingCallData.channelName);
       
       setIncomingCallData(null);
@@ -298,6 +372,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       console.error('Erreur acceptation appel:', error);
       setDebugInfo(`Erreur acceptation: ${error.message}`);
       setCallStatus('idle');
+      stopRingtone();
     }
   };
 
@@ -305,10 +380,14 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
   const rejectIncomingCall = () => {
     if (!incomingCallData) return;
     
+    // Fermer le modal global s'il est ouvert
+    setShowIncomingCallModal(false);
+    
     socketService.socket.emit('reject-video-call', {
       channelName: incomingCallData.channelName,
       callerId: incomingCallData.callerId,
       callerSocketId: incomingCallData.callerSocketId,
+      recipientId: user._id || user.id,
       reason: 'declined'
     });
     
@@ -361,6 +440,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       
       alert(`Erreur de connexion à l'appel: ${error.message}`);
       setCallStatus('idle');
+      stopRingtone();
     }
   };
 
@@ -401,6 +481,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       console.error('Erreur démarrage Agora:', error);
       setDebugInfo(`Erreur Agora: ${error.message}`);
       setCallStatus('idle');
+      stopRingtone();
     }
   };
 
@@ -433,6 +514,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     setRemoteStreams([]);
     setIncomingCallData(null);
     setDebugInfo('Appel terminé');
+    stopRingtone();
     
     setTimeout(() => {
       if (onClose) onClose();
@@ -458,11 +540,62 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
   // Jouer une sonnerie
   const playRingtone = () => {
     console.log('🔔 Sonnerie jouée');
+    stopRingtone(); // Arrêter d'abord si en cours
+    
+    try {
+      // Créer une sonnerie simple si pas de fichier
+      ringtoneAudioRef.current = new Audio();
+      
+      // Créer un contexte audio pour générer un bip
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      gainNode.gain.value = 0.3;
+      
+      oscillator.start();
+      
+      // Arrêter après 0.5s et redémarrer
+      oscillator.stop(audioContext.currentTime + 0.5);
+      
+      // Répéter toutes les 2 secondes
+      ringtoneAudioRef.current.interval = setInterval(() => {
+        const newOscillator = audioContext.createOscillator();
+        const newGain = audioContext.createGain();
+        
+        newOscillator.connect(newGain);
+        newGain.connect(audioContext.destination);
+        
+        newOscillator.frequency.value = 800;
+        newOscillator.type = 'sine';
+        newGain.gain.value = 0.3;
+        
+        newOscillator.start();
+        newOscillator.stop(audioContext.currentTime + 0.5);
+      }, 2000);
+      
+    } catch (error) {
+      console.log('Sonnerie non supportée:', error);
+    }
   };
 
   // Arrêter la sonnerie
   const stopRingtone = () => {
     console.log('🔕 Sonnerie arrêtée');
+    if (ringtoneAudioRef.current) {
+      if (ringtoneAudioRef.current.interval) {
+        clearInterval(ringtoneAudioRef.current.interval);
+      }
+      if (ringtoneAudioRef.current.pause) {
+        ringtoneAudioRef.current.pause();
+      }
+      ringtoneAudioRef.current = null;
+    }
   };
 
   // Formater la durée
@@ -472,7 +605,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Rendu de l'appel entrant (modal)
+  // Rendu du modal d'appel entrant (quand on est DÉJÀ dans VideoCallScreen)
   if (callStatus === 'ringing' && incomingCallData) {
     return (
       <div className="video-call-screen ringing-screen">
