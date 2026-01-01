@@ -1,186 +1,593 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Mic, MicOff, Video, VideoOff, Phone, Settings } from 'lucide-react';
+import agoraService from '../services/agoraService';
+import socketService from '../services/socketService';
+import axios from 'axios';
+import { useAuth } from '../hooks/useAuth';
+import './VideoCallScreen.css';
+import '../utils/socketHelper'
 
-import React from "react";
-import { Phone, Mic, Video, Volume2, Users } from "lucide-react";
+const VideoCallScreen = ({ selectedChat, onClose }) => {
+  const { user } = useAuth();
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const [remoteStreams, setRemoteStreams] = useState([]);
+  const [isCalling, setIsCalling] = useState(false);
+  const [callStatus, setCallStatus] = useState('idle'); // idle, calling, ringing, in-call, ended
+  const [incomingCallData, setIncomingCallData] = useState(null);
+  
+  const localVideoRef = useRef(null);
+  const remoteVideoRefs = useRef({});
+  const callTimerRef = useRef(null);
+  const channelNameRef = useRef(`call_${selectedChat?._id}_${Date.now()}`);
 
-export default function VideoCallScreen({ selectedChat, onClose }) {
+  // Initialiser Agora
+  useEffect(() => {
+    agoraService.initializeClient();
+    
+    const socket = socketService.socket;
+    if (!socket) return;
 
-  const safeChat = {
-    name: selectedChat?.name || "Utilisateur",
-    avatar: selectedChat?.avatar || "https://i.pravatar.cc/150?img=5",
+    // 🆕 Écouter les événements d'appel (noms d'événements CORRIGÉS)
+    socket.on('incoming-video-call', (data) => {
+      console.log('📞 Appel entrant reçu:', data);
+      if (data.chatId === selectedChat?._id) {
+        setIncomingCallData(data);
+        setCallStatus('ringing');
+      }
+    });
+
+    // 🆕 Appel accepté (nouveau nom d'événement)
+    socket.on('video-call-accepted', (data) => {
+      console.log('✅ Appel accepté:', data);
+      if (data.channelName === channelNameRef.current) {
+        // Récupérer le token et démarrer Agora
+        fetchTokenAndStartCall(channelNameRef.current);
+      }
+    });
+  
+
+    // 🆕 Appel refusé (nouveau nom d'événement)
+    socket.on('video-call-rejected', (data) => {
+      console.log('❌ Appel refusé:', data);
+      setCallStatus('rejected');
+      alert(`L'appel a été refusé: ${data.reason || 'Par l\'utilisateur'}`);
+      setIsCalling(false);
+    });
+
+    // 🆕 Appel terminé (nouveau nom d'événement)
+    socket.on('video-call-ended', (data) => {
+      console.log('📞 Appel terminé:', data);
+      if (data.channelName === channelNameRef.current) {
+        handleEndCall();
+      }
+    });
+
+    // 🆕 Confirmation que l'appel a été initié
+    socket.on('call-initiated', (data) => {
+      console.log('📞 Appel initié avec succès:', data);
+      // L'appel est en attente de réponse
+      setCallStatus('calling');
+    });
+
+    // 🆕 Erreur d'appel
+    socket.on('call-error', (data) => {
+      console.error('💥 Erreur appel:', data);
+      alert(`Erreur: ${data.error}`);
+      setIsCalling(false);
+      setCallStatus('idle');
+    });
+
+    return () => {
+      if (socket) {
+        socket.off('incoming-video-call');
+        socket.off('video-call-accepted');
+        socket.off('video-call-rejected');
+        socket.off('video-call-ended');
+        socket.off('call-initiated');
+        socket.off('call-error');
+      }
+      clearInterval(callTimerRef.current);
+    };
+  }, [selectedChat]);
+
+  // Mettre à jour la vidéo locale
+  useEffect(() => {
+    if (agoraService.localVideoTrack && localVideoRef.current) {
+      agoraService.localVideoTrack.play(localVideoRef.current);
+    }
+  }, [isCallActive]);
+  useEffect(() => {
+  // Debug socket au chargement
+  console.log('🔍 VideoCallScreen monté - Socket état:', {
+    socketService: socketService,
+    socket: socketService.socket,
+    connected: socketService.socket?.connected,
+    socketId: socketService.socket?.id,
+    userToken: localStorage.getItem('token') ? '✅' : '❌'
+  });
+  
+  // Test de connexion
+  const testSocket = async () => {
+    const token = localStorage.getItem('token');
+    if (token && (!socketService.socket || !socketService.socket.connected)) {
+      console.log('🔄 Tentative de connexion socket...');
+      socketService.connect(token);
+    }
+  };
+  
+  testSocket();
+}, []);
+
+  // Mettre à jour les vidéos distantes
+  useEffect(() => {
+    Object.keys(remoteVideoRefs.current).forEach(uid => {
+      const userData = agoraService.remoteUsers.get(parseInt(uid));
+      if (userData?.videoTrack && remoteVideoRefs.current[uid]) {
+        userData.videoTrack.play(remoteVideoRefs.current[uid]);
+      }
+    });
+  }, [remoteStreams]);
+
+  // 🆕 Gérer un appel entrant (avec modal améliorée)
+  const handleIncomingCall = (data) => {
+    setIncomingCallData(data);
+    setCallStatus('ringing');
+    
+    // Jouer une sonnerie
+    playRingtone();
   };
 
-  const [isMinimized, setIsMinimized] = React.useState(false);
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  // 🆕 Accepter un appel entrant
+  const acceptIncomingCall = async () => {
+    if (!incomingCallData) return;
+    
+    try {
+      setCallStatus('connecting');
+      
+      // Émettre l'acceptation via Socket
+      socketService.socket.emit('accept-video-call', {
+        channelName: incomingCallData.channelName,
+        callerId: incomingCallData.callerId,
+        callerSocketId: incomingCallData.callerSocketId
+      });
+      
+      // Mettre à jour le channel pour cet appel
+      channelNameRef.current = incomingCallData.channelName;
+      
+      // Récupérer le token et démarrer Agora
+      await fetchTokenAndStartCall(incomingCallData.channelName);
+      
+      setIncomingCallData(null);
+      stopRingtone();
+      
+    } catch (error) {
+      console.error('Erreur acceptation appel:', error);
+      setCallStatus('idle');
+    }
+  };
 
-  return (
-    <div className="absolute inset-0 flex items-center justify-center z-50">
+  // 🆕 Refuser un appel entrant
+  const rejectIncomingCall = () => {
+    if (!incomingCallData) return;
+    
+    socketService.socket.emit('reject-video-call', {
+      channelName: incomingCallData.channelName,
+      callerId: incomingCallData.callerId,
+      callerSocketId: incomingCallData.callerSocketId,
+      reason: 'declined'
+    });
+    
+    setIncomingCallData(null);
+    setCallStatus('idle');
+    stopRingtone();
+  };
 
-      <div
-        className={`
-          relative shadow-xl overflow-hidden bg-[#d9b899] 
-          transition-all duration-300 ease-in-out
+  // 🆕 Démarrer un appel sortant (corrigé)
+const startOutgoingCall = async () => {
+  console.log('🔍 === DÉBUT startOutgoingCall ===');
+  
+  // 1. Vérifications de base
+  if (!selectedChat?.participants || selectedChat.participants.length < 2) {
+    alert('Conversation invalide');
+    return;
+  }
+  
+  const currentUserId = user._id || user.id;
+  
+  // 2. Trouver l'autre participant
+  const otherParticipant = selectedChat.participants.find(
+    participant => (participant._id || participant.id) !== currentUserId
+  );
+  
+  if (!otherParticipant) {
+    alert('Aucun autre participant trouvé dans la conversation');
+    return;
+  }
+  
+  console.log('🎯 Appel à:', {
+    currentUser: currentUserId,
+    otherUser: otherParticipant._id || otherParticipant.id,
+    otherUsername: otherParticipant.username
+  });
+  
+  setIsCalling(true);
+  setCallStatus('calling');
+  
+  const channelName = `call_${selectedChat._id}_${Date.now()}`;
+  channelNameRef.current = channelName;
+  
+  try {
+    // 3. Importer le helper (faites-le en haut du fichier)
+    const SocketHelper = (await import('../utils/socketHelper')).default;
+    
+    // 4. Garantir la connexion socket
+    console.log('🔌 Vérification connexion socket...');
+    await SocketHelper.ensureConnection();
+    
+    console.log('✅ Socket prêt, émission événement...');
+    
+    // 5. Émettre l'événement avec gestion d'erreur
+    const callData = {
+      chatId: selectedChat._id,
+      channelName: channelName,
+      callerId: currentUserId,
+      callerName: user.username,
+      recipientId: otherParticipant._id || otherParticipant.id
+    };
+    
+    // Émission simple (sans callback)
+    socketService.socket.emit('initiate-video-call', callData);
+    
+    console.log('📤 Événement envoyé:', callData);
+    
+    // 6. Timeout pour réponse
+    setTimeout(() => {
+      if (callStatus === 'calling') {
+        console.log('⏰ Timeout: Appel non répondu');
+        alert('L\'appel n\'a pas été répondu');
+        setIsCalling(false);
+        setCallStatus('ended');
+      }
+    }, 30000);
+    
+  } catch (error) {
+    console.error('💥 Erreur connexion socket:', error);
+    alert(`Erreur de connexion: ${error.message}`);
+    setIsCalling(false);
+    setCallStatus('idle');
+  }
+  
+  console.log('🔚 === FIN startOutgoingCall ===');
+};
+  // 🆕 Fonction pour récupérer token et démarrer Agora
+  const fetchTokenAndStartCall = async (channel) => {
+  try {
+    const response = await axios.post('http://localhost:5000/api/agora/generate-token', {
+      channelName: channel,
+      uid: user._id || user.id,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-          ${isFullscreen 
-            ? "fixed inset-0 w-screen h-screen rounded-none z-[9999]" 
-            : "w-[92%] md:w-[72%] h-[87%] rounded-xl"
-          }
+    console.log('✅ Token reçu:', response.data);
+    
+    if (response.data.success) {
+      await startAgoraCall(
+  response.data.token,
+  channel,
+  response.data.uid // ✅ PAS user._id
+);
 
-          ${isMinimized 
-            ? "fixed bottom-6 right-6 w-48 h-32 rounded-xl z-[9999]" 
-            : ""
-          }
-        `}
-      >
+    } else {
+      throw new Error(response.data.error || 'Erreur génération token');
+    }
+  } catch (error) {
+    console.error('❌ Erreur token Agora:', error);
+    
+    // Message d'erreur plus utile
+    if (error.response) {
+      console.error('Détails erreur:', {
+        status: error.response.status,
+        data: error.response.data,
+        url: error.config.url
+      });
+      
+      if (error.response.status === 404) {
+        alert(`Route non trouvée: ${error.config.url}\nVérifiez que le backend tourne sur le port 5000.`);
+      } else if (error.response.status === 401) {
+        alert('Token expiré. Veuillez vous reconnecter.');
+      }
+    }
+    
+    alert(`Erreur de connexion à l'appel: ${error.message}`);
+    setCallStatus('idle');
+  }
+};
 
-        {/* RESTORE BUTTON when minimized */}
-        {isMinimized && (
-          <button
-            onClick={() => setIsMinimized(false)}
-            className="absolute top-1 left-1 bg-black/60 text-white px-2 py-1 rounded-md text-xs z-[10000]"
-          >
-            ↖
-          </button>
-        )}
+  // 🆕 Démarrer l'appel Agora
+  const startAgoraCall = async (token, channel, uid) => {
+    try {
+      const result = await agoraService.joinChannel(channel, token,  uid);
+      
+      if (result.success) {
+        setIsCallActive(true);
+        setCallStatus('in-call');
+        setIsCalling(false);
+        
+        // Rejoindre la room Socket pour ce canal
+        socketService.socket.emit('join-call-room', channel);
+        
+        // Démarrer le timer de durée d'appel
+        callTimerRef.current = setInterval(() => {
+          setCallDuration(prev => prev + 1);
+        }, 1000);
+        
+        // Mettre à jour les streams distants
+        updateRemoteStreams();
+        
+        console.log('✅ Appel Agora démarré avec succès');
+      }
+    } catch (error) {
+      console.error('Erreur démarrage Agora:', error);
+      setCallStatus('idle');
+    }
+  };
 
-        {/* TOP RIGHT ICONS */}
-        {!isMinimized && (
-          <div className="absolute top-4 right-4 z-50 flex items-center gap-3
-            bg-black/40 backdrop-blur-sm px-3 py-2 rounded-xl"
-          >
+  // Mettre à jour les streams distants
+  const updateRemoteStreams = () => {
+    const streams = Array.from(agoraService.remoteUsers.entries()).map(([uid, data]) => ({
+      uid,
+      hasVideo: !!data.videoTrack,
+      hasAudio: !!data.audioTrack,
+    }));
+    setRemoteStreams(streams);
+  };
 
-            {/* MINIMIZE */}
-            <button
-              onClick={() => {
-                setIsMinimized(true);
-                setIsFullscreen(false);
-              }}
-            >
-              <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
-                <rect x="4" y="11" width="16" height="2" />
-              </svg>
+  // 🆕 Terminer l'appel (corrigé)
+  const endCall = async () => {
+    clearInterval(callTimerRef.current);
+    
+    // Quitter la room Socket
+    socketService.socket.emit('leave-call-room', channelNameRef.current);
+    
+    // Notifier l'autre participant
+    const recipientId = selectedChat?.participants?.[0]?._id;
+    if (recipientId) {
+      socketService.socket.emit('end-video-call', {
+        channelName: channelNameRef.current,
+        recipientIds: [recipientId]
+      });
+    }
+
+    // Quitter le canal Agora
+    await agoraService.leaveChannel();
+    
+    // Réinitialiser les états
+    handleEndCall();
+  };
+
+  // 🆕 Gestion de fin d'appel
+  const handleEndCall = () => {
+    setIsCallActive(false);
+    setIsCalling(false);
+    setCallStatus('ended');
+    setCallDuration(0);
+    setRemoteStreams([]);
+    setIncomingCallData(null);
+    
+    // Fermer après un délai
+    setTimeout(() => {
+      if (onClose) onClose();
+    }, 2000);
+  };
+
+  // Basculer micro
+  const toggleMicrophone = async () => {
+    const newState = !isMuted;
+    setIsMuted(newState);
+    await agoraService.toggleMicrophone(!newState);
+  };
+
+  // Basculer caméra
+  const toggleCamera = async () => {
+    const newState = !isVideoOff;
+    setIsVideoOff(newState);
+    await agoraService.toggleCamera(!newState);
+  };
+
+  // 🆕 Jouer une sonnerie
+  const playRingtone = () => {
+    // Implémentez une sonnerie si nécessaire
+    console.log('🔔 Sonnerie jouée');
+  };
+
+  // 🆕 Arrêter la sonnerie
+  const stopRingtone = () => {
+    console.log('🔕 Sonnerie arrêtée');
+  };
+
+  // Formater la durée
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // 🆕 Rendu de l'appel entrant (modal)
+  if (callStatus === 'ringing' && incomingCallData) {
+    return (
+      <div className="video-call-screen ringing-screen">
+        <div className="ringing-container">
+          <div className="ringing-avatar">
+            {incomingCallData.callerName?.charAt(0).toUpperCase() || 'U'}
+          </div>
+          
+          <div className="ringing-info">
+            <h3>Appel entrant</h3>
+            <p>{incomingCallData.callerName} vous appelle</p>
+          </div>
+          
+          <div className="ringing-controls">
+            <button className="btn-accept-call" onClick={acceptIncomingCall}>
+              <Phone size={24} />
+              <span>Accepter</span>
             </button>
-
-            {/* FULLSCREEN */}
-            <button
-              onClick={() => {
-                setIsFullscreen(!isFullscreen);
-                setIsMinimized(false);
-              }}
-            >
-              <svg width="22" height="22" fill="white" viewBox="0 0 24 24">
-                <path d="M7 14H5v5h5v-2H7v-3zm0-4h2V7h3V5H7v5zm10 9h-3v2h5v-5h-2v3zm0-9V5h-5v2h3v3h2z"/>
-              </svg>
+            
+            <button className="btn-reject-call" onClick={rejectIncomingCall}>
+              <X size={24} />
+              <span>Refuser</span>
             </button>
-
           </div>
-        )}
-
-        {/* VIDEO */}
-        <img
-          src={safeChat.avatar}
-          className="w-full h-full object-cover"
-        />
-
-        {/* MINI VIDEO */}
-        {!isMinimized && (
-          <div className="absolute right-6 top-1/2 -translate-y-1/2 
-            w-32 h-36 bg-white rounded-xl shadow-md overflow-hidden"
-          >
-            <img
-              src="https://i.pravatar.cc/150?img=12"
-              className="w-full h-full object-cover"
-            />
+          
+          <div className="ringing-animation">
+            <div className="ring"></div>
+            <div className="ring"></div>
+            <div className="ring"></div>
           </div>
-        )}
+        </div>
+      </div>
+    );
+  }
 
-        {/* NAME + TIMER */}
-        {!isMinimized && (
-          <div className="
-            absolute left-1/2 -translate-x-1/2 top-90
-            px-4 py-1.5 bg-black/30 text-black bg-white/22 backdrop-blur-md 
-            rounded-xl border border-myYellow flex items-center gap-8 md:gap-11 text-sm
-          ">
-            <div className="flex items-center gap-2">
-              <img
-                src={safeChat.avatar}
-                className="w-6 h-6 rounded-full"
-              />
-              <span className="font-medium">{safeChat.name}</span>
-            </div>
-
-            <div className="flex items-center gap-1 text-red-400 font-semibold">
-              <span className="text-[10px]">●</span>
-              <span>07:23</span>
-            </div>
+  // Rendu de l'appel en cours
+  if (isCallActive) {
+    return (
+      <div className="video-call-screen">
+        <div className="video-call-container">
+          {/* Vidéo distante (plein écran) */}
+          <div className="remote-video-container">
+            {remoteStreams.map(stream => (
+              <div key={stream.uid} className="remote-video-wrapper">
+                <div
+                  ref={el => remoteVideoRefs.current[stream.uid] = el}
+                  className="remote-video"
+                />
+                {!stream.hasVideo && (
+                  <div className="no-video-placeholder">
+                    <div className="user-avatar">
+                      {selectedChat.participants[0]?.username?.charAt(0).toUpperCase()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
-        )}
 
-        {/* BOTTOM CONTROLS */}
-        {!isMinimized && (
-          <div className="
-            absolute bottom-9 left-1/2 -translate-x-1/2 
-            w-[90%] sm:w-[85%] bg-white/25 backdrop-blur-md 
-            py-2 rounded-xl shadow-md flex flex-wrap
-            items-center justify-between gap-3 px-4 border border-myYellow
-          ">
+          {/* Vidéo locale (picture-in-picture) */}
+          <div className="local-video-pip">
+            <div ref={localVideoRef} className="local-video" />
+            {isVideoOff && (
+              <div className="video-off-indicator">
+                <VideoOff size={24} />
+              </div>
+            )}
+          </div>
 
-            {/* USERS */}
-            <div className="flex items-center gap-2 text-black font-semibold w-auto">
-              <svg width="20" height="20" fill="black" viewBox="0 0 24 24">
-                <path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm-8 0a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-2.67 0-8 1.34-8 4v2h8v-2c0-.69.1-1.35.29-2-.88-.63-1.46-1.64-1.46-2zm8 0c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-              </svg>
-              <span>2</span>
+          {/* Contrôles */}
+          <div className="call-controls">
+            <div className="call-duration">
+              {formatDuration(callDuration)}
             </div>
-
-            {/* ICONS CENTER (RESPONSIVE) */}
-            <div className="flex-1 flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
-
-              {/* Micro */}
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow">
-                <svg width="20" height="20" fill="black" viewBox="0 0 24 24">
-                  <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
-                  <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-3.08A7 7 0 0 0 19 11z"/>
-                </svg>
-              </div>
-
-              {/* Camera */}
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow">
-                <svg width="22" height="22" fill="black" viewBox="0 0 24 24">
-                  <path d="M17 10.5V7a2 2 0 0 0-2-2H5A2 2 0 0 0 3 7v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5l4 4v-11l-4 4z"/>
-                </svg>
-              </div>
-
-              {/* Volume */}
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow">
-                <svg width="22" height="22" fill="black" viewBox="0 0 24 24">
-                  <path d="M11 5 6.5 9H3v6h3.5L11 19V5z"/>
-                  <path d="M14.54 8.46a5 5 0 0 1 0 7.07l1.41 1.41a7 7 0 0 0 0-9.9l-1.41 1.42z"/>
-                </svg>
-              </div>
-
-              {/* Share */}
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow">
-                <svg width="25" height="25" fill="black" viewBox="0 0 24 24">
-                  <rect x="3" y="4" width="18" height="12" rx="2"/>
-                  <path d="M12 7l3 3h-2v5h-2v-5H9l3-3z" fill="white"/>
-                </svg>
-              </div>
-
-              {/* HANGUP */}
-              <button
-                onClick={onClose}
-                className="px-5 h-10 bg-red-600 rounded-full flex items-center justify-center shadow"
+            
+            <div className="control-buttons">
+              <button 
+                className={`control-btn ${isMuted ? 'btn-active' : ''}`}
+                onClick={toggleMicrophone}
               >
-                <svg width="22" height="22" fill="white" viewBox="0 0 24 24">
-                  <path d="M21.71 16.29l-3-3a1 1 0 0 0-1.41 0l-1.72 1.72a15 15 0 0 1-7.16-7.16L9.14 6.13a1 1 0 0 0 0-1.41l-3-3a1 1 0 0 0-1.41 0L2.29 4.16a3 3 0 0 0-.78 2.89 19 19 0 0 0 16.42 16.42 3 3 0 0 0 2.89-.78l2.44-2.44a1 1 0 0 0 0-1.41z"/>
-                </svg>
+                {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
               </button>
-
+              
+              <button 
+                className={`control-btn ${isVideoOff ? 'btn-active' : ''}`}
+                onClick={toggleCamera}
+              >
+                {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
+              </button>
+              
+              <button 
+                className="control-btn btn-end-call"
+                onClick={endCall}
+              >
+                <Phone size={20} />
+              </button>
             </div>
           </div>
-        )}
 
+          {/* Bouton fermer */}
+          <button className="close-call-btn" onClick={onClose}>
+            <X size={24} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Rendu de l'écran d'appel (avant connexion)
+  if (isCalling) {
+    return (
+      <div className="video-call-screen calling-screen">
+        <div className="calling-container">
+          <div className="calling-avatar">
+            {selectedChat.participants[0]?.username?.charAt(0).toUpperCase()}
+          </div>
+          
+          <div className="calling-info">
+            <h3>Appel en cours...</h3>
+            <p>Appel de {selectedChat.participants[0]?.username}</p>
+          </div>
+          
+          <div className="calling-controls">
+            <button className="btn-cancel-call" onClick={endCall}>
+              <Phone size={24} />
+              <span>Annuler</span>
+            </button>
+          </div>
+          
+          <div className="ringing-animation">
+            <div className="ring"></div>
+            <div className="ring"></div>
+            <div className="ring"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Écran initial (bouton pour démarrer l'appel)
+  return (
+    <div className="video-call-screen init-screen">
+      <div className="call-init-container">
+        <div className="user-info">
+          <div className="user-avatar-large">
+            {selectedChat.participants[0]?.username?.charAt(0).toUpperCase()}
+          </div>
+          <h3>{selectedChat.participants[0]?.username}</h3>
+          <p>Prêt pour un appel vidéo ?</p>
+        </div>
+        
+        <div className="init-controls">
+          <button className="btn-start-call" onClick={startOutgoingCall}>
+            <Video size={24} />
+            <span>Démarrer l'appel vidéo</span>
+          </button>
+          
+          <button className="btn-close" onClick={onClose}>
+            Annuler
+          </button>
+        </div>
+        
+        <div className="permissions-note">
+          <p>Assurez-vous d'avoir autorisé l'accès au micro et à la caméra</p>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default VideoCallScreen;

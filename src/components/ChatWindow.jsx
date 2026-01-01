@@ -378,7 +378,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
     const fromMe =
       currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
 
-    console.log("🔍 message from", { currentUserId, messageSenderId, fromMe, msg });
+    
 
     const { reactions, addReaction, removeReaction } = useReactions(msg._id);
 
