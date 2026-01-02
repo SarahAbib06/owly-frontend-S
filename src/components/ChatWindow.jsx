@@ -273,6 +273,8 @@ const handleOnline = ({ userId }) => {
   const [sendBtnColor, setSendBtnColor] = useState("");
   const [themeEmojis, setThemeEmojis] = useState([]);
   const [inputText, setInputText] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null); 
+  const [filePreview, setFilePreview] = useState(null); 
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState([]);
@@ -440,40 +442,46 @@ useEffect(() => {
 
   // Envoyer un message
   const handleSendMessage = async () => {
-    if (!inputText.trim()) return;
-
-    try {
-      await sendMessage({
-      content: inputText.trim(),
-      Id_receiver: otherUserId,
-    });
-      setInputText("");
-    } catch (error) {
-      console.error("Erreur envoi message:", error);
-      alert("Erreur lors de l'envoi du message");
-    }
-  };
-
-  // Gérer l'upload de fichiers
-  const handleFileSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      const fileType = file.type;
-
-      if (fileType.startsWith("image/")) {
-        await sendImage(file);
-      } else if (fileType.startsWith("video/")) {
-        await sendVideo(file);
+  try {
+    // 📎 envoyer fichier
+    if (selectedFile) {
+      if (selectedFile.type.startsWith("image/")) {
+        await sendImage(selectedFile);
+      } else if (selectedFile.type.startsWith("video/")) {
+        await sendVideo(selectedFile);
       } else {
-        await sendFile(file);
+        await sendFile(selectedFile);
       }
-    } catch (error) {
-      console.error("Erreur upload fichier:", error);
-      alert("Erreur lors de l'envoi du fichier");
+
+      setSelectedFile(null);
+      setFilePreview(null);
+      return;
     }
-  };
+
+    // ✍️ envoyer texte
+    if (!inputText.trim()) return;
+    await sendMessage(inputText);
+    setInputText("");
+  } catch (error) {
+    console.error("Erreur envoi:", error);
+  }
+};
+
+    
+  // Gérer l'upload de fichiers
+  const handleFileSelect = (e) => { 
+  const file = e.target.files[0]; 
+  if (!file) return; 
+ 
+  setSelectedFile(file); 
+ 
+  if (file.type.startsWith("image/") || 
+file.type.startsWith("video/")) { 
+    setFilePreview(URL.createObjectURL(file)); 
+  } else { 
+    setFilePreview(null); 
+  } 
+};
 
   // Enregistrement audio
   const handleMicClick = async () => {
@@ -799,7 +807,7 @@ useEffect(() => {
 
               {msg.typeMessage === "image" && (
                 <img
-                  src={msg.fileUrl}
+                  src={msg.content} 
                   alt="image"
                   className="max-w-full rounded mt-1"
                   style={{ maxHeight: "300px" }}
@@ -808,7 +816,7 @@ useEffect(() => {
 
               {msg.typeMessage === "video" && (
                 <video
-                  src={msg.fileUrl}
+                  src={msg.content} 
                   controls
                   className="max-w-full rounded mt-1"
                   style={{ maxHeight: "300px" }}
@@ -818,16 +826,17 @@ useEffect(() => {
               {msg.typeMessage === "audio" && (
                 <AudioMessage src={msg.content || msg.fileUrl} />
               )}
-
               {msg.typeMessage === "file" && (
                 <a
-                  href={msg.fileUrl}
+                  href={msg.content}
                   download
                   className="flex items-center gap-2 underline"
                 >
                   📎 {msg.fileName || "Fichier"}
                 </a>
               )}
+
+              
             </div>
 
             {showMessageMenu === msg._id && (
@@ -1247,6 +1256,33 @@ useEffect(() => {
             </button>
           </div>
         )}
+        {selectedFile && (
+  <div className="mb-2 p-2 border rounded bg-white dark:bg-neutral-800">
+    {selectedFile.type.startsWith("image/") && (
+      <img src={filePreview} className="max-h-40 rounded" />
+    )}
+
+    {selectedFile.type.startsWith("video/") && (
+      <video src={filePreview} controls className="max-h-40 rounded" />
+    )}
+
+    {!selectedFile.type.startsWith("image/") &&
+     !selectedFile.type.startsWith("video/") && (
+      <p className="text-sm">📎 {selectedFile.name}</p>
+    )}
+
+    <button
+      onClick={() => {
+        setSelectedFile(null);
+        setFilePreview(null);
+      }}
+      className="text-xs text-red-500 underline mt-1"
+    >
+      Annuler
+    </button>
+  </div>
+)}
+
 
         <div className="flex items-center gap-2  w-full">
           <div className="flex-1 flex items-center gap-1 px-2 py-2 rounded-xl  bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
@@ -1282,19 +1318,25 @@ useEffect(() => {
             className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
             style={{ background: sendBtnColor || "#FFD700" }}
             onClick={
-              inputText.trim() === "" ? handleMicClick : handleSendMessage
-            }
+     selectedFile
+    ? handleSendMessage
+    : inputText.trim() === ""
+    ? handleMicClick
+    : handleSendMessage
+}
+
           >
-            {inputText.trim() === "" ? (
-              <Mic
-                size={18}
-                className={`text-gray-700 dark:text-gray-300 ${
-                  isRecording ? "animate-pulse text-red-500" : ""
-                }`}
-              />
-            ) : (
-              <Send size={18} />
-            )}
+            {selectedFile || inputText.trim() !== "" ? (
+  <Send size={18} />
+) : (
+  <Mic
+    size={18}
+    className={`text-gray-700 dark:text-gray-300 ${
+      isRecording ? "animate-pulse text-red-500" : ""
+    }`}
+  />
+)}
+
           </button>
        </div>
       
