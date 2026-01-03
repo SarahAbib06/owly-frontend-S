@@ -489,11 +489,17 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
   const endCall = async () => {
     clearInterval(callTimerRef.current);
     setDebugInfo('Fin de l\'appel...');
-    
+
     socketService.socket.emit('leave-call-room', channelNameRef.current);
-    
-    const recipientId = selectedChat?.participants?.[0]?._id;
-    if (recipientId) {
+
+    // Trouver l'autre participant dans la conversation (pas l'utilisateur actuel)
+    const currentUserId = user._id || user.id;
+    const otherParticipant = selectedChat?.participants?.find(
+      participant => (participant._id || participant.id) !== currentUserId
+    );
+
+    if (otherParticipant) {
+      const recipientId = otherParticipant._id || otherParticipant.id;
       socketService.socket.emit('end-video-call', {
         channelName: channelNameRef.current,
         recipientIds: [recipientId]
@@ -501,7 +507,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     }
 
     await agoraService.leaveChannel();
-    
+
     handleEndCall();
   };
 
@@ -608,33 +614,46 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
   // Rendu du modal d'appel entrant (quand on est DÉJÀ dans VideoCallScreen)
   if (callStatus === 'ringing' && incomingCallData) {
     return (
-      <div className="video-call-screen ringing-screen">
-        <div className="ringing-container">
-          <div className="ringing-avatar">
-            {incomingCallData.callerName?.charAt(0).toUpperCase() || 'U'}
-          </div>
-          
-          <div className="ringing-info">
-            <h3>Appel entrant</h3>
-            <p>{incomingCallData.callerName} vous appelle</p>
-          </div>
-          
-          <div className="ringing-controls">
-            <button className="btn-accept-call" onClick={acceptIncomingCall}>
-              <Phone size={24} />
-              <span>Accepter</span>
-            </button>
-            
-            <button className="btn-reject-call" onClick={rejectIncomingCall}>
-              <X size={24} />
-              <span>Refuser</span>
-            </button>
-          </div>
-          
-          <div className="ringing-animation">
-            <div className="ring"></div>
-            <div className="ring"></div>
-            <div className="ring"></div>
+      <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-8 max-w-md w-full text-white shadow-2xl">
+          <div className="text-center">
+            <div className="mb-6">
+              <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white/30">
+                <Video size={48} />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Appel vidéo entrant</h3>
+              <p className="text-lg opacity-90">{incomingCallData.callerName}</p>
+              <p className="text-sm opacity-75 mt-1">Vous appelle en vidéo</p>
+            </div>
+
+            <div className="flex justify-center gap-8 mb-6">
+              <button
+                onClick={acceptIncomingCall}
+                className="flex flex-col items-center group"
+              >
+                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-600 transition-colors shadow-lg">
+                  <Video size={24} />
+                </div>
+                <span className="text-sm font-medium">Accepter</span>
+              </button>
+
+              <button
+                onClick={rejectIncomingCall}
+                className="flex flex-col items-center group"
+              >
+                <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mb-2 group-hover:bg-red-600 transition-colors shadow-lg">
+                  <X size={24} />
+                </div>
+                <span className="text-sm font-medium">Refuser</span>
+              </button>
+            </div>
+
+            {/* Animation sonnerie */}
+            <div className="flex justify-center gap-2">
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+            </div>
           </div>
         </div>
       </div>
@@ -654,7 +673,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
                   <div
                     ref={el => {
                       remoteVideoRefs.current[stream.uid] = el;
-                      
+
                       // Quand l'élément DOM est disponible, jouer la vidéo
                       if (el && agoraService.remoteUsers.has(stream.uid)) {
                         setTimeout(() => {
@@ -710,25 +729,25 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
               </div>
               <div className="debug-text">{debugInfo}</div>
             </div>
-            
+
             <div className="control-buttons">
-              <button 
+              <button
                 className={`control-btn ${isMuted ? 'btn-active' : ''}`}
                 onClick={toggleMicrophone}
                 title={isMuted ? 'Activer le micro' : 'Désactiver le micro'}
               >
                 {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
               </button>
-              
-              <button 
+
+              <button
                 className={`control-btn ${isVideoOff ? 'btn-active' : ''}`}
                 onClick={toggleCamera}
                 title={isVideoOff ? 'Activer la caméra' : 'Désactiver la caméra'}
               >
                 {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
               </button>
-              
-              <button 
+
+              <button
                 className="control-btn btn-end-call"
                 onClick={endCall}
                 title="Terminer l'appel"

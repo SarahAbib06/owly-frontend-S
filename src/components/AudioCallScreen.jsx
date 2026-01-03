@@ -17,6 +17,7 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
   const [callStatus, setCallStatus] = useState('idle'); // idle, calling, ringing, in-call, ended
   const [incomingCallData, setIncomingCallData] = useState(propIncomingCallData || null);
   const [debugInfo, setDebugInfo] = useState('');
+  const [isAccepting, setIsAccepting] = useState(false);
   
   const callTimerRef = useRef(null);
   const channelNameRef = useRef(`audio_call_${selectedChat?._id}_${Date.now()}`);
@@ -25,17 +26,18 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
   // 🔥 CRITIQUE: Initialiser directement avec les données d'appel
   useEffect(() => {
     console.log('🎧 [AudioCallScreen] Initialisation avec prop:', propIncomingCallData);
-    
+
     if (propIncomingCallData) {
       console.log('✅ Données d\'appel reçues, initialisation immédiate');
       setIncomingCallData(propIncomingCallData);
-      
+
       // Si c'est un appel entrant (l'autre personne nous appelle)
       const currentUserId = user._id || user.id;
       if (propIncomingCallData.callerId !== currentUserId) {
-        console.log('📞 Appel entrant détecté, mode "ringing" activé');
-        setCallStatus('ringing');
-        playRingtone();
+        console.log('📞 Appel entrant détecté, acceptation automatique depuis ChatWindow');
+        // Puisque l'acceptation a déjà eu lieu dans ChatWindow, démarrer directement l'appel
+        setCallStatus('in-call');
+        fetchTokenAndStartCall(propIncomingCallData.channelName);
       } else {
         // Si c'est nous qui avons initié l'appel
         console.log('📞 Appel sortant détecté');
@@ -44,43 +46,7 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
     }
   }, [propIncomingCallData, user._id, user.id]);
 
-  // 🔥 NOUVEAU: Effet pour démarrer automatiquement quand on accepte
-  useEffect(() => {
-    console.log('🔄 [AudioCallScreen] Effet callStatus:', callStatus);
-    
-    // Si on vient d'accepter un appel (état 'connecting')
-    if (callStatus === 'connecting' && incomingCallData) {
-      console.log('🚀 Démarrage automatique de l\'appel accepté');
-      
-      const startAcceptedCall = async () => {
-        try {
-          // Émettre l'acceptation via socket
-          if (socketService.socket) {
-            socketService.socket.emit('accept-audio-call', {
-              channelName: incomingCallData.channelName,
-              callerId: incomingCallData.callerId,
-              callerSocketId: incomingCallData.callerSocketId,
-              recipientId: user._id || user.id,
-              recipientName: user.username || 'Utilisateur',
-              chatId: incomingCallData.chatId
-            });
-          }
-          
-          // Démarrer l'appel Agora
-          channelNameRef.current = incomingCallData.channelName;
-          await fetchTokenAndStartCall(incomingCallData.channelName);
-          stopRingtone();
-          
-        } catch (error) {
-          console.error('❌ Erreur démarrage appel accepté:', error);
-          setCallStatus('idle');
-          stopRingtone();
-        }
-      };
-      
-      startAcceptedCall();
-    }
-  }, [callStatus, incomingCallData]);
+
 
   // Gérer l'appel entrant audio depuis socket
   useEffect(() => {
@@ -252,19 +218,40 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
 
   // Accepter un appel audio entrant
   const acceptIncomingCall = async () => {
-    if (!incomingCallData) return;
-    
+    if (!incomingCallData || isAccepting) return;
+
     console.log('✅ [AudioCallScreen] Acceptation appel entrant');
-    
+
+    setIsAccepting(true);
+    setDebugInfo('Connexion en cours...');
+
     try {
-      setCallStatus('connecting');
-      setDebugInfo('Acceptation appel audio...');
+      // 1. Arrêter la sonnerie
       stopRingtone();
-      
+
+      // 2. Émettre l'acceptation via socket
+      if (socketService.socket) {
+        socketService.socket.emit('accept-audio-call', {
+          channelName: incomingCallData.channelName,
+          callerId: incomingCallData.callerId,
+          callerSocketId: incomingCallData.callerSocketId,
+          recipientId: user._id || user.id,
+          recipientName: user.username || 'Utilisateur',
+          chatId: incomingCallData.chatId
+        });
+      }
+
+      // 3. Démarrer l'appel Agora immédiatement
+      channelNameRef.current = incomingCallData.channelName;
+      await fetchTokenAndStartCall(incomingCallData.channelName);
+
+      console.log('📤 [AudioCallScreen] Acceptation envoyée et appel démarré');
+
     } catch (error) {
       console.error('Erreur acceptation appel audio:', error);
       setDebugInfo(`Erreur: ${error.message}`);
       setCallStatus('idle');
+      setIsAccepting(false);
       stopRingtone();
     }
   };
@@ -383,11 +370,17 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
   const endCall = async () => {
     clearInterval(callTimerRef.current);
     setDebugInfo('Fin de l\'appel...');
-    
+
     socketService.socket.emit('leave-call-room', channelNameRef.current);
-    
-    const recipientId = selectedChat?.participants?.[0]?._id;
-    if (recipientId) {
+
+    // Trouver l'autre participant (pas nous)
+    const currentUserId = user._id || user.id;
+    const otherParticipant = selectedChat?.participants?.find(
+      participant => (participant._id || participant.id) !== currentUserId
+    );
+
+    if (otherParticipant) {
+      const recipientId = otherParticipant._id || otherParticipant.id;
       socketService.socket.emit('end-audio-call', {
         channelName: channelNameRef.current,
         recipientIds: [recipientId]
@@ -395,7 +388,7 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
     }
 
     await agoraService.leaveChannel();
-    
+
     handleEndCall();
   };
 
@@ -514,13 +507,13 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // 🔥 CRITIQUE: Logique de rendu CORRECTE
+  //🔥 CRITIQUE: Logique de rendu CORRECTE
   console.log('🎧 [AudioCallScreen] RENDU - État:', {
     callStatus,
     isCallActive,
     hasIncomingCallData: !!incomingCallData
   });
-
+ 
   // 1. D'abord l'appel en cours
   if (isCallActive) {
     console.log('✅ Rendu: Appel en cours');
@@ -542,7 +535,7 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
           {/* Contrôles */}
           <div className="audio-controls">
             <div className="control-buttons">
-              <button 
+              <button
                 className={`control-btn ${isMuted ? 'btn-active' : ''}`}
                 onClick={toggleMicrophone}
                 title={isMuted ? 'Activer le micro' : 'Désactiver le micro'}
@@ -550,8 +543,8 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
                 {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
                 <span className="btn-label">{isMuted ? 'Micro coupé' : 'Micro'}</span>
               </button>
-              
-              <button 
+
+              <button
                 className={`control-btn ${isSpeakerOff ? 'btn-active' : ''}`}
                 onClick={toggleSpeaker}
                 title={isSpeakerOff ? 'Activer le haut-parleur' : 'Désactiver le haut-parleur'}
@@ -559,8 +552,8 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
                 {isSpeakerOff ? <VolumeX size={24} /> : <Volume2 size={24} />}
                 <span className="btn-label">{isSpeakerOff ? 'HP coupé' : 'HP'}</span>
               </button>
-              
-              <button 
+
+              <button
                 className="control-btn btn-end-call"
                 onClick={endCall}
                 title="Terminer l'appel"
@@ -584,8 +577,7 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
       </div>
     );
   }
-
-  // 2. Appel entrant (ringing)
+   // 2. Appel entrant (ringing)
   if (callStatus === 'ringing' && incomingCallData) {
     console.log('✅ Rendu: Écran appel entrant (ringing)');
     return (
@@ -594,49 +586,56 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
           <div className="ringing-avatar">
             <User size={48} />
           </div>
-          
+
           <div className="ringing-info">
-            <h3>Appel audio entrant</h3>
-            <p>{incomingCallData.callerName} vous appelle</p>
-            <p className="call-type-badge">📞 Audio</p>
+            {isAccepting ? (
+              <>
+                <h3>Connexion en cours...</h3>
+                <p>Connexion à l'appel audio</p>
+                <p className="call-type-badge">📞 Audio</p>
+              </>
+            ) : (
+              <>
+                <h3>Appel audio entrant</h3>
+                <p>{incomingCallData.callerName} vous appelle</p>
+                <p className="call-type-badge">📞 Audio</p>
+              </>
+            )}
           </div>
-          
-          <div className="ringing-controls">
-            <button className="btn-accept-call" onClick={acceptIncomingCall}>
-              <Phone size={24} />
-              <span>Accepter</span>
-            </button>
-            
-            <button className="btn-reject-call" onClick={rejectIncomingCall}>
-              <X size={24} />
-              <span>Refuser</span>
-            </button>
-          </div>
-          
-          <div className="ringing-animation">
-            <div className="ring"></div>
-            <div className="ring"></div>
-            <div className="ring"></div>
-          </div>
+
+  
+
+          {isAccepting ? (
+            <div className="connecting-spinner"></div>
+          ) : (
+            <div className="ringing-controls">
+              <button className="btn-accept-call" onClick={acceptIncomingCall}>
+                <Phone size={24} />
+                <span>Accepter</span>
+              </button>
+
+              <button className="btn-reject-call" onClick={rejectIncomingCall}>
+                <X size={24} />
+                <span>Refuser</span>
+              </button>
+            </div>
+          )}
+
+          {!isAccepting && (
+            <div className="ringing-animation">
+              <div className="ring"></div>
+              <div className="ring"></div>
+              <div className="ring"></div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // 3. État de connexion (après acceptation)
-  if (callStatus === 'connecting') {
-    console.log('✅ Rendu: Écran de connexion');
-    return (
-      <div className="audio-call-screen connecting-screen">
-        <div className="connecting-container">
-          <div className="connecting-spinner"></div>
-          <h3>Connexion en cours...</h3>
-          <p>Veuillez patienter</p>
-          <div className="debug-info">{debugInfo}</div>
-        </div>
-      </div>
-    );
-  }
+
+
+
 
   // 4. Appel en cours de démarrage (calling)
   if (isCalling || callStatus === 'calling') {

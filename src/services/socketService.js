@@ -14,8 +14,14 @@ class SocketService {
       return this.socket;
     }
 
+    // Nettoyer l'ancienne connexion si elle existe
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
     const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    
+
     console.log('🔌 Connexion Socket.IO à:', SOCKET_URL);
 
     this.socket = io(SOCKET_URL, {
@@ -23,13 +29,17 @@ class SocketService {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000
+      reconnectionDelay: 1000,
+      forceNew: true // Forcer une nouvelle connexion
     });
 
     // Événements de connexion
     this.socket.on('connect', () => {
       console.log('✅ Socket connecté - ID:', this.socket.id);
       this.isConnected = true;
+
+      // Émettre un événement personnalisé pour notifier les composants
+      this.socket.emit('user_connected', { userId: localStorage.getItem('userId') });
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -39,10 +49,21 @@ class SocketService {
 
     this.socket.on('connect_error', (error) => {
       console.error('💥 Erreur connexion Socket:', error.message);
+      this.isConnected = false;
     });
 
     this.socket.on('error', (error) => {
       console.error('💥 Erreur Socket:', error);
+      this.isConnected = false;
+    });
+
+    // Gérer la reconnexion
+    this.socket.on('reconnect', (attemptNumber) => {
+      console.log('🔄 Socket reconnecté après', attemptNumber, 'tentatives');
+      this.isConnected = true;
+
+      // Réémettre l'événement de connexion utilisateur
+      this.socket.emit('user_connected', { userId: localStorage.getItem('userId') });
     });
 
     return this.socket;

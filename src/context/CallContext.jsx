@@ -47,9 +47,18 @@ export const CallProvider = ({ children }) => {
         // si l'utilisateur est sur une autre page
       });
 
+      // Gérer la déconnexion pour nettoyer l'état d'appel
+      socket.on('disconnect', () => {
+        console.log('❌ [CONTEXTE] Socket déconnecté, nettoyage de l\'état d\'appel');
+        setIncomingCall(null);
+        setShowIncomingCallModal(false);
+        localStorage.removeItem('pendingVideoCall');
+      });
+
       return () => {
         socket.off('incoming-video-call');
         socket.off('video-call-accepted');
+        socket.off('disconnect');
       };
     };
 

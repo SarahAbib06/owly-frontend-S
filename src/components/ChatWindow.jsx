@@ -127,8 +127,151 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const [showMessageMenu, setShowMessageMenu] = useState(null);
 
   // État pour gérer les appels entrants
-  const [incomingAudioCall, setIncomingAudioCall] = useState(null);
-  const [showIncomingAudioCall, setShowIncomingAudioCall] = useState(false);
+  const [incomingCallDataForAudio, setIncomingCallDataForAudio] = useState(null);
+
+  // Démarrer un appel audio sortant directement depuis le bouton header
+  const startAudioCallFromHeader = async () => {
+    console.log('🔊 === DÉMARRAGE APPEL AUDIO DIRECT ===');
+
+    if (!selectedChat?.participants || selectedChat.participants.length < 2) {
+      alert('Conversation invalide');
+      return;
+    }
+
+    const currentUserId = user._id || user.id;
+
+    const otherParticipant = selectedChat.participants.find(
+      participant => (participant._id || participant.id) !== currentUserId
+    );
+
+    if (!otherParticipant) {
+      alert('Aucun autre participant trouvé dans la conversation');
+      return;
+    }
+
+    console.log('🎯 Appel audio direct à:', {
+      currentUser: currentUserId,
+      otherUser: otherParticipant._id || otherParticipant.id,
+      otherUsername: otherParticipant.username
+    });
+
+    const channelName = `audio_call_${selectedChat._id}_${Date.now()}`;
+
+    try {
+      // Vérifier la connexion socket
+      if (!socketService.socket?.connected) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          socketService.connect(token);
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+
+      console.log('✅ Socket prêt, émission événement audio...');
+
+      const callData = {
+        chatId: selectedChat._id,
+        channelName: channelName,
+        callerId: currentUserId,
+        callerName: user.username || 'Utilisateur',
+        recipientId: otherParticipant._id || otherParticipant.id,
+        recipientName: otherParticipant.username || 'Utilisateur',
+        timestamp: Date.now(),
+        type: 'audio',
+        callerSocketId: socketService.socket.id
+      };
+
+      socketService.socket.emit('initiate-audio-call', callData);
+      console.log('📤 Événement audio envoyé:', callData);
+
+      // Ouvrir AudioCallScreen en mode appel sortant
+      setIsAudioCallOpen(true);
+
+      // Timeout pour réponse
+      setTimeout(() => {
+        if (!isAudioCallOpen) {
+          console.log('⏰ Timeout: Appel audio non répondu');
+          alert('L\'appel audio n\'a pas été répondu');
+        }
+      }, 30000);
+
+    } catch (error) {
+      console.error('💥 Erreur démarrage appel audio direct:', error);
+      alert(`Erreur: ${error.message}`);
+    }
+  };
+
+  // Démarrer un appel vidéo sortant directement depuis le bouton header
+  const startVideoCallFromHeader = async () => {
+    console.log('🎬 === DÉMARRAGE APPEL VIDÉO DIRECT ===');
+
+    if (!selectedChat?.participants || selectedChat.participants.length < 2) {
+      alert('Conversation invalide');
+      return;
+    }
+
+    const currentUserId = user._id || user.id;
+
+    const otherParticipant = selectedChat.participants.find(
+      participant => (participant._id || participant.id) !== currentUserId
+    );
+
+    if (!otherParticipant) {
+      alert('Aucun autre participant trouvé dans la conversation');
+      return;
+    }
+
+    console.log('🎯 Appel vidéo direct à:', {
+      currentUser: currentUserId,
+      otherUser: otherParticipant._id || otherParticipant.id,
+      otherUsername: otherParticipant.username
+    });
+
+    const channelName = `video_call_${selectedChat._id}_${Date.now()}`;
+
+    try {
+      // Vérifier la connexion socket
+      if (!socketService.socket?.connected) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          socketService.connect(token);
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+
+      console.log('✅ Socket prêt, émission événement vidéo...');
+
+      const callData = {
+        chatId: selectedChat._id,
+        channelName: channelName,
+        callerId: currentUserId,
+        callerName: user.username || 'Utilisateur',
+        recipientId: otherParticipant._id || otherParticipant.id,
+        recipientName: otherParticipant.username || 'Utilisateur',
+        timestamp: Date.now(),
+        type: 'video',
+        callerSocketId: socketService.socket.id
+      };
+
+      socketService.socket.emit('initiate-video-call', callData);
+      console.log('📤 Événement vidéo envoyé:', callData);
+
+      // Ouvrir VideoCallScreen en mode appel sortant
+      setIsVideoCallOpen(true);
+
+      // Timeout pour réponse
+      setTimeout(() => {
+        if (!isVideoCallOpen) {
+          console.log('⏰ Timeout: Appel vidéo non répondu');
+          alert('L\'appel vidéo n\'a pas été répondu');
+        }
+      }, 30000);
+
+    } catch (error) {
+      console.error('💥 Erreur démarrage appel vidéo direct:', error);
+      alert(`Erreur: ${error.message}`);
+    }
+  };
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -180,9 +323,8 @@ export default function ChatWindow({ selectedChat, onBack }) {
         }
         
         // Sauvegarder les données de l'appel
-        setIncomingAudioCall(data);
-        setShowIncomingAudioCall(true);
-        
+        setIncomingCallDataForAudio(data);
+
         // Jouer une sonnerie
         playRingtone();
       }
@@ -199,11 +341,8 @@ export default function ChatWindow({ selectedChat, onBack }) {
     // Écouter le rejet d'appel
     socket.on('audio-call-rejected', (data) => {
       console.log('❌ [ChatWindow] Appel audio refusé:', data);
-      if (showIncomingAudioCall) {
-        setShowIncomingAudioCall(false);
-        setIncomingAudioCall(null);
-        stopRingtone();
-      }
+      setIncomingCallDataForAudio(null);
+      stopRingtone();
     });
 
     return () => {
@@ -503,46 +642,44 @@ export default function ChatWindow({ selectedChat, onBack }) {
 
   // Accepter un appel audio entrant
   const handleAcceptAudioCall = () => {
-    if (!incomingAudioCall) return;
-    
+    if (!incomingCallDataForAudio) return;
+
     console.log('✅ Acceptation appel audio depuis ChatWindow');
-    
+
     // Ouvrir AudioCallScreen avec les données de l'appel
     setIsAudioCallOpen(true);
-    setShowIncomingAudioCall(false);
     stopRingtone();
-    
+
     // Émettre l'acceptation via socket
     const socket = socketService.socket;
-    if (socket && incomingAudioCall) {
+    if (socket && incomingCallDataForAudio) {
       socket.emit('accept-audio-call', {
-        channelName: incomingAudioCall.channelName,
-        callerId: incomingAudioCall.callerId,
-        callerSocketId: incomingAudioCall.callerSocketId,
+        channelName: incomingCallDataForAudio.channelName,
+        callerId: incomingCallDataForAudio.callerId,
+        callerSocketId: incomingCallDataForAudio.callerSocketId,
         recipientId: user._id || user.id,
         recipientName: user.username || 'Utilisateur',
-        chatId: incomingAudioCall.chatId
+        chatId: incomingCallDataForAudio.chatId
       });
     }
   };
 
   // Refuser un appel audio entrant
   const handleRejectAudioCall = () => {
-    if (!incomingAudioCall) return;
-    
+    if (!incomingCallDataForAudio) return;
+
     console.log('❌ Refus appel audio depuis ChatWindow');
-    
-    setShowIncomingAudioCall(false);
-    setIncomingAudioCall(null);
+
+    setIncomingCallDataForAudio(null);
     stopRingtone();
-    
+
     // Émettre le rejet via socket
     const socket = socketService.socket;
-    if (socket && incomingAudioCall) {
+    if (socket && incomingCallDataForAudio) {
       socket.emit('reject-audio-call', {
-        channelName: incomingAudioCall.channelName,
-        callerId: incomingAudioCall.callerId,
-        callerSocketId: incomingAudioCall.callerSocketId,
+        channelName: incomingCallDataForAudio.channelName,
+        callerId: incomingCallDataForAudio.callerId,
+        callerSocketId: incomingCallDataForAudio.callerSocketId,
         recipientId: user._id || user.id,
         reason: 'declined'
       });
@@ -893,19 +1030,13 @@ export default function ChatWindow({ selectedChat, onBack }) {
           <Phone
             size={16}
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
-            onClick={() => {
-              console.log('📞 [ChatWindow] Bouton audio cliqué pour le chat:', selectedChat?._id);
-              setIsAudioCallOpen(true);
-            }}
+            onClick={startAudioCallFromHeader}
           />
           {/* BOUTON APPEL VIDÉO */}
           <Video
             size={16}
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-            onClick={() => {
-              console.log('🎬 [ChatWindow] Bouton vidéo cliqué pour le chat:', selectedChat?._id);
-              setIsVideoCallOpen(true);
-            }}
+            onClick={startVideoCallFromHeader}
           />
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
@@ -1052,7 +1183,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
       </footer>
 
       {/* MODAL D'APPEL AUDIO ENTRANT DANS LE CHAT */}
-      {showIncomingAudioCall && incomingAudioCall && !isAudioCallOpen && !isVideoCallOpen && (
+       {incomingCallDataForAudio && !isAudioCallOpen && !isVideoCallOpen && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div className="bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl p-8 max-w-md w-full text-white shadow-2xl">
             <div className="text-center">
@@ -1061,7 +1192,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
                   <Phone size={48} />
                 </div>
                 <h3 className="text-2xl font-bold mb-2">Appel audio entrant</h3>
-                <p className="text-lg opacity-90">{incomingAudioCall.callerName}</p>
+                <p className="text-lg opacity-90">{incomingCallDataForAudio.callerName}</p>
                 <p className="text-sm opacity-75 mt-1">Vous appelle</p>
               </div>
 
@@ -1103,12 +1234,11 @@ export default function ChatWindow({ selectedChat, onBack }) {
 {isAudioCallOpen && selectedChat && (
   <AudioCallScreen
     selectedChat={selectedChat}
-    incomingCallData={incomingAudioCall} // Toujours passer les données
+    incomingCallData={incomingCallDataForAudio} // Toujours passer les données
     onClose={() => {
       console.log('📞 [ChatWindow] Fermeture AudioCallScreen');
       setIsAudioCallOpen(false);
-      setShowIncomingAudioCall(false);
-      setIncomingAudioCall(null);
+      setIncomingCallDataForAudio(null);
       // Nettoyer les appels en attente
       clearPendingCall();
       localStorage.removeItem('pendingVideoCall');
