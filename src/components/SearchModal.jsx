@@ -352,7 +352,7 @@ const fetchContacts = async () => {
                           </div>
                         </div>
                         <button
-                          onClick={() => onUserSelect && onUserSelect(contact)}
+                          onClick={() => onUserSelect && onUserSelect(contact.contact || contact)}
                           className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
                           title="Envoyer un message"
                         >
@@ -418,7 +418,16 @@ const fetchContacts = async () => {
                           </div>
                         </div>
                         <button
-                          onClick={() => onUserSelect && onUserSelect(user)}
+                          onClick={() => {
+                          if (onUserSelect) {
+                            const tempChat = {
+                              _id: `direct_${user._id}`,
+                              participants: [user],
+                              type: "private",
+                            };
+                            onUserSelect(tempChat);
+                          }
+                        }}
                           className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
                           title="Envoyer un message"
                         >

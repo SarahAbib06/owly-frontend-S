@@ -5,11 +5,15 @@ import { SlidersHorizontal, Search, Loader2, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useConversations } from "../hooks/useConversations";
 import socketService from "../services/socketService";
+import { conversationService } from "../services/conversationService";
 
 export default function ConversationList({ onSelect, onNewChat }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
+  const [showArchivedOnly, setShowArchivedOnly] = useState(false);
+  const [archivedList, setArchivedList] = useState([]);
+  const [loadingArchived, setLoadingArchived] = useState(false);
   
   const { 
     conversations, 
@@ -18,8 +22,11 @@ export default function ConversationList({ onSelect, onNewChat }) {
     markAsRead 
   } = useConversations();
 
+
+  const listToDisplay = showArchivedOnly ? archivedList : conversations;
+
   // Filtrer les conversations selon la recherche
-  const filteredList = conversations.filter((conv) => {
+  const filteredList = listToDisplay.filter((conv) => {
     const conversationName = conv.isGroup 
       ? conv.groupName 
       : conv.participants?.[0]?.username || "Utilisateur";
@@ -43,13 +50,33 @@ export default function ConversationList({ onSelect, onNewChat }) {
 
   const handleSelectConversation = async (conv) => {
     setSelectedId(conv._id);
-    onSelect(conv);
+    onSelect(conv, showArchivedOnly);
     
     // Marquer comme lu
     if (conv.unreadCount > 0) {
       await markAsRead(conv._id);
     }
   };
+
+  const toggleArchived = async () => {
+  const newShow = !showArchivedOnly;
+  setShowArchivedOnly(newShow);
+
+  if (newShow && archivedList.length === 0) {
+    setLoadingArchived(true);
+    try {
+      // Récupère l'ID de l'utilisateur (adapte si tu as un autre moyen)
+      const userId = localStorage.getItem('userId'); // ou utilise useAuth si tu l'as
+      if (userId) {
+        const res = await conversationService.getArchivedConversations(userId);
+        setArchivedList(res.conversations || []);
+      }
+    } catch (err) {
+      console.error("Erreur chargement archivées", err);
+    }
+    setLoadingArchived(false);
+  }
+};
 
   if (loading) {
     return (
@@ -108,8 +135,14 @@ export default function ConversationList({ onSelect, onNewChat }) {
             />
           </div>
           
-          <button className="rounded-xl shrink-0 bg-[#f0f0f0] dark:bg-[#2E2F2F] hover:bg-gray-200 dark:hover:bg-neutral-700 p-2.5 md:p-3">
-            <SlidersHorizontal size={18} className="text-gray-600 dark:text-gray-300" />
+          <button 
+            onClick={toggleArchived}
+            className="rounded-xl shrink-0 bg-[#f0f0f0] dark:bg-[#2E2F2F] hover:bg-gray-200 dark:hover:bg-neutral-700 p-2.5 md:p-3"
+          >
+            <SlidersHorizontal 
+              size={18} 
+              className={` ${showArchivedOnly ? "text-myYellow" : "text-gray-600 dark:text-gray-300"}`}
+            />
           </button>
         </div>
       </div>
@@ -118,7 +151,11 @@ export default function ConversationList({ onSelect, onNewChat }) {
       <div className="px-2 pb-28 md:pb-6 overflow-y-auto space-y-2 md:space-y-2.5 conv-scroll z-0">
         {filteredList.length === 0 ? (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            <p>{t("messages.noConversations") || "Aucune conversation"}</p>
+            <p>
+            {showArchivedOnly 
+              ? (loadingArchived ? "Chargement..." : "Aucune conversation archivée")
+              : t("messages.noConversations") || "Aucune conversation"}
+          </p>
           </div>
         ) : (
           filteredList.map((conv) => {

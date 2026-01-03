@@ -43,7 +43,12 @@
     "reactions": "Reactions",
     "close": "Close",
     "searchButton": "Search",
-    "searchPlaceholder": "Type to search..."
+    "searchPlaceholder": "Type to search...",
+     "youBlocked": "You have blocked",
+    "blockMessage": "You cannot contact or call this person in this conversation. You will not receive their messages or calls.",
+    "userUnblocked": "User successfully unblocked",
+    "unblock": "Unblock",
+    "blockedByOther": "You cannot send messages to this person"
 
   },
   
@@ -167,6 +172,7 @@
     "archiveConversation": "Archive Conversation",
     "lockConversation": "Lock Conversation",
     "block": "Block",
+    "unblock":"Unblock",
     "deleteConversation": "Delete Conversation"
   },
   
@@ -176,7 +182,10 @@
     "archiveConversation": "Archive Conversation",
     "lockConversation": "Lock Conversation",
     "block": "Block",
-    "deleteConversation": "Delete Conversation"
+    "deleteConversation": "Delete Conversation",
+    "blocking": "Blocking…",
+    "unblock": "Unblock",
+    "unblocking": "Unblocking…"
   },
 
   "themeSelector": {
@@ -266,6 +275,20 @@
   "IncomingSound": "Incoming calls",
   "IncomingSoundDesc": "Play sound for incoming calls"
 },
+
+
+  "confirmBlockModal": {
+  "blockTitle": "Block {{name}}?",
+  "blockDescription": "By blocking this person, they will no longer be able to send you messages or call you. They won't be notified that you blocked them.",
+  "unblockTitle": "Unblock {{name}}?",
+  "unblockDescription": "This person will be able to message and call you again.",
+  "cancel": "Cancel",
+  "block": "Block",
+  "unblock": "Unblock"
+},
+
+
+
 "deleteAccount": {
     "title": "Delete Account?",
     "description": "This action is permanent Enter your password to confirm.",
@@ -273,6 +296,7 @@
     "cancel": "Cancel",
     "confirm": "Delete"
   }
+
  
 
 }

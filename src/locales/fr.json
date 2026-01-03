@@ -42,7 +42,12 @@
     "reactions": "Réactions",
     "close": "Fermer",
      "searchButton": "Rechercher",
-    "searchPlaceholder": "Tapez pour rechercher..."
+    "searchPlaceholder": "Tapez pour rechercher...",
+    "youBlocked": "Vous avez bloqué",
+    "blockMessage": "Vous ne pouvez pas contacter cette personne ni l’appeler dans cette discussion. Vous ne recevez pas ses messages ou appels.",
+    "userUnblocked": "Utilisateur débloqué avec succès",
+    "unblock": "Débloquer",
+    "blockedByOther": "Vous ne pouvez pas envoyer de message à cette personne"
 
   },
    "messages": {
@@ -188,6 +193,7 @@
     "archiveConversation": "Archiver la conversation",
     "lockConversation": "Verrouiller la conversation",
     "block": "Bloquer",
+    "unblock":"Débloquer",
     "deleteConversation": "Supprimer la discussion"
   },
   
@@ -197,7 +203,10 @@
     "archiveConversation": "Archiver la conversation",
     "lockConversation": "Verrouiller la conversation",
     "block": "Bloquer",
-    "deleteConversation": "Supprimer la discussion"
+    "deleteConversation": "Supprimer la discussion",
+     "blocking": "Blocage…",
+    "unblock": "Débloquer",
+    "unblocking": "Déblocage…"
 
   },"themeSelector": {
     "simpleColors": "Couleurs simples",
@@ -280,13 +289,29 @@
     "nomedia":"Aucun Medias",
     "nodocuments":"Aucun document"
   },
+
+  
+  "confirmBlockModal": {
+    "blockTitle": "Bloquer {{name}} ?",
+    "blockDescription": "En bloquant cette personne, elle ne pourra plus vous envoyer de messages ni vous appeler. Elle ne saura pas que vous l’avez bloquée.",
+
+    "unblockTitle": "Débloquer {{name}} ?",
+    "unblockDescription": "Cette personne pourra de nouveau vous envoyer des messages et vous appeler.",
+
+    "cancel": "Annuler",
+    "block": "Bloquer",
+    "unblock": "Débloquer"
+  },
    "deleteAccount": {
     "title": "Supprimer le compte ?",
     "description": "Cette action est définitive Entrez votre mot de passe pour confirmer.",
     "passwordPlaceholder": "Votre mot de passe",
     "cancel": "Annuler",
     "confirm": "Supprimer"
+
   }
+
+
  
   
 }
