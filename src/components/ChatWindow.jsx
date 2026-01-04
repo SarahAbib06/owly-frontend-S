@@ -29,9 +29,13 @@ import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
+import { Archive } from "lucide-react";
+import { useChat } from "../context/ChatContext"; // ← AJOUTE CET IMPORT
 
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
+import ForwardModal from "./ForwardModal";
+import { useConversations } from "../hooks/useConversations";
 
     
 
@@ -107,7 +111,18 @@ const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥
 export default function ChatWindow({ selectedChat, onBack }) {
 
   const { t } = useTranslation();
+  // const { user } = useAuth();
+  const isFromArchived = selectedChat?.isFromArchived === true;
+  const { conversations, archivedConversations } = useChat(); // ← AJOUT
+  const isArchived = isFromArchived || archivedConversations.some(c => c._id === selectedChat?._id);
+  console.log("isArchived ?", isArchived, selectedChat?._id);
+  const { archiveConversation, unarchiveConversation } = useChat();
  const { user, socketConnected } = useAuth();
+const [selectedTargetConversation, setSelectedTargetConversation] = useState(null);
+const [showForwardModal, setShowForwardModal] = useState(false);
+const [messageToForward, setMessageToForward] = useState(null);
+
+const { conversations: myConversations, loading: convLoading } = useConversations();
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
 //  Récupérer le userId de l'autre utilisateur
@@ -135,6 +150,11 @@ export default function ChatWindow({ selectedChat, onBack }) {
 
 const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
+const isIncomingMessageRequest = 
+  selectedChat?.isMessageRequest === true && 
+  selectedChat?.messageRequestFor?.toString() === user?._id?.toString();
+
+// 🔥 NOUVEAU : Bannière Demande de message (comme Messenger)
 
 
 
@@ -179,23 +199,6 @@ useEffect(() => {
 
   return () => clearInterval(interval);
 }, [contactStatus.lastSeen, contactStatus.isOnline]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 console.log("selectedChat:", selectedChat, "user:", user);
@@ -268,6 +271,7 @@ const handleOnline = ({ userId }) => {
 
 
 
+
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
@@ -275,6 +279,8 @@ const handleOnline = ({ userId }) => {
   const [sendBtnColor, setSendBtnColor] = useState("");
   const [themeEmojis, setThemeEmojis] = useState([]);
   const [inputText, setInputText] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null); 
+  const [filePreview, setFilePreview] = useState(null); 
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState([]);
@@ -291,6 +297,17 @@ const handleOnline = ({ userId }) => {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
+
+    // 🔥 AJOUT : Détection si c'est une demande de message
+    // const otherUserId = selectedChat?.participants?.[0]?._id?.replace('direct_', '') || selectedChat?.participants?.[0]?._id || null;
+    // || selectedChat?.participants?.[0]?._id; // ← fallback important pour nouvelles conversations
+     // fallback si c'est une nouvelle conversation
+  // dernier recours si la clé contient l'ID
+      console.log("selectedChat:", selectedChat);
+  console.log("otherUserId:", otherUserId);
+
+  const isMessageRequest = selectedChat?.isMessageRequest === true ||
+    selectedChat?.messageRequestForMe === true;
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -414,6 +431,13 @@ const handleOnline = ({ userId }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Force la mise à jour quand on change de conversation (surtout depuis les archivées)
+// Force la détection correcte du statut archivé quand la conversation change
+useEffect(() => {
+  // Ce useEffect vide dépend de selectedChat et archivedConversations
+  // Il force React à recalculer isArchived à chaque changement
+}, [selectedChat, archivedConversations]);
+
   // Gérer la saisie avec typing indicator
   const handleInputChange = (e) => {
     setInputText(e.target.value);
@@ -424,37 +448,46 @@ const handleOnline = ({ userId }) => {
 
   // Envoyer un message
   const handleSendMessage = async () => {
-    if (!inputText.trim()) return;
-
-    try {
-      await sendMessage(inputText);
-      setInputText("");
-    } catch (error) {
-      console.error("Erreur envoi message:", error);
-      alert("Erreur lors de l'envoi du message");
-    }
-  };
-
-  // Gérer l'upload de fichiers
-  const handleFileSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      const fileType = file.type;
-
-      if (fileType.startsWith("image/")) {
-        await sendImage(file);
-      } else if (fileType.startsWith("video/")) {
-        await sendVideo(file);
+  try {
+    // 📎 envoyer fichier
+    if (selectedFile) {
+      if (selectedFile.type.startsWith("image/")) {
+        await sendImage(selectedFile);
+      } else if (selectedFile.type.startsWith("video/")) {
+        await sendVideo(selectedFile);
       } else {
-        await sendFile(file);
+        await sendFile(selectedFile);
       }
-    } catch (error) {
-      console.error("Erreur upload fichier:", error);
-      alert("Erreur lors de l'envoi du fichier");
+
+      setSelectedFile(null);
+      setFilePreview(null);
+      return;
     }
-  };
+
+    // ✍️ envoyer texte
+    if (!inputText.trim()) return;
+    await sendMessage(inputText);
+    setInputText("");
+  } catch (error) {
+    console.error("Erreur envoi:", error);
+  }
+};
+
+    
+  // Gérer l'upload de fichiers
+  const handleFileSelect = (e) => { 
+  const file = e.target.files[0]; 
+  if (!file) return; 
+ 
+  setSelectedFile(file); 
+ 
+  if (file.type.startsWith("image/") || 
+file.type.startsWith("video/")) { 
+    setFilePreview(URL.createObjectURL(file)); 
+  } else { 
+    setFilePreview(null); 
+  } 
+};
 
   // Enregistrement audio
   const handleMicClick = async () => {
@@ -752,6 +785,7 @@ const handleOnline = ({ userId }) => {
 
           <div className="relative">
             <div
+              id={`message-${msg._id}`}
               className={`${bubbleClasses(fromMe)} ${
                 isMatch ? "ring-2 ring-blue-400" : ""
               } cursor-pointer`}
@@ -779,7 +813,7 @@ const handleOnline = ({ userId }) => {
 
               {msg.typeMessage === "image" && (
                 <img
-                  src={msg.fileUrl}
+                  src={msg.content} 
                   alt="image"
                   className="max-w-full rounded mt-1"
                   style={{ maxHeight: "300px" }}
@@ -788,7 +822,7 @@ const handleOnline = ({ userId }) => {
 
               {msg.typeMessage === "video" && (
                 <video
-                  src={msg.fileUrl}
+                  src={msg.content} 
                   controls
                   className="max-w-full rounded mt-1"
                   style={{ maxHeight: "300px" }}
@@ -798,16 +832,17 @@ const handleOnline = ({ userId }) => {
               {msg.typeMessage === "audio" && (
                 <AudioMessage src={msg.content || msg.fileUrl} />
               )}
-
               {msg.typeMessage === "file" && (
                 <a
-                  href={msg.fileUrl}
+                  href={msg.content}
                   download
                   className="flex items-center gap-2 underline"
                 >
                   📎 {msg.fileName || "Fichier"}
                 </a>
               )}
+
+              
             </div>
 
             {showMessageMenu === msg._id && (
@@ -835,8 +870,10 @@ const handleOnline = ({ userId }) => {
                 </button>
                 <button
                   onClick={() => {
-                    alert("Sélectionnez une conversation de destination");
-                    setShowMessageMenu(null);
+                    setMessageToForward(msg);                    // On garde le message à transférer
+                    setSelectedTargetConversation(null);          // Réinitialise la sélection
+                    setShowForwardModal(true);                    // Ouvre la modale
+                    setShowMessageMenu(null);                     // Ferme le menu
                   }}
                   className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
                 >
@@ -901,6 +938,7 @@ const handleOnline = ({ userId }) => {
         </div>
       </div>
     );
+    
   };
 
   if (loading) {
@@ -984,12 +1022,12 @@ const handleOnline = ({ userId }) => {
 
           </div>
         </div>
-       <div className="flex items-center gap-2">
-  <Phone
-    size={16}
-    className="text-gray-600 dark:text-gray-300 cursor-pointer"
-  />
-  <Video
+        <div className="flex items-center gap-2">
+          <Phone
+            size={16}
+            className="text-gray-600 dark:text-gray-300 cursor-pointer"
+          />
+          <Video
     size={16}
     className="text-gray-600 dark:text-gray-300 cursor-pointer"
     onClick={() => {
@@ -1056,36 +1094,130 @@ const handleOnline = ({ userId }) => {
       }
     }}
   />
-  <button onClick={() => setIsOptionsOpen(true)}>
-    <MoreVertical
-      size={16}
-      className="text-gray-600 dark:text-gray-300 cursor-pointer"
-    />
-  </button>
-</div>
+          
+          {/* BOUTON ARCHIVER */}
+      
+
+          <button onClick={() => setIsOptionsOpen(true)}>
+            <MoreVertical
+              size={16}
+              className="text-gray-600 dark:text-gray-300 cursor-pointer"
+            />
+          </button>
+        </div>
       </header>
 
+      {/* 🔥 DEMANDE DE MESSAGE - Bannière propre et réutilisable */}
+      {isIncomingMessageRequest && (
+        <MessageRequestBanner
+          conversationName={conversationName}
+          conversationAvatar={conversationAvatar}
+          onAccept={async () => {
+            const token = localStorage.getItem("token");
+            try {
+              const res = await fetch("http://localhost:5000/api/relations/accept-request", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ conversationId: selectedChat._id }),
+              });
+
+              if (res.ok) {
+                window.location.reload(); // ou une meilleure méthode plus tard
+              } else {
+                const err = await res.json();
+                alert(err.error || "Erreur lors de l'acceptation");
+              }
+            } catch (err) {
+              alert("Erreur réseau");
+            }
+          }}
+          onDelete={async () => {
+            if (!confirm("Supprimer cette demande de message ?")) return;
+
+            const token = localStorage.getItem("token");
+            try {
+              const res = await fetch("http://localhost:5000/api/relations/delete-request", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ conversationId: selectedChat._id }),
+              });
+
+              if (res.ok) {
+                onBack(); // Retour à la liste
+              } else {
+                alert("Erreur lors de la suppression");
+              }
+            } catch (err) {
+              alert("Erreur réseau");
+            }
+          }}
+        />
+      )}
+
       {/* SECTION MESSAGES ÉPINGLÉS */}
-      {showPinnedSection && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 px-3 py-2 z-20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+
+      {/* SECTION MESSAGES ÉPINGLÉS */}
+            {/* SECTION MESSAGES ÉPINGLÉS - VERSION SCROLLABLE HORIZONTALE */}
+            {/* SECTION MESSAGES ÉPINGLÉS - UNE SEULE LIGNE SCROLLABLE */}
+            {/* SECTION MESSAGES ÉPINGLÉS - LISTE VERTICALE SCROLLABLE */}
+            {/* SECTION MESSAGES ÉPINGLÉS - VERSION COMPACTE VERTICALE */}
+            {/* SECTION MESSAGES ÉPINGLÉS - VERSION ULTRA-COMPACTE */}
+      {showPinnedSection && pinnedMessages.length > 0 && (
+        <div className="border-b border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/40 z-20">
+          {/* Header ultra-minimaliste */}
+          <div className="flex items-center justify-between px-3 py-1.5">
+            <div className="flex items-center gap-1.5">
               <Pin size={14} className="text-yellow-600 dark:text-yellow-400" />
               <span className="text-xs font-medium text-yellow-800 dark:text-yellow-300">
-                {pinnedMessages.length} message
-                {pinnedMessages.length > 1 ? "s" : ""} épinglé
-                {pinnedMessages.length > 1 ? "s" : ""}
+                {pinnedMessages.length} épinglé{pinnedMessages.length > 1 ? "s" : ""}
               </span>
             </div>
             <button
               onClick={() => setShowPinnedSection(false)}
-              className="text-yellow-600 dark:text-yellow-400"
+              className="text-yellow-600 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-800/50 rounded p-0.5 transition"
             >
               <X size={14} />
             </button>
           </div>
-          <div className="mt-1 text-xs text-gray-700 dark:text-gray-300 truncate">
-            {pinnedMessages[0]?.content || "Message épinglé"}
+
+          {/* Liste ultra-compacte avec scrollbar */}
+          <div className="max-h-28 overflow-y-auto px-3 pb-2 scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-yellow-100 dark:scrollbar-thumb-yellow-300 dark:scrollbar-track-yellow-900/50">
+            <div className="space-y-1.5">
+              {pinnedMessages.map((msg) => (
+                <button
+                  key={msg._id}
+                  onClick={() => {
+                    const element = document.getElementById(`message-${msg._id}`);
+                    if (element) {
+                      element.scrollIntoView({ behavior: "smooth", block: "center" });
+                      element.classList.add("ring-3", "ring-yellow-400");
+                      setTimeout(() => element.classList.remove("ring-3", "ring-yellow-400"), 1500);
+                    }
+                  }}
+                  className="w-full text-left bg-white dark:bg-gray-800 rounded shadow-sm hover:shadow transition p-2 text-xs border border-yellow-200 dark:border-yellow-700 block"
+                >
+                  <div className="line-clamp-1 text-gray-800 dark:text-gray-200 font-medium">
+                    {msg.typeMessage === "text" && msg.content}
+                    {msg.typeMessage === "image" && "📷 Photo"}
+                    {msg.typeMessage === "video" && "🎥 Vidéo"}
+                    {msg.typeMessage === "audio" && "🎤 Vocal"}
+                    {msg.typeMessage === "file" && `📎 ${msg.fileName || "Fichier"}`}
+                  </div>
+                  <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                    {new Date(msg.createdAt).toLocaleTimeString("fr-FR", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1134,7 +1266,15 @@ const handleOnline = ({ userId }) => {
         <div ref={messagesEndRef} />
       </main>
 
+
+      
+
       {/* INPUT */}
+
+
+
+
+      
 
 <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
   {/* ✅ SI BLOQUÉ : Afficher le message de blocage */}
@@ -1177,6 +1317,33 @@ const handleOnline = ({ userId }) => {
             </button>
           </div>
         )}
+        {selectedFile && (
+  <div className="mb-2 p-2 border rounded bg-white dark:bg-neutral-800">
+    {selectedFile.type.startsWith("image/") && (
+      <img src={filePreview} className="max-h-40 rounded" />
+    )}
+
+    {selectedFile.type.startsWith("video/") && (
+      <video src={filePreview} controls className="max-h-40 rounded" />
+    )}
+
+    {!selectedFile.type.startsWith("image/") &&
+     !selectedFile.type.startsWith("video/") && (
+      <p className="text-sm">📎 {selectedFile.name}</p>
+    )}
+
+    <button
+      onClick={() => {
+        setSelectedFile(null);
+        setFilePreview(null);
+      }}
+      className="text-xs text-red-500 underline mt-1"
+    >
+      Annuler
+    </button>
+  </div>
+)}
+
 
         <div className="flex items-center gap-2  w-full">
           <div className="flex-1 flex items-center gap-1 px-2 py-2 rounded-xl  bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
@@ -1212,19 +1379,25 @@ const handleOnline = ({ userId }) => {
             className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
             style={{ background: sendBtnColor || "#FFD700" }}
             onClick={
-              inputText.trim() === "" ? handleMicClick : handleSendMessage
-            }
+     selectedFile
+    ? handleSendMessage
+    : inputText.trim() === ""
+    ? handleMicClick
+    : handleSendMessage
+}
+
           >
-            {inputText.trim() === "" ? (
-              <Mic
-                size={18}
-                className={`text-gray-700 dark:text-gray-300 ${
-                  isRecording ? "animate-pulse text-red-500" : ""
-                }`}
-              />
-            ) : (
-              <Send size={18} />
-            )}
+            {selectedFile || inputText.trim() !== "" ? (
+  <Send size={18} />
+) : (
+  <Mic
+    size={18}
+    className={`text-gray-700 dark:text-gray-300 ${
+      isRecording ? "animate-pulse text-red-500" : ""
+    }`}
+  />
+)}
+
           </button>
        </div>
       
@@ -1282,15 +1455,29 @@ const handleOnline = ({ userId }) => {
   </>
 )}
       {isInfoOpen && (
-        <InfoContactModal
-          chat={{
-            ...selectedChat,
-            openTheme: () => setShowThemeSelector(true),
-          }}
-          onClose={() => setIsInfoOpen(false)}
-             onBlockStatusChange={() => refresh()}
-        />
-      )}
+
+  <InfoContactModal
+    chat={{
+      ...selectedChat,
+      openTheme: () => setShowThemeSelector(true),
+      onArchive: async () => {
+        try {
+          if (isArchived) {
+            await unarchiveConversation(selectedChat._id);
+          } else {
+            await archiveConversation(selectedChat._id);
+          }
+        } catch (err) {
+          alert("Erreur lors de l'opération");
+        }
+      },
+      isArchived: isArchived,
+    }}
+    onClose={() => setIsInfoOpen(false)}
+      onBlockStatusChange={() => refresh()}
+  />
+)}
+
 
       {openSearch && (
         <>
@@ -1314,6 +1501,51 @@ const handleOnline = ({ userId }) => {
           </motion.div>
         </>
       )}
+
+            {/* 🔥 BANDEAU DEMANDE DE MESSAGE 🔥 */}
+      {/* {isMessageRequest && (
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-4 text-center">
+          <p className="font-bold text-lg">Demande de message</p>
+          <p className="text-sm mt-1 opacity-90">
+            {conversationName} veut discuter avec vous
+          </p>
+          <div className="flex justify-center gap-4 mt-4">
+            <button
+              onClick={async () => {
+                try {
+                  await fetch("/api/relations/accept-from-chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contactId: otherUserId }),
+                  });
+                  alert("Demande acceptée ! Vous pouvez maintenant répondre.");
+                  window.location.reload();
+                } catch (err) {
+                  alert("Erreur lors de l'acceptation");
+                }
+              }}
+              className="bg-white text-indigo-600 px-8 py-2.5 rounded-full font-semibold hover:scale-105 transition"
+            >
+              Accepter
+            </button>
+            <button
+              onClick={() => {
+                if (confirm("Supprimer cette demande de message ?")) {
+                  onBack();
+                }
+              }}
+              className="border border-white px-8 py-2.5 rounded-full font-semibold hover:bg-white/20 transition"
+            >
+              Supprimer
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+} */}
+
+
       <ConfirmBlockModal
         isOpen={isConfirmUnblockModalOpen}
         onClose={() => setIsConfirmUnblockModalOpen(false)}
@@ -1325,6 +1557,24 @@ const handleOnline = ({ userId }) => {
         userInfo={{
           name: otherUserName,
           avatar: conversationAvatar
+        }}
+      />
+      {console.log("Conversations disponibles pour transfert :", conversations)}
+      {console.log("Mes conversations chargées :", myConversations)}
+      {console.log("Conversations passées au modal :", myConversations)}
+{console.log("Conversation actuelle ID :", selectedChat?._id)}
+
+      <ForwardModal
+        isOpen={showForwardModal}
+        onClose={() => {
+          setShowForwardModal(false);
+          setMessageToForward(null);
+        }}
+        message={messageToForward}
+        conversations={myConversations}  // ← TES CONVERSATIONS CHARGÉES DIRECTEMENT
+        currentConversationId={selectedChat?._id}
+        onForward={(targetConversationId) => {
+          forwardMessage(messageToForward?._id, targetConversationId);
         }}
       />
     </div>

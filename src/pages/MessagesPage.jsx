@@ -13,10 +13,14 @@ export default function Messages() {
 
   const { setChatOpen } = useOutletContext();
 
-  const openChat = (chat) => {
-    setSelectedChat(chat);
-    setChatOpen(true);
-  };
+  const openChat = (chat, isFromArchived = false) => {
+  setSelectedChat({
+    ...chat,
+    isFromArchived,
+  });
+  setChatOpen(true);
+};
+
 
   const closeChat = () => {
     setSelectedChat(null);
@@ -60,20 +64,44 @@ export default function Messages() {
 
       {/* === MODAL DE RECHERCHE === */}
       {showSearchModal && (
-        <SearchModal 
-          onClose={() => setShowSearchModal(false)}
-          onUserSelect={(user) => {
-            setShowSearchModal(false);
-            // Créer ou ouvrir une conversation avec cet utilisateur
-            openChat({
-              _id: `direct_${user._id}`,
-              type: 'direct',
-              participants: [user],
-              lastMessage: null
+      <SearchModal 
+        onClose={() => setShowSearchModal(false)}
+        onUserSelect={async (user) => {
+          setShowSearchModal(false);
+
+          const token = localStorage.getItem('token');
+
+          try {
+            const res = await fetch('http://localhost:5000/api/conversations/private', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ receiverId: user._id })
             });
-          }}
-        />
-      )}
+
+            if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              throw new Error(errorData.error || 'Erreur serveur');
+            }
+
+            const data = await res.json();
+
+            if (data.success && data.conversation) {
+              openChat({
+                _id: data.conversation._id,
+                type: 'private',
+                participants: [user]
+              });
+            }
+          } catch (err) {
+            console.error(err);
+            alert("Impossible d'ouvrir la conversation");
+          }
+        }}
+      />
+    )}
     </div>
   );
 }

@@ -148,17 +148,17 @@ const handleConfirmBlock = async () => {
 
 
                <div
-  className="cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-  onClick={() => {
-    chat.openTheme();  // ouvre le ThemeSelector
-    onClose();         // ferme l'info
-  }}
->
-   <div className="flex items-center justify-between">
-  {t("infoContactModal.themes")}
-  <FaChevronRight className="text-gray-400" />
-  </div>
-</div>
+                  className="cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                  onClick={() => {
+                    chat.openTheme();  // ouvre le ThemeSelector
+                    onClose();         // ferme l'info
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                  {t("infoContactModal.themes")}
+                  <FaChevronRight className="text-gray-400" />
+                  </div>
+                </div>
               
 
 
@@ -170,9 +170,27 @@ const handleConfirmBlock = async () => {
                 <span>{t("infoContactModal.addToFavorites")}</span>
               </div>
 
-              <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+              <div
+                className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                onClick={async () => {
+                  const message = chat.isArchived
+                    ? "Désarchiver cette conversation ?"
+                    : "Archiver cette conversation ?";
+
+                  if (window.confirm(message)) {
+                    try {
+                      await chat.onArchive();
+                      onClose();
+                    } catch (err) {
+                      alert("Erreur lors de l'opération");
+                    }
+                  }
+                }}
+              >
                 <Archive size={15} />
-                <span>{t("infoContactModal.archiveConversation")}</span>
+                <span>
+                  {chat.isArchived ? "Désarchiver la conversation" : "Archiver la conversation"}
+                </span>
               </div>
 
               <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">

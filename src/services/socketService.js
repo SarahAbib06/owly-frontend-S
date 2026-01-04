@@ -525,6 +525,25 @@ onScreenShareStopped(callback) {
   if (this.socket) this.socket.on('call:screen-share-stop', callback);
 }
 
+
+  // ==================== MESSAGE REQUEST (DEMANDE DE MESSAGE) ====================
+
+  // Écouter la réception d'une demande de message
+  onMessageRequestReceived(callback) {
+    if (this.socket) {
+      this.socket.on('message_request_received', callback);
+      console.log('Écouteur ajouté: message_request_received');
+    }
+  }
+
+  // Écouter quand une demande est acceptée (par l'un ou l'autre)
+  onMessageRequestAccepted(callback) {
+    if (this.socket) {
+      this.socket.on('message_request_accepted', callback);
+      console.log('Écouteur ajouté: message_request_accepted');
+    }
+  }
+
   // ==================== HISTORIQUE ====================
 
   // Récupérer l'historique d'une conversation
