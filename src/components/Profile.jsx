@@ -259,8 +259,17 @@ return (
           </div>
 
           <div>
+            <div className="flex items-center gap-3">
             <p className="text-md">{name}</p>
-            <p className="text-gray-500 text-sm pt-1.5">{email}</p>
+               <button
+                  onClick={() => setShowQRModal(true)}
+                  className="flex items-center justify-center bg-black hover:bg-gray-800 text-white px-3 py-2 rounded-md"
+                >
+                  <QrCode size={18} />
+                 
+                </button>
+            </div>
+            <p className="text-gray-500 text-xs sm:text-sm pt-1.5">{email}</p>
           </div>
         </div>
 
@@ -367,7 +376,7 @@ return (
                   className="w-full py-2 text-xs bg-transparent focus:outline-none"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled={editMode}
+                  disabled={true}
                 />
               </div>
             </div>
@@ -486,27 +495,16 @@ return (
           onClick={() => setShowQRModal(false)}
         >
           <div 
-            className="bg-white dark:bg-neutral-800 p-8 rounded-2xl max-w-md w-full text-center shadow-2xl"
+            className="bg-white dark:bg-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-2xl font-bold mb-4">Votre QR Code</h3>
+            <h3 className="text-xl sm:text-2xl font-bold mb-14 sm:mb-16">Votre QR Code</h3>
 
             <div className="relative mb-6">
-              <div className="w-80 h-80 mx-auto rounded-xl border-8 border-white bg-white p-6 shadow-2xl">
-                <img 
-                  src={qrCodeData} 
-                  alt="QR Code"
-                  className="w-full h-full"
-                />
-              </div>
-
-              <div className="absolute -top-3 -right-3 bg-[#F9EE34] text-black font-bold px-4 py-1.5 rounded-full text-sm">
-                OWLY
-              </div>
-
+              {/* Photo de profil - moitié sur le carré blanc, moitié en haut */}
               {profilePicture && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-lg">
+                <div className="absolute -top-8 sm:-top-9 left-1/2 -translate-x-1/2 z-10">
+                  <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-full overflow-hidden border-4 border-white shadow-lg">
                     <img 
                       src={profilePicture} 
                       alt={name}
@@ -515,31 +513,44 @@ return (
                   </div>
                 </div>
               )}
+
+              <div className="w-full aspect-square max-w-[240px] sm:max-w-[260px] mx-auto rounded-xl border-8 border-white bg-white p-4 sm:p-5 shadow-2xl pt-10 sm:pt-11">
+                <img 
+                  src={qrCodeData} 
+                  alt="QR Code"
+                  className="w-full h-full"
+                />
+              </div>
+
+              <div className="absolute -top-3 -right-3 bg-[#F9EE34] text-black font-bold px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm shadow-md">
+                OWLY
+              </div>
             </div>
 
-            <div className="mb-8">
-              <p className="font-bold text-2xl text-[#008C23] mb-1">{name}</p>
+            <div className="mb-6">
+              <p className="font-bold text-xl sm:text-2xl text-myGray2">@{name}</p>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={downloadQRCode}
-                className="flex-1 bg-[#F9EE34] hover:bg-yellow-500 text-black py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-3"
+                className="w-full sm:flex-1 bg-myYellow hover:bg-myYellow2 text-black py-3 rounded-lg font-bold text-base flex items-center justify-center gap-2 transition-colors"
               >
-                <Download size={22} />
+                <Download size={20} />
                 Télécharger
               </button>
               <button
                 onClick={() => setShowQRModal(false)}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 dark:bg-neutral-700 py-4 rounded-lg font-medium"
+                className="w-full sm:flex-1 bg-myGray border-1 border-black hover:bg-gray-200 dark:bg-neutral-700 dark:hover:bg-neutral-600 py-3 rounded-lg font-bold transition-colors"
               >
                 Fermer
               </button>
+        
             </div>
+            
           </div>
         </div>
       )}
-
       <DeleteAccountModal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
