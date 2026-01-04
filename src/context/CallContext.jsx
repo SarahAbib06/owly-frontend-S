@@ -20,24 +20,30 @@ export const CallProvider = ({ children }) => {
 
       const socket = socketService.socket;
       if (!socket) return;
-
       // Écouter les appels entrants
       socket.on('incoming-video-call', (data) => {
         console.log('📞 [CONTEXTE] Appel entrant reçu:', data);
-        
+
+        // Vérifier si c'est nous qui avons initié l'appel (éviter le modal pour les appels sortants)
+        const currentUserId = localStorage.getItem('userId');
+        if (data.callerId === currentUserId) {
+          console.log('📞 [CONTEXTE] C\'est notre propre appel sortant, pas de modal');
+          return;
+        }
+
         // CRITIQUE : Sauvegarder les données d'appel
         setIncomingCall(data);
-        
+
         // CRITIQUE : Stocker aussi dans localStorage pour récupération
         localStorage.setItem('pendingVideoCall', JSON.stringify({
           ...data,
           receivedAt: Date.now()
         }));
-        
+
+        // Afficher le modal pour les appels entrants
+        console.log('📞 [CONTEXTE] Appel entrant, afficher modal');
         setShowIncomingCallModal(true);
-        
-        // Jouer une sonnerie
-        playRingtone();
+        // La sonnerie sera gérée par le IncomingCallModal
       });
 
       // Écouter l'acceptation d'appel pour le cas où on est déjà dans VideoCallScreen

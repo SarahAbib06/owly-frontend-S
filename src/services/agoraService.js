@@ -5,15 +5,22 @@ class AgoraService {
     this.client = null;
     this.localAudioTrack = null;
     this.localVideoTrack = null;
+    this.screenTrack = null;
     this.remoteUsers = new Map(); // uid -> {audioTrack, videoTrack, domElement}
     this.isJoined = false;
     this.appId = import.meta.env.VITE_AGORA_APP_ID || '5f2572ca8769462696d7751b8ed764ca';
-    
+
     // Callback pour notifier les nouvelles vidéos
     this.onRemoteVideoAdded = null;
     this.onRemoteVideoRemoved = null;
        this.onRemoteAudioAdded = null; // <-- NOUVEAU : pour l'audio
     this.onRemoteAudioRemoved = null; // <-- NOUVEAU : pour l'audio
+
+    // Paramètres pour le partage d'écran en cours
+    this.currentScreenShareParams = null;
+
+    // Callback pour notifier l'arrêt du partage d'écran depuis la bannière externe
+    this.onScreenShareEnded = null;
   }
 
   // Initialiser le client
@@ -38,20 +45,21 @@ class AgoraService {
    // Rejoindre un canal (version modifiée)
   // Rejoindre un canal
   async joinChannel(channelName, token, uid, audioOnly = false) {
-    console.log("🔗 Tentative de connexion:", { 
-      channelName, 
-      uid, 
+    console.log("🔗 Tentative de connexion:", {
+      channelName,
+      uid,
       audioOnly,
-      appId: this.appId 
+      appId: this.appId
     });
-    
+
     if (!this.client) {
       await this.initializeClient();
     }
 
     try {
       const numericUid = Number(uid) || 0;
-      
+      this.uid = numericUid; // Set the current user's UID
+
       await this.client.join(
         this.appId,
         channelName,
@@ -61,17 +69,17 @@ class AgoraService {
 
       this.isJoined = true;
       console.log(`✅ Canal ${channelName} rejoint, uid: ${numericUid}, audioOnly: ${audioOnly}`);
-      
+
       // Créer les tracks
       await this.createLocalTracks();
-      
+
       if (audioOnly) {
         // Pour les appels audio, désactiver la caméra
         if (this.localVideoTrack) {
           await this.localVideoTrack.setEnabled(false);
           console.log("📹 Caméra désactivée pour appel audio");
         }
-        
+
         // Publier seulement l'audio si on veut
         if (this.localAudioTrack) {
           await this.client.publish([this.localAudioTrack]);
@@ -84,9 +92,9 @@ class AgoraService {
           console.log("🎥 Tracks audio+vidéo publiés");
         }
       }
-      
+
       return { success: true, uid: numericUid };
-      
+
     } catch (error) {
       console.error("❌ Erreur joinChannel:", {
         code: error.code,
@@ -348,12 +356,12 @@ class AgoraService {
   // Obtenir les statistiques
   async getStats() {
     if (!this.client) return null;
-    
+
     try {
       const localStats = await this.client.getLocalVideoStats();
       const remoteStats = await this.client.getRemoteVideoStats();
       const connectionState = this.client.connectionState;
-      
+
       return {
         localStats,
         remoteStats,
@@ -363,6 +371,191 @@ class AgoraService {
     } catch (error) {
       console.error("❌ Erreur stats:", error);
       return null;
+    }
+  }
+
+  // Obtenir la track de partage d'écran pour un utilisateur
+  getScreenShareTrack(userId) {
+    if (userId === this.uid) {
+      return this.screenTrack;
+    } else {
+      const userData = this.remoteUsers.get(userId);
+      return userData?.videoTrack;
+    }
+  }
+
+  // Démarrer le partage d'écran
+  async startScreenShare(socketService, channelName, userId) {
+    try {
+      console.log("🖥️ Démarrage partage d'écran...");
+
+      // Stocker les paramètres pour l'événement 'track-ended'
+      this.currentScreenShareParams = {
+        socketService,
+        channelName,
+        userId
+      };
+
+      // Arrêter la caméra si elle est active
+      if (this.localVideoTrack) {
+        await this.client.unpublish(this.localVideoTrack);
+        console.log("📹 Caméra temporairement désactivée pour le partage d'écran");
+      }
+
+      console.log("🖥️ Création de la track de partage d'écran...");
+
+      // Créer la track de partage d'écran
+      this.screenTrack = await AgoraRTC.createScreenVideoTrack({
+        encoderConfig: {
+          width: 1920,
+          height: 1080,
+          frameRate: 15,
+          bitrateMin: 600,
+          bitrateMax: 2000,
+        }
+      });
+
+      console.log("🖥️ Track de partage d'écran créée avec succès:", this.screenTrack);
+
+      // Vérifier immédiatement si la track est valide
+      if (!this.screenTrack) {
+        throw new Error("Track de partage d'écran non créée");
+      }
+
+      if (this.screenTrack) {
+        // Ajouter un listener pour l'événement 'track-ended' directement sur la track AVANT publication
+        this.screenTrack.on('track-ended', () => {
+          console.log("🖥️ Partage d'écran arrêté depuis la bannière externe (track ended)");
+          if (this.currentScreenShareParams) {
+            this.handleScreenShareEnded(
+              this.currentScreenShareParams.socketService,
+              this.currentScreenShareParams.channelName,
+              this.currentScreenShareParams.userId
+            );
+            this.currentScreenShareParams = null; // Nettoyer après utilisation
+          }
+        });
+
+        // Publier la track de partage d'écran
+        await this.client.publish(this.screenTrack);
+
+        // Notifier les autres participants via socket
+        console.log('🖥️ DEBUG - AgoraService: Émission screen-share-started via socket');
+        console.log('🖥️ DEBUG - socketService.socket:', socketService?.socket);
+        console.log('🖥️ DEBUG - socketService.socket.connected:', socketService?.socket?.connected);
+        if (socketService?.socket) {
+          socketService.socket.emit('screen-share-started', {
+            channelName: channelName,
+            userId: userId,
+            timestamp: Date.now()
+          });
+          console.log('🖥️ DEBUG - screen-share-started émis avec succès');
+        } else {
+          console.log('🖥️ DEBUG - ERREUR: socketService.socket non disponible');
+        }
+
+        console.log("✅ Partage d'écran démarré et publié");
+        return { success: true, screenTrack: this.screenTrack };
+      } else {
+        throw new Error("Impossible de créer la track de partage d'écran");
+      }
+    } catch (error) {
+      console.log("🖥️ Erreur démarrage partage d'écran:", {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+
+      // Vérifier si c'est une annulation par l'utilisateur
+      if (error.name === 'NotAllowedError' ||
+          error.name === 'AbortError' ||
+          error.message?.includes('cancel') ||
+          error.message?.includes('abort') ||
+          error.message?.includes('annul') ||
+          error.message?.includes('user denied') ||
+          error.message?.includes('permission denied')) {
+        console.log("🖥️ Partage d'écran annulé par l'utilisateur");
+        return { success: false, cancelled: true, error };
+      }
+
+      return { success: false, error };
+    }
+  }
+
+  // Arrêter le partage d'écran
+  async stopScreenShare() {
+    try {
+      console.log("🖥️ Arrêt partage d'écran...");
+
+      if (this.screenTrack) {
+        // Dépublier la track
+        await this.client.unpublish(this.screenTrack);
+        this.screenTrack.stop();
+        this.screenTrack.close();
+        this.screenTrack = null;
+        console.log("✅ Partage d'écran arrêté");
+
+        // Restaurer la caméra si elle était active avant
+        if (this.localVideoTrack) {
+          await this.client.publish(this.localVideoTrack);
+          console.log("📹 Caméra restaurée après arrêt du partage d'écran");
+        }
+
+        return { success: true };
+      } else {
+        console.warn("⚠️ Aucune track de partage d'écran active");
+        return { success: true };
+      }
+    } catch (error) {
+      console.error("❌ Erreur arrêt partage d'écran:", error);
+      return { success: false, error };
+    }
+  }
+
+  // Gérer l'arrêt du partage d'écran depuis la bannière externe
+  async handleScreenShareEnded(socketService, channelName, userId) {
+    try {
+      console.log("🖥️ Gestion de l'arrêt externe du partage d'écran");
+
+      // Nettoyer la track locale
+      if (this.screenTrack) {
+        await this.client.unpublish(this.screenTrack);
+        this.screenTrack.stop();
+        this.screenTrack.close();
+        this.screenTrack = null;
+      }
+
+      // Restaurer la caméra si elle était active avant
+      if (this.localVideoTrack) {
+        await this.localVideoTrack.setEnabled(true);
+        await this.client.publish(this.localVideoTrack);
+        console.log("📹 Caméra restaurée après arrêt externe du partage d'écran");
+      }
+
+      // Notifier les autres participants via socket
+      console.log('🖥️ DEBUG - AgoraService: Émission screen-share-stopped via socket');
+      console.log('🖥️ DEBUG - socketService.socket:', socketService?.socket);
+      console.log('🖥️ DEBUG - socketService.socket.connected:', socketService?.socket?.connected);
+      if (socketService?.socket) {
+        socketService.socket.emit('screen-share-stopped', {
+          channelName: channelName,
+          userId: userId,
+          timestamp: Date.now()
+        });
+        console.log('🖥️ DEBUG - screen-share-stopped émis avec succès');
+      } else {
+        console.log('🖥️ DEBUG - ERREUR: socketService.socket non disponible');
+      }
+
+      // Notifier le composant React pour mettre à jour l'interface
+      if (this.onScreenShareEnded) {
+        this.onScreenShareEnded(userId);
+      }
+
+      console.log("✅ Arrêt externe du partage d'écran géré");
+    } catch (error) {
+      console.error("❌ Erreur gestion arrêt externe partage d'écran:", error);
     }
   }
 }

@@ -36,9 +36,9 @@ const AppWithCallProvider = ({ children }) => {
 // Composant séparé pour le modal (à l'intérieur du CallProvider)
 const CallModal = () => {
   const { incomingCall, showIncomingCallModal, acceptCall, rejectCall } = useCall();
-  
+
   if (!showIncomingCallModal) return null;
-  
+
   return (
     <IncomingCallModal
       callData={incomingCall}

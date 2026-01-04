@@ -201,7 +201,7 @@ const AudioCallScreen = ({ selectedChat, onClose, incomingCallData: propIncoming
         if (callStatus === 'calling') {
           console.log('⏰ Timeout: Appel audio non répondu');
           setDebugInfo('Appel non répondu (timeout)');
-          alert('L\'appel audio n\'a pas été répondu');
+          
           setIsCalling(false);
           setCallStatus('ended');
         }

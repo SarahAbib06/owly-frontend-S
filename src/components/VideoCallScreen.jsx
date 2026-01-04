@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Mic, MicOff, Video, VideoOff, Phone, Settings } from 'lucide-react';
+import { X, Mic, MicOff, Video, VideoOff, Phone, Settings, Monitor } from 'lucide-react';
 import agoraService from '../services/agoraService';
 import socketService from '../services/socketService';
 import axios from 'axios';
@@ -7,62 +7,137 @@ import { useAuth } from '../hooks/useAuth';
 import { useCall } from '../context/CallContext';
 import './VideoCallScreen.css';
 
-const VideoCallScreen = ({ selectedChat, onClose }) => {
+const VideoCallScreen = ({ selectedChat, onClose, incomingCallData: propIncomingCallData }) => {
   const { user } = useAuth();
   const { incomingCall, acceptCall, rejectCall, setShowIncomingCallModal } = useCall();
   
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenSharers, setScreenSharers] = useState([]);
+  const [screenShareTrack, setScreenShareTrack] = useState(null);
+  const [screenShareStreams, setScreenShareStreams] = useState([]);
   const [callDuration, setCallDuration] = useState(0);
   const [remoteStreams, setRemoteStreams] = useState([]);
   const [isCalling, setIsCalling] = useState(false);
   const [callStatus, setCallStatus] = useState('idle'); // idle, calling, ringing, in-call, ended
   const [incomingCallData, setIncomingCallData] = useState(null);
   const [debugInfo, setDebugInfo] = useState('');
-  
+  const [localVideoUpdateTrigger, setLocalVideoUpdateTrigger] = useState(0);
+  const [currentLocalTrack, setCurrentLocalTrack] = useState(null);
+
+  // Sync prop incomingCallData to state
+  useEffect(() => {
+    if (propIncomingCallData) {
+      setIncomingCallData(propIncomingCallData);
+    }
+  }, [propIncomingCallData]);
+
+  // Automatically accept incoming call if incomingCallData is provided
+  useEffect(() => {
+    if (incomingCallData && !isCallActive && !isCalling) {
+      console.log('📞 [VideoCallScreen] Appel entrant détecté via prop, acceptation automatique');
+
+      // Attendre que le socket soit prêt avant d'accepter
+      const acceptWithDelay = async () => {
+        // Vérifier la connexion socket
+        if (!socketService.socket?.connected) {
+          console.log('🔄 Socket non connecté, tentative de reconnexion...');
+          const token = localStorage.getItem('token');
+          if (token) {
+            socketService.connect(token);
+            // Attendre la connexion
+            await new Promise(resolve => {
+              const checkConnection = () => {
+                if (socketService.socket?.connected) {
+                  resolve();
+                } else {
+                  setTimeout(checkConnection, 100);
+                }
+              };
+              checkConnection();
+            });
+          }
+        }
+
+        // Petit délai supplémentaire pour s'assurer que tout est prêt
+        setTimeout(() => {
+          console.log('✅ Socket prêt, acceptation automatique de l\'appel');
+          acceptIncomingCall();
+        }, 500);
+      };
+
+      acceptWithDelay();
+    }
+  }, [incomingCallData, isCallActive, isCalling]);
+
   const localVideoRef = useRef(null);
   const remoteVideoRefs = useRef({});
   const callTimerRef = useRef(null);
   const channelNameRef = useRef(`call_${selectedChat?._id}_${Date.now()}`);
   const ringtoneAudioRef = useRef(null);
+  const callTimeoutRef = useRef(null);
 
   // Gérer l'appel entrant depuis le contexte global
   useEffect(() => {
-    if (incomingCall && selectedChat?._id === incomingCall.chatId) {
-      console.log('📞 [VideoCallScreen] Appel entrant correspond au chat ouvert:', incomingCall);
-      
-      // Cacher le modal global
-      setShowIncomingCallModal(false);
-      
-      // Traiter l'appel directement dans ce composant
+    // Only handle incoming calls if we're not already in an active call
+    // Check if we're already connected to Agora (indicates ongoing call)
+    const isAlreadyInCall = agoraService.remoteUsers.size > 0 || agoraService.localVideoTrack || agoraService.localAudioTrack;
+
+    if (incomingCall && selectedChat?._id === incomingCall.chatId && !isCallActive && !isCalling && !isAlreadyInCall) {
+      console.log('📞 [VideoCallScreen] Appel entrant correspond au chat ouvert - affichage du modal:', incomingCall);
+
+      // Afficher le modal pour permettre à l'utilisateur d'accepter ou refuser manuellement
       setIncomingCallData(incomingCall);
-      setCallStatus('ringing');
-      setDebugInfo('Appel entrant détecté');
+      setShowIncomingCallModal(true);
       playRingtone();
     }
-  }, [incomingCall, selectedChat]);
+  }, [incomingCall, selectedChat, isCallActive, isCalling]);
 
   // Initialiser Agora et écouter les événements
   useEffect(() => {
     agoraService.initializeClient();
     
     // Configuration des callbacks pour les vidéos distantes
+    agoraService.onScreenShareEnded = (userId) => {
+      console.log('🖥️ Callback: Partage d\'écran arrêté depuis bannière externe pour user:', userId);
+      // Si c'est l'utilisateur local qui arrête le partage depuis la bannière
+      if (userId === user._id || userId === user.id) {
+        setIsScreenSharing(false);
+        setScreenShareTrack(null);
+        // Restaurer la caméra dans la PIP si elle était active
+        if (agoraService.localVideoTrack && !isVideoOff) {
+          setCurrentLocalTrack(agoraService.localVideoTrack);
+        } else {
+          setCurrentLocalTrack(null);
+        }
+        setDebugInfo('Partage d\'écran arrêté depuis la bannière');
+      }
+    };
+
     agoraService.onRemoteVideoAdded = (uid, videoTrack) => {
       console.log(`📹 [CALLBACK] Vidéo distante ajoutée: ${uid}`);
+
+      // Ignore our own video tracks (including screen share)
+      if (uid === agoraService.uid) {
+        console.log(`📹 [CALLBACK] Ignorer notre propre vidéo ${uid}`);
+        return;
+      }
+
       setDebugInfo(`Vidéo distante ${uid} reçue`);
-      
+
       // Mettre à jour les streams
       setRemoteStreams(prev => {
         const exists = prev.find(s => s.uid === uid);
         if (exists) {
-          return prev.map(s => 
+          return prev.map(s =>
             s.uid === uid ? { ...s, hasVideo: true, videoTrack } : s
           );
         }
         return [...prev, { uid, hasVideo: true, hasAudio: true, videoTrack }];
       });
-      
+
       // Jouer la vidéo dans l'élément correspondant
       setTimeout(() => {
         const videoElement = remoteVideoRefs.current[uid];
@@ -91,23 +166,18 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       return;
     }
 
-    // Écouter les événements d'appel spécifiques à ce composant
-    socket.on('incoming-video-call', (data) => {
-      console.log('📞 Appel entrant reçu dans VideoCallScreen:', data);
-      
-      // Ne traiter que si c'est pour ce chat spécifique
-      if (data.chatId === selectedChat?._id) {
-        setIncomingCallData(data);
-        setCallStatus('ringing');
-        setDebugInfo('Appel entrant détecté');
-        playRingtone();
-      }
-    });
+
 
     socket.on('video-call-accepted', (data) => {
       console.log('✅ Appel accepté:', data);
       setDebugInfo('Appel accepté par le destinataire');
-      
+
+      // Annuler le timeout car l'appel a été répondu
+      if (callTimeoutRef.current) {
+        clearTimeout(callTimeoutRef.current);
+        callTimeoutRef.current = null;
+      }
+
       // Vérifier le channel name
       const targetChannel = data.channelName || (incomingCallData && incomingCallData.channelName) || channelNameRef.current;
       fetchTokenAndStartCall(targetChannel);
@@ -117,6 +187,13 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       console.log('❌ Appel refusé:', data);
       setCallStatus('rejected');
       setDebugInfo('Appel refusé');
+
+      // Annuler le timeout car l'appel a été refusé
+      if (callTimeoutRef.current) {
+        clearTimeout(callTimeoutRef.current);
+        callTimeoutRef.current = null;
+      }
+
       alert(`L'appel a été refusé: ${data.reason || 'Par l\'utilisateur'}`);
       setIsCalling(false);
       stopRingtone();
@@ -169,6 +246,67 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       setDebugInfo('Connexion rétablie');
     });
 
+    // Écouter les événements de partage d'écran
+    socket.on('screen-share-started', (data) => {
+      console.log('🖥️ DEBUG - Événement screen-share-started reçu:', data);
+      console.log('🖥️ Partage d\'écran démarré par:', data);
+      console.log('🖥️ DEBUG - user._id:', user._id, 'user.id:', user.id, 'data.userId:', data.userId);
+      console.log('🖥️ DEBUG - screenSharers avant:', screenSharers);
+
+      if (data.userId !== user._id && data.userId !== user.id) {
+        // Only add remote sharers to the list
+        setScreenSharers(prev => {
+          const newList = !prev.includes(data.userId) ? [...prev, data.userId] : prev;
+          console.log('🖥️ DEBUG - screenSharers après ajout:', newList);
+          return newList;
+        });
+        // Assuming screen share track is available in agoraService
+        const screenTrack = agoraService.getScreenShareTrack(data.userId);
+        if (screenTrack) {
+          setScreenShareStreams(prev => {
+            const exists = prev.find(s => s.userId === data.userId);
+            if (!exists) {
+              return [...prev, { userId: data.userId, screenTrack }];
+            }
+            return prev;
+          });
+        }
+        setDebugInfo(`${data.userId} partage son écran`);
+      } else {
+        console.log('🖥️ DEBUG - C\'est l\'utilisateur local qui partage');
+        setDebugInfo('Vous partagez votre écran');
+      }
+    });
+
+    socket.on('screen-share-stopped', (data) => {
+      console.log('🖥️ DEBUG - Événement screen-share-stopped reçu:', data);
+      console.log('🖥️ Partage d\'écran arrêté par:', data);
+      console.log('🖥️ DEBUG - user._id:', user._id, 'user.id:', user.id, 'data.userId:', data.userId);
+      console.log('🖥️ DEBUG - screenSharers avant suppression:', screenSharers);
+
+      setScreenSharers(prev => {
+        const newList = prev.filter(id => id !== data.userId);
+        console.log('🖥️ DEBUG - screenSharers après suppression:', newList);
+        return newList;
+      });
+      setScreenShareStreams(prev => prev.filter(s => s.userId !== data.userId));
+
+      // Si c'est l'utilisateur local qui arrête le partage (depuis la bannière Google), mettre à jour l'état local
+      if (data.userId === user._id || data.userId === user.id) {
+        setIsScreenSharing(false);
+        setScreenShareTrack(null);
+        // Restaurer la caméra dans la PIP si elle était active
+        if (agoraService.localVideoTrack && !isVideoOff) {
+          setCurrentLocalTrack(agoraService.localVideoTrack);
+        } else {
+          setCurrentLocalTrack(null);
+        }
+        setDebugInfo('Vous avez arrêté le partage d\'écran');
+      } else {
+        setDebugInfo('Partage d\'écran terminé');
+      }
+    });
+
     return () => {
       // Nettoyer les callbacks
       agoraService.onRemoteVideoAdded = null;
@@ -182,20 +320,42 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
         socket.off('call-initiated');
         socket.off('call-error');
         socket.off('connect');
+        socket.off('screen-share-started');
+        socket.off('screen-share-stopped');
       }
       clearInterval(callTimerRef.current);
       stopRingtone();
     };
   }, [selectedChat]);
 
-  // Mettre à jour la vidéo locale
+  // Mettre à jour la vidéo locale (caméra ou partage d'écran dans le PIP)
   useEffect(() => {
-    if (agoraService.localVideoTrack && localVideoRef.current) {
-      console.log('🎬 Lecture vidéo locale');
-      agoraService.localVideoTrack.play(localVideoRef.current);
-      setDebugInfo('Vidéo locale active');
-    }
-  }, [isCallActive, agoraService.localVideoTrack]);
+    const playLocalVideo = async () => {
+      if (localVideoRef.current && currentLocalTrack) {
+        console.log('🎬 Lecture track locale dans PIP:', currentLocalTrack);
+
+        try {
+          // Arrêter toute vidéo en cours
+          if (localVideoRef.current.srcObject) {
+            localVideoRef.current.srcObject = null;
+          }
+
+          await currentLocalTrack.play(localVideoRef.current);
+          setDebugInfo('Vidéo locale active');
+          console.log('✅ Vidéo locale jouée avec succès');
+        } catch (error) {
+          console.error('Erreur play vidéo locale:', error);
+          setDebugInfo('Erreur vidéo locale');
+        }
+      } else if (localVideoRef.current && !currentLocalTrack) {
+        console.log('📹 Aucune vidéo locale à afficher');
+        setDebugInfo('Aucune vidéo locale');
+      }
+    };
+
+    // Délai court pour s'assurer que l'élément DOM est prêt
+    setTimeout(playLocalVideo, 100);
+  }, [currentLocalTrack]);
 
   // Forcer la lecture des vidéos distantes quand les éléments DOM sont prêts
   useEffect(() => {
@@ -244,8 +404,19 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
         await new Promise(resolve => setTimeout(resolve, 300));
       }
     };
-    
+
     testSocket();
+  }, []);
+
+  // Marquer que l'utilisateur est dans VideoCallScreen
+  useEffect(() => {
+    console.log('📞 [VideoCallScreen] Montage - utilisateur dans VideoCallScreen');
+    localStorage.setItem('inVideoCallScreen', 'true');
+
+    return () => {
+      console.log('📞 [VideoCallScreen] Démontage - utilisateur quitte VideoCallScreen');
+      localStorage.removeItem('inVideoCallScreen');
+    };
   }, []);
 
   // Démarrer un appel sortant
@@ -311,11 +482,11 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       console.log('📤 Événement envoyé:', callData);
       
       // Timeout pour réponse
-      setTimeout(() => {
+      callTimeoutRef.current = setTimeout(() => {
         if (callStatus === 'calling') {
           console.log('⏰ Timeout: Appel non répondu');
           setDebugInfo('Appel non répondu (timeout)');
-          alert('L\'appel n\'a pas été répondu');
+          
           setIsCalling(false);
           setCallStatus('ended');
         }
@@ -449,31 +620,48 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     try {
       console.log('🚀 Démarrage appel Agora:', { channel, uid });
       setDebugInfo('Connexion à Agora...');
-      
+
       const result = await agoraService.joinChannel(channel, token, uid);
-      
+
       if (result.success) {
         setIsCallActive(true);
         setCallStatus('in-call');
         setIsCalling(false);
         setDebugInfo('Connecté au canal vidéo');
-        
+
+        // Attendre un court moment pour que les tracks soient prêtes
+        setTimeout(async () => {
+          // Set initial local track to camera if available
+          if (agoraService.localVideoTrack && !isVideoOff) {
+            try {
+              // Ensure the track is enabled
+              await agoraService.localVideoTrack.setEnabled(true);
+              console.log('📹 Track vidéo locale activée:', agoraService.localVideoTrack);
+              setCurrentLocalTrack(agoraService.localVideoTrack);
+            } catch (error) {
+              console.error('Erreur activation track vidéo locale:', error);
+            }
+          } else {
+            console.warn('⚠️ Aucune track vidéo locale disponible');
+          }
+        }, 500);
+
         // DEBUG: Log des tracks
         console.log('📊 État Agora après connexion:', {
           localVideo: !!agoraService.localVideoTrack,
           localAudio: !!agoraService.localAudioTrack,
           remoteUsers: Array.from(agoraService.remoteUsers.entries())
         });
-        
+
         socketService.socket.emit('join-call-room', channel);
-        
+
         // Démarrer le timer
         callTimerRef.current = setInterval(() => {
           setCallDuration(prev => prev + 1);
         }, 1000);
-        
+
         console.log('✅ Appel Agora démarré avec succès');
-        
+
       } else {
         throw new Error(result.error?.message || 'Échec de connexion Agora');
       }
@@ -488,6 +676,8 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
   // Terminer l'appel
   const endCall = async () => {
     clearInterval(callTimerRef.current);
+    clearTimeout(callTimeoutRef.current);
+    callTimeoutRef.current = null;
     setDebugInfo('Fin de l\'appel...');
 
     socketService.socket.emit('leave-call-room', channelNameRef.current);
@@ -541,6 +731,71 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     setIsVideoOff(newState);
     setDebugInfo(`Caméra ${newState ? 'désactivée' : 'activée'}`);
     await agoraService.toggleCamera(!newState);
+  };
+
+  // Basculer partage d'écran
+  const toggleScreenShare = async () => {
+    console.log('🖥️ DEBUG - toggleScreenShare FUNCTION CALLED');
+    console.log('🖥️ DEBUG - toggleScreenShare appelé, isScreenSharing:', isScreenSharing);
+    console.log('🖥️ DEBUG - screenSharers:', screenSharers);
+    console.log('🖥️ DEBUG - user._id:', user._id, 'user.id:', user.id);
+    console.log('🖥️ DEBUG - socketService.socket.connected:', socketService.socket?.connected);
+
+    try {
+      if (isScreenSharing) {
+        console.log('🖥️ DEBUG - Arrêt du partage d\'écran en cours...');
+        const result = await agoraService.stopScreenShare();
+        if (result.success) {
+          setIsScreenSharing(false);
+          setScreenShareTrack(null);
+          setDebugInfo('Partage d\'écran arrêté');
+
+          // Update current local track to camera if available
+          if (agoraService.localVideoTrack && !isVideoOff) {
+            setCurrentLocalTrack(agoraService.localVideoTrack);
+          } else {
+            setCurrentLocalTrack(null);
+          }
+
+          console.log('🖥️ DEBUG - Émission screen-share-stopped');
+          socketService.socket.emit('screen-share-stopped', {
+            channelName: channelNameRef.current,
+            userId: user._id || user.id
+          });
+        } else {
+          console.error('Erreur arrêt partage d\'écran:', result.error);
+          alert('Erreur lors de l\'arrêt du partage d\'écran');
+        }
+      } else {
+        console.log('🖥️ DEBUG - Démarrage du partage d\'écran...');
+        const result = await agoraService.startScreenShare(socketService, channelNameRef.current, user._id || user.id);
+        if (result.success) {
+          setIsScreenSharing(true);
+          setScreenShareTrack(result.screenTrack);
+          setDebugInfo('Partage d\'écran démarré');
+
+          // Update current local track to screen share
+          setCurrentLocalTrack(result.screenTrack);
+
+          console.log('🖥️ DEBUG - Émission screen-share-started');
+          socketService.socket.emit('screen-share-started', {
+            channelName: channelNameRef.current,
+            userId: user._id || user.id
+          });
+        } else {
+          // Ne pas afficher d'alerte si l'utilisateur a annulé
+          if (!result.cancelled) {
+            console.error('Erreur démarrage partage d\'écran:', result.error);
+            
+          } else {
+            console.log('🖥️ Partage d\'écran annulé par l\'utilisateur');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erreur toggle partage d\'écran:', error);
+      alert('Erreur lors du partage d\'écran');
+    }
   };
 
   // Jouer une sonnerie
@@ -611,54 +866,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Rendu du modal d'appel entrant (quand on est DÉJÀ dans VideoCallScreen)
-  if (callStatus === 'ringing' && incomingCallData) {
-    return (
-      <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-        <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-8 max-w-md w-full text-white shadow-2xl">
-          <div className="text-center">
-            <div className="mb-6">
-              <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white/30">
-                <Video size={48} />
-              </div>
-              <h3 className="text-2xl font-bold mb-2">Appel vidéo entrant</h3>
-              <p className="text-lg opacity-90">{incomingCallData.callerName}</p>
-              <p className="text-sm opacity-75 mt-1">Vous appelle en vidéo</p>
-            </div>
 
-            <div className="flex justify-center gap-8 mb-6">
-              <button
-                onClick={acceptIncomingCall}
-                className="flex flex-col items-center group"
-              >
-                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-600 transition-colors shadow-lg">
-                  <Video size={24} />
-                </div>
-                <span className="text-sm font-medium">Accepter</span>
-              </button>
-
-              <button
-                onClick={rejectIncomingCall}
-                className="flex flex-col items-center group"
-              >
-                <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mb-2 group-hover:bg-red-600 transition-colors shadow-lg">
-                  <X size={24} />
-                </div>
-                <span className="text-sm font-medium">Refuser</span>
-              </button>
-            </div>
-
-            {/* Animation sonnerie */}
-            <div className="flex justify-center gap-2">
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Rendu de l'appel en cours
   if (isCallActive) {
@@ -667,53 +875,101 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
         <div className="video-call-container">
           {/* Vidéo distante (plein écran) */}
           <div className="remote-video-container">
-            {remoteStreams.length > 0 ? (
-              remoteStreams.map(stream => (
-                <div key={stream.uid} className="remote-video-wrapper">
-                  <div
-                    ref={el => {
-                      remoteVideoRefs.current[stream.uid] = el;
+            {(() => {
+              // Combine screen shares and remote streams for simultaneous display
+              const combinedStreams = [
+                ...screenShareStreams.map(stream => ({ type: 'screen', ...stream })),
+                ...remoteStreams.map(stream => ({ type: 'video', ...stream }))
+              ];
 
-                      // Quand l'élément DOM est disponible, jouer la vidéo
-                      if (el && agoraService.remoteUsers.has(stream.uid)) {
-                        setTimeout(() => {
-                          const userData = agoraService.remoteUsers.get(stream.uid);
-                          if (userData?.videoTrack && el) {
-                            try {
-                              userData.videoTrack.play(el);
-                              console.log(`🎬 Vidéo ${stream.uid} auto-played`);
-                            } catch (error) {
-                              console.error(`Auto-play error ${stream.uid}:`, error);
+              return combinedStreams.length > 0 ? (
+                combinedStreams.map(stream => (
+                  <div key={stream.type === 'screen' ? `screen-${stream.userId}` : `video-${stream.uid}`} className="remote-video-wrapper">
+                    {stream.type === 'screen' ? (
+                      <>
+                        <video
+                          ref={el => {
+                            remoteVideoRefs.current[stream.userId] = el;
+
+                            // Quand l'élément DOM est disponible, jouer le partage d'écran
+                            if (el && stream.screenTrack) {
+                              setTimeout(() => {
+                                try {
+                                  stream.screenTrack.play(el);
+                                  console.log(`🖥️ Partage d'écran ${stream.userId} auto-played`);
+                                } catch (error) {
+                                  console.error(`Auto-play error screen share ${stream.userId}:`, error);
+                                }
+                              }, 50);
                             }
-                          }
-                        }, 50);
-                      }
-                    }}
-                    className="remote-video"
-                    id={`remote-video-${stream.uid}`}
-                  />
-                  {!stream.hasVideo && (
-                    <div className="no-video-placeholder">
-                      <div className="user-avatar">
-                        {selectedChat.participants[0]?.username?.charAt(0).toUpperCase()}
-                      </div>
-                      <p>Pas de vidéo</p>
-                    </div>
-                  )}
+                          }}
+                          className="remote-video"
+                          id={`screen-share-${stream.userId}`}
+                          autoPlay
+                          playsInline
+                        />
+                        <div className="screen-share-indicator">
+                          <Monitor size={16} />
+                          <span>Partage d'écran</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <video
+                          ref={el => {
+                            remoteVideoRefs.current[stream.uid] = el;
+
+                            // Quand l'élément DOM est disponible, jouer la vidéo
+                            if (el && agoraService.remoteUsers.has(stream.uid)) {
+                              setTimeout(() => {
+                                const userData = agoraService.remoteUsers.get(stream.uid);
+                                if (userData?.videoTrack && el) {
+                                  try {
+                                    userData.videoTrack.play(el);
+                                    console.log(`🎬 Vidéo ${stream.uid} auto-played`);
+                                  } catch (error) {
+                                    console.error(`Auto-play error ${stream.uid}:`, error);
+                                  }
+                                }
+                              }, 50);
+                            }
+                          }}
+                          className="remote-video"
+                          id={`remote-video-${stream.uid}`}
+                          autoPlay
+                          playsInline
+                        />
+                        {!stream.hasVideo && (
+                          <div className="no-video-placeholder">
+                            <div className="user-avatar">
+                              {selectedChat.participants[0]?.username?.charAt(0).toUpperCase()}
+                            </div>
+                            <p>Pas de vidéo</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="waiting-for-connection">
+                  <div className="spinner"></div>
+                  <p>En attente de connexion...</p>
+                  <p className="debug-info">{debugInfo}</p>
                 </div>
-              ))
-            ) : (
-              <div className="waiting-for-connection">
-                <div className="spinner"></div>
-                <p>En attente de connexion...</p>
-                <p className="debug-info">{debugInfo}</p>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Vidéo locale (picture-in-picture) */}
           <div className="local-video-pip">
-            <div ref={localVideoRef} className="local-video" />
+            <video
+              ref={localVideoRef}
+              className="local-video"
+              autoPlay
+              muted
+              playsInline
+            />
             {isVideoOff && (
               <div className="video-off-indicator">
                 <VideoOff size={24} />
@@ -745,6 +1001,14 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
                 title={isVideoOff ? 'Activer la caméra' : 'Désactiver la caméra'}
               >
                 {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
+              </button>
+
+              <button
+                className={`control-btn ${isScreenSharing ? 'btn-active' : ''}`}
+                onClick={toggleScreenShare}
+                title={isScreenSharing ? 'Arrêter le partage d\'écran' : 'Partager l\'écran'}
+              >
+                <Monitor size={20} />
               </button>
 
               <button

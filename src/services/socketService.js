@@ -419,6 +419,22 @@ class SocketService {
     }
   }
 
+  // ==================== PARTAGE D'ÉCRAN ====================
+
+  // Écouter le démarrage du partage d'écran
+  onScreenShareStarted(callback) {
+    if (this.socket) {
+      this.socket.on('screen-share-started', callback);
+    }
+  }
+
+  // Écouter l'arrêt du partage d'écran
+  onScreenShareStopped(callback) {
+    if (this.socket) {
+      this.socket.on('screen-share-stopped', callback);
+    }
+  }
+
   // ==================== UTILITAIRES ====================
 
   // Tester la connexion (ping/pong)
