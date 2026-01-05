@@ -478,3 +478,149 @@
     padding: 30px 20px;
   }
 }
+/* Styles pour l'appel audio */
+.audio-call-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.audio-call-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.caller-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: white;
+  margin: 0 auto 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.audio-call-container h3 {
+  color: white;
+  margin-bottom: 10px;
+  font-size: 24px;
+}
+
+.audio-call-container p {
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 30px;
+}
+
+.audio-call-container .call-duration {
+  font-size: 36px;
+  color: white;
+  font-weight: 300;
+  margin-bottom: 40px;
+  font-family: 'Courier New', monospace;
+}
+
+.audio-call-container .control-buttons {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.audio-call-container .control-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.audio-call-container .control-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.audio-call-container .btn-active {
+  background: rgba(255, 59, 48, 0.3);
+}
+
+.audio-call-container .btn-end-call {
+  background: #ff3b30;
+}
+
+.audio-call-container .btn-end-call:hover {
+  background: #ff1a1a;
+}
+
+.audio-call-container .close-call-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.audio-call-container .close-call-btn:hover {
+  color: white;
+}
+
+/* Bouton appel audio dans l'écran initial */
+.btn-start-call.audio {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  margin-top: 10px;
+}
+
+.btn-start-call.audio:hover {
+  background: linear-gradient(135deg, #3a8be0 0%, #00c8e6 100%);
+}
+
+/* Styles pour l'appel en attente */
+.calling-container h3 {
+  color: white;
+  text-align: center;
+}
+
+/* Permissions note */
+.permissions-note {
+  margin-top: 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+}
+
+/* Ajustements pour le bouton annuler */
+.btn-close {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  margin-top: 15px;
+}
+
+.btn-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

@@ -7,11 +7,15 @@ import { useAuth } from '../hooks/useAuth';
 import { useCall } from '../context/CallContext';
 import './VideoCallScreen.css';
 
-const VideoCallScreen = ({ selectedChat, onClose }) => {
-  console.log("🧩 VideoCallScreen RENDER");
+const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
+  console.log("🧩 VideoCallScreen RENDER", { callType });
   
   const { user } = useAuth();
   const { acceptedCall, clearActiveCall } = useCall();
+  
+  // ✅ PROBLÈME CRITIQUE N°2 RÉSOLU - Une seule source de vérité même en réception
+  const effectiveCallType = acceptedCall?.callType || callType;
+  const isAudioCall = effectiveCallType === 'audio';
   
   const callChat = selectedChat || (acceptedCall?.chatId ? { _id: acceptedCall.chatId } : null);
   
@@ -29,10 +33,30 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
   const callTimerRef = useRef(null);
   const channelNameRef = useRef(callChat?._id ? `call_${callChat._id}` : null);
   
-  // ✅ 1️⃣ UN SEUL POINT D'ENTRÉE AGORA
+  // ✅ UN SEUL POINT D'ENTRÉE AGORA
   const agoraStartedRef = useRef(false);
   
-  // ✅ 2️⃣ FONCTION SAFE - UNE SEULE FOIS
+  // ✅ Appels entrants - déclenchement via acceptedCall uniquement
+  useEffect(() => {
+    // Si on a un acceptedCall, on démarre automatiquement (appel entrant)
+    if (!acceptedCall || agoraStartedRef.current) return;
+    
+    console.log("📥 RECEVEUR : acceptedCall détecté, démarrage Agora");
+    console.log("📞 Type d'appel:", effectiveCallType);
+    
+    const channel = acceptedCall.channelName;
+    if (!channel) {
+      console.error("❌ channelName manquant côté receveur");
+      return;
+    }
+    
+    startAgoraOnce(channel);
+  }, [acceptedCall, effectiveCallType]);
+
+  // ✅ PROBLÈME CRITIQUE N°1 RÉSOLU - PAS de démarrage automatique d'appel sortant
+  // Les appels sortants doivent être déclenchés par l'utilisateur via startOutgoingCall()
+  // Supprimé: useEffect de démarrage automatique
+
   const startAgoraOnce = async (channelName) => {
     if (agoraStartedRef.current) {
       console.warn("⚠️ Agora déjà lancé, skip");
@@ -43,27 +67,15 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     await fetchTokenAndStartCall(channelName);
   };
 
-  // ✅ 3️⃣ RECEVEUR - Un seul useEffect
+  // ✅ PROBLÈME CRITIQUE N°3 RÉSOLU - Gestion explicite de l'audio distant
   useEffect(() => {
-    if (!acceptedCall) return;
-
-    console.log("📥 RECEVEUR : acceptedCall détecté, démarrage Agora");
-
-    const channel = acceptedCall.channelName;
-    if (!channel) {
-      console.error("❌ channelName manquant côté receveur");
-      return;
-    }
-
-    startAgoraOnce(channel);
-  }, [acceptedCall]);
-
-  // Initialiser les événements Agora et socket
-  useEffect(() => {
-    // Callbacks Agora
+    // Callbacks Agora pour la vidéo
     agoraService.onRemoteVideoAdded = (uid, videoTrack) => {
       console.log(`📹 [CALLBACK] Vidéo distante ajoutée: ${uid}`);
       setDebugInfo(`Vidéo distante ${uid} reçue`);
+      
+      // Pour les appels audio, on ignore les vidéos
+      if (isAudioCall) return;
       
       setRemoteStreams(prev => {
         const exists = prev.find(s => s.uid === uid);
@@ -94,6 +106,30 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       setRemoteStreams(prev => prev.filter(s => s.uid !== uid));
     };
     
+    // ✅ PROBLÈME CRITIQUE N°3 - Callback pour l'audio distant
+    agoraService.onRemoteAudioAdded = (uid, audioTrack) => {
+      console.log(`🎧 [CALLBACK] Audio distant ajouté: ${uid}`);
+      
+      // ✅ FORCER la lecture de l'audio distant explicitement
+      try {
+        audioTrack.play();
+        console.log(`✅ [CALLBACK] Audio ${uid} explicitement joué`);
+      } catch (error) {
+        console.error(`❌ [CALLBACK] Erreur play audio ${uid}:`, error);
+      }
+      
+      // Mettre à jour l'état pour l'UI si besoin
+      setRemoteStreams(prev => {
+        const exists = prev.find(s => s.uid === uid);
+        if (exists) {
+          return prev.map(s => 
+            s.uid === uid ? { ...s, hasAudio: true, audioTrack } : s
+          );
+        }
+        return [...prev, { uid, hasVideo: false, hasAudio: true, audioTrack }];
+      });
+    };
+    
     // Événements socket
     const socket = socketService.socket;
     if (!socket) {
@@ -101,24 +137,24 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       return;
     }
 
-    // ✅ 4️⃣ APPELANT - UN SEUL POINT D'ENTRÉE
-    socket.on('video-call-accepted', (data) => {
+    // ✅ Événements unifiés pour audio et vidéo
+    socket.on('call-accepted', (data) => {
       console.log('✅ Appel accepté par le destinataire:', data);
       setDebugInfo('Appel accepté par le destinataire');
       
       const targetChannel = data.channelName || channelNameRef.current;
       
       if (!targetChannel) {
-        console.error('❌ Channel name manquant dans video-call-accepted');
+        console.error('❌ Channel name manquant dans call-accepted');
         setDebugInfo('Erreur: Channel manquant');
         return;
       }
       
-      console.log('🚀 APPELANT: Démarrage Agora via video-call-accepted');
+      console.log('🚀 APPELANT: Démarrage Agora via call-accepted');
       startAgoraOnce(targetChannel);
     });
 
-    socket.on('video-call-rejected', (data) => {
+    socket.on('call-rejected', (data) => {
       console.log('❌ Appel refusé:', data);
       setCallStatus('rejected');
       setDebugInfo('Appel refusé');
@@ -127,7 +163,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       handleEndCall();
     });
 
-    socket.on('video-call-ended', (data) => {
+    socket.on('call-ended', (data) => {
       console.log('📞 Appel terminé par l\'autre utilisateur:', data);
       if (data.channelName === channelNameRef.current) {
         handleEndCall();
@@ -171,30 +207,34 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     return () => {
       agoraService.onRemoteVideoAdded = null;
       agoraService.onRemoteVideoRemoved = null;
+      agoraService.onRemoteAudioAdded = null;
       
       if (socket) {
-        socket.off('video-call-accepted');
-        socket.off('video-call-rejected');
-        socket.off('video-call-ended');
+        socket.off('call-accepted');
+        socket.off('call-rejected');
+        socket.off('call-ended');
         socket.off('call-initiated');
         socket.off('call-error');
         socket.off('connect');
       }
       clearInterval(callTimerRef.current);
     };
-  }, []);
+  }, [isAudioCall]);
 
-  // Mettre à jour la vidéo locale
+  // Mettre à jour la vidéo locale (uniquement pour appels vidéo)
   useEffect(() => {
-    if (agoraService.localVideoTrack && localVideoRef.current) {
+    // ✅ NE PAS jouer la vidéo locale en audio
+    if (!isAudioCall && agoraService.localVideoTrack && localVideoRef.current) {
       console.log('🎬 Lecture vidéo locale');
       agoraService.localVideoTrack.play(localVideoRef.current);
       setDebugInfo('Vidéo locale active');
     }
-  }, [isCallActive]);
+  }, [isCallActive, isAudioCall]);
 
-  // Forcer la lecture des vidéos distantes
+  // Forcer la lecture des vidéos distantes (uniquement pour appels vidéo)
   useEffect(() => {
+    if (isAudioCall) return; // Pas de vidéo en audio call
+    
     const playAllRemoteVideos = () => {
       console.log('🔄 Tentative de lecture de toutes les vidéos distantes');
       
@@ -225,7 +265,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       const timer = setTimeout(playAllRemoteVideos, 300);
       return () => clearTimeout(timer);
     }
-  }, [isCallActive, remoteStreams]);
+  }, [isCallActive, remoteStreams, isAudioCall]);
 
   // Initialisation socket
   useEffect(() => {
@@ -241,8 +281,40 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     testSocket();
   }, []);
 
-  const startOutgoingCall = async () => {
+  const startOutgoingCall = () => {
     console.log('🔍 === DÉBUT startOutgoingCall ===');
+    console.log('📞 Type d\'appel:', effectiveCallType);
+    
+    // Vérifier qu'on a bien les permissions pour le type d'appel
+    if (!isAudioCall) {
+      // Pour les appels vidéo, vérifier l'accès caméra
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => {
+          // Libérer le stream immédiatement, juste pour tester les permissions
+          stream.getTracks().forEach(track => track.stop());
+          _startOutgoingCall();
+        })
+        .catch(error => {
+          console.error('❌ Permission caméra refusée:', error);
+          alert('Permission caméra requise pour les appels vidéo');
+          onClose();
+        });
+    } else {
+      // Pour les appels audio, vérifier l'accès micro
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          stream.getTracks().forEach(track => track.stop());
+          _startOutgoingCall();
+        })
+        .catch(error => {
+          console.error('❌ Permission micro refusée:', error);
+          alert('Permission micro requise pour les appels audio');
+          onClose();
+        });
+    }
+  };
+
+  const _startOutgoingCall = async () => {
     setDebugInfo('Démarrage appel sortant...');
     
     if (!callChat?._id) {
@@ -264,7 +336,8 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     console.log('🎯 Appel à:', {
       currentUser: currentUserId,
       otherUser: otherParticipant._id || otherParticipant.id,
-      otherUsername: otherParticipant.username
+      otherUsername: otherParticipant.username,
+      callType: effectiveCallType
     });
     
     setIsCalling(true);
@@ -284,6 +357,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       
       console.log('✅ Socket prêt, émission événement...');
       
+      // ✅ Un seul nom: callType
       const callData = {
         chatId: callChat._id,
         channelName: channelName,
@@ -292,15 +366,16 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
         recipientId: otherParticipant._id || otherParticipant.id,
         recipientName: otherParticipant.username || 'Utilisateur',
         timestamp: Date.now(),
-        type: 'video',
+        callType: effectiveCallType, // ✅ Utilise effectiveCallType
         callerSocketId: socketService.socket.id
       };
       
-      socketService.socket.emit('initiate-video-call', callData);
+      // ✅ Événement unique pour tous les appels
+      socketService.socket.emit('initiate-call', callData);
       setDebugInfo('Appel émis, en attente d\'acceptation...');
       
       console.log('📤 Événement envoyé:', callData);
-      console.log('⏳ Attente de video-call-accepted pour démarrer Agora...');
+      console.log('⏳ Attente de call-accepted pour démarrer Agora...');
       
       setTimeout(() => {
         if (callStatus === 'calling' && !isCallActive) {
@@ -380,7 +455,8 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
   const startAgoraCall = async (token, channel, uid) => {
     console.log("🧪 START AGORA CALL", {
       channel,
-      uid
+      uid,
+      isAudioCall
     });
 
     if (isCallActive) {
@@ -389,10 +465,16 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     }
     
     try {
-      console.log('🚀 Démarrage appel Agora:', { channel, uid });
+      console.log('🚀 Démarrage appel Agora:', { channel, uid, isAudioCall });
       setDebugInfo('Connexion à Agora...');
       
-      const result = await agoraService.joinChannel(channel, token, uid);
+      // ✅ Démarrer Agora en audio seulement si besoin
+      const result = await agoraService.joinChannel(
+        channel,
+        token,
+        uid,
+        isAudioCall // 🔥 TRUE = audio only
+      );
       
       if (result.success) {
         setIsCallActive(true);
@@ -404,7 +486,8 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
           channel: channel,
           localVideo: !!agoraService.localVideoTrack,
           localAudio: !!agoraService.localAudioTrack,
-          remoteUsers: Array.from(agoraService.remoteUsers.entries())
+          remoteUsers: Array.from(agoraService.remoteUsers.entries()),
+          isAudioCall: isAudioCall
         });
         
         socketService.socket.emit('join-call-room', channel);
@@ -445,9 +528,11 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
       )?._id;
       
       if (recipientId) {
-        socketService.socket.emit('end-video-call', {
+        // ✅ Événement unifié pour tous les appels
+        socketService.socket.emit('end-call', {
           channelName: channelNameRef.current,
-          recipientIds: [recipientId]
+          recipientIds: [recipientId],
+          callType: effectiveCallType
         });
       }
     }
@@ -481,6 +566,10 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
   };
 
   const toggleCamera = async () => {
+    if (isAudioCall) {
+      alert('L\'appel audio ne prend pas en charge la caméra');
+      return;
+    }
     const newState = !isVideoOff;
     setIsVideoOff(newState);
     setDebugInfo(`Caméra ${newState ? 'désactivée' : 'activée'}`);
@@ -493,7 +582,50 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (isCallActive) {
+  // ✅ UI SPÉCIALE AUDIO CALL
+  if (isCallActive && isAudioCall) {
+    return (
+      <div className="audio-call-screen">
+        <div className="audio-call-container">
+          <div className="caller-avatar">
+            {callChat?.participants?.[0]?.username?.charAt(0).toUpperCase() || 'U'}
+          </div>
+
+          <h3>Appel audio en cours</h3>
+          <p>{callChat?.participants?.[0]?.username || 'Utilisateur'}</p>
+
+          <div className="call-duration">
+            {formatDuration(callDuration)}
+          </div>
+
+          <div className="control-buttons">
+            <button 
+              className={`control-btn ${isMuted ? 'btn-active' : ''}`}
+              onClick={toggleMicrophone}
+              title={isMuted ? 'Activer le micro' : 'Désactiver le micro'}
+            >
+              {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+            </button>
+
+            <button 
+              className="control-btn btn-end-call"
+              onClick={endCall}
+              title="Terminer l'appel"
+            >
+              <Phone size={20} />
+            </button>
+          </div>
+
+          <button className="close-call-btn" onClick={onClose}>
+            <X size={24} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ UI VIDÉO (uniquement si pas audio)
+  if (isCallActive && !isAudioCall) {
     return (
       <div className="video-call-screen">
         <div className="video-call-container">
@@ -593,6 +725,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     );
   }
 
+  // ✅ UI APPEL EN COURS (en attente de réponse)
   if (isCalling) {
     return (
       <div className="video-call-screen calling-screen">
@@ -602,7 +735,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
           </div>
           
           <div className="calling-info">
-            <h3>Appel en cours...</h3>
+            <h3>Appel {effectiveCallType === 'audio' ? 'audio' : 'vidéo'} en cours...</h3>
             <p>Appel de {callChat?.participants?.[0]?.username || 'Utilisateur'}</p>
             <p className="debug-info">{debugInfo}</p>
             <p className="debug-info">En attente d'acceptation...</p>
@@ -625,6 +758,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
     );
   }
 
+  // ✅ Écran initial - SANS boutons de choix
   return (
     <div className="video-call-screen init-screen">
       <div className="call-init-container">
@@ -633,13 +767,23 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
             {callChat?.participants?.[0]?.username?.charAt(0).toUpperCase() || 'U'}
           </div>
           <h3>{callChat?.participants?.[0]?.username || 'Utilisateur'}</h3>
-          <p>Prêt pour un appel vidéo ?</p>
+          <p>Prêt pour un appel {effectiveCallType === 'audio' ? 'audio' : 'vidéo'} ?</p>
         </div>
         
         <div className="init-controls">
+          {/* ✅ Bouton unique pour démarrer l'appel */}
           <button className="btn-start-call" onClick={startOutgoingCall}>
-            <Video size={24} />
-            <span>Démarrer l'appel vidéo</span>
+            {effectiveCallType === 'audio' ? (
+              <>
+                <Phone size={24} />
+                <span>Démarrer l'appel audio</span>
+              </>
+            ) : (
+              <>
+                <Video size={24} />
+                <span>Démarrer l'appel vidéo</span>
+              </>
+            )}
           </button>
           
           <button className="btn-close" onClick={onClose}>
@@ -648,7 +792,7 @@ const VideoCallScreen = ({ selectedChat, onClose }) => {
         </div>
         
         <div className="permissions-note">
-          <p>Assurez-vous d'avoir autorisé l'accès au micro et à la caméra</p>
+          <p>Assurez-vous d'avoir autorisé l'accès au micro{effectiveCallType === 'video' ? ' et à la caméra' : ''}</p>
         </div>
       </div>
     </div>

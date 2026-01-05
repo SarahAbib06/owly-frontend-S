@@ -21,8 +21,8 @@ import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
 import { useCall } from "../context/CallContext";
 import socketService from "../services/socketService";
-import VideoCallScreen from "./VideoCallScreen";
-import AudioCallScreen from "./AudioCallScreen";
+// ✅ ÉTAPE 1 — SUPPRIMER AudioCallScreen
+import VideoCallScreen from "./VideoCallScreen"; // Seul écran d'appel
 import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
@@ -102,16 +102,16 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const {
-  incomingCall,
-  getActiveCall,
-  clearActiveCall
-} = useCall();
+    incomingCall,
+    getActiveCall,
+    clearActiveCall
+  } = useCall();
 
-  
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
 
-  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
-  const [isAudioCallOpen, setIsAudioCallOpen] = useState(false);
+  // ✅ ÉTAPE 2 — UNIFIER L'ÉTAT D'APPEL
+  const [activeCallType, setActiveCallType] = useState(null); // "audio" | "video"
+  
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
   const [bubbleBg, setBubbleBg] = useState("");
@@ -130,9 +130,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
-
-  // État pour gérer les appels entrants
-
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -160,31 +157,19 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const { isRecording, recordingTime, startRecording, stopAndSend, cancelRecording } =
     useAudioRecorder(selectedChat?._id);
 
-  
+  // ✅ ÉTAPE 3 — DÉTECTION DES APPELS ENTRANTS (CORRECTE)
+  useEffect(() => {
+    if (!selectedChat) return;
 
-  // 🔥 DÉTECTION AUTOMATIQUE DES APPELS ENTRANTS (VIDÉO + AUDIO)
- // 🔥 LOGIQUE UNIQUE POUR OUVRIR UN APPEL (AUDIO / VIDÉO)
-useEffect(() => {
-  if (!selectedChat) return;
+    const call = incomingCall || getActiveCall();
 
-  const call = incomingCall || getActiveCall();
-
-  if (call && call.chatId === selectedChat._id) {
-    const isAudio =
-      call.type === "audio" ||
-      call.channelName?.includes("audio");
-
-    if (isAudio) {
-      setIsAudioCallOpen(true);
-    } else {
-      setIsVideoCallOpen(true);
+    if (call && call.chatId === selectedChat._id) {
+      console.log('📞 [ChatWindow] Appel entrant détecté:', call.callType);
+      // ✅ Détection correcte basée sur callType
+      setActiveCallType(call.callType || 'video'); // Défaut: vidéo
+      clearActiveCall(); // Nettoyer le contexte d'appel
     }
-
-    clearActiveCall();
-  }
-}, [selectedChat, incomingCall]);
-
-
+  }, [selectedChat, incomingCall, getActiveCall, clearActiveCall]);
 
   // 🔥 Charger les messages épinglés
   useEffect(() => {
@@ -373,13 +358,6 @@ useEffect(() => {
     return () => clearInterval(id);
   }, [themeEmojis]);
 
- 
-
-  
-
-
- 
-
   const bubbleClasses = (fromMe) =>
     fromMe
       ? "bg-myYellow2 dark:bg-mydarkYellow text-myBlack rounded-t-xl rounded-bl-xl rounded-br-none px-3 py-2 text-sm"
@@ -422,8 +400,6 @@ useEffect(() => {
 
     const fromMe =
       currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
-
-    
 
     const { reactions, addReaction, removeReaction } = useReactions(msg._id);
 
@@ -720,22 +696,22 @@ useEffect(() => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* BOUTON APPEL AUDIO */}
+          {/* ✅ ÉTAPE 4 — BOUTON APPEL AUDIO */}
           <Phone
             size={16}
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
             onClick={() => {
-              console.log('📞 [ChatWindow] Bouton audio cliqué pour le chat:', selectedChat?._id);
-              setIsAudioCallOpen(true);
+              console.log('📞 [ChatWindow] Bouton audio cliqué');
+              setActiveCallType("audio");
             }}
           />
-          {/* BOUTON APPEL VIDÉO */}
+          {/* ✅ ÉTAPE 4 — BOUTON APPEL VIDÉO */}
           <Video
             size={16}
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
             onClick={() => {
-              console.log('🎬 [ChatWindow] Bouton vidéo cliqué pour le chat:', selectedChat?._id);
-              setIsVideoCallOpen(true);
+              console.log('🎬 [ChatWindow] Bouton vidéo cliqué');
+              setActiveCallType("video");
             }}
           />
           <button onClick={() => setIsOptionsOpen(true)}>
@@ -882,33 +858,15 @@ useEffect(() => {
         </div>
       </footer>
 
-    
-      {/* MODAL APPEL AUDIO */}
-     
-{isAudioCallOpen && selectedChat && (
-  <AudioCallScreen
-    selectedChat={selectedChat}
-    onClose={() => {
-      console.log("📞 Fermeture AudioCallScreen");
-      setIsAudioCallOpen(false);
-      clearActiveCall(); // ✅ Utilisez le contexte
-    }}
-  />
-)}
-
-      {/* MODAL APPEL VIDÉO */}
-      {isVideoCallOpen && selectedChat && (
+      {/* ✅ ÉTAPE 5 — UN SEUL MODAL D'APPEL */}
+      {activeCallType && selectedChat && (
         <VideoCallScreen
           selectedChat={selectedChat}
+          callType={activeCallType} // 🔥 TRANSMIS
           onClose={() => {
-            console.log('📞 [ChatWindow] Fermeture VideoCallScreen');
-            setIsVideoCallOpen(false);
-            // Nettoyer les appels en attente
-            clearPendingCall();
-            localStorage.removeItem('pendingVideoCall');
-            if (window.pendingVideoCall) {
-              window.pendingVideoCall = null;
-            }
+            console.log(`📞 [ChatWindow] Fermeture ${activeCallType} call`);
+            setActiveCallType(null);
+            clearActiveCall();
           }}
         />
       )}

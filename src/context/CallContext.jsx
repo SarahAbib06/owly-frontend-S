@@ -44,31 +44,30 @@ export const CallProvider = ({ children }) => {
   }, []);
 
   /* ✅ Accepter - MODIFIÉ selon l'instruction 2️⃣ */
-const acceptCall = useCallback(() => {
-  if (!incomingCall) return;
+  const acceptCall = useCallback(() => {
+    if (!incomingCall) return;
 
-  stopRingtone();
-  setShowIncomingCallModal(false);
+    stopRingtone();
+    setShowIncomingCallModal(false);
 
-  socketService.socket?.emit("accept-video-call", {
-  channelName: incomingCall.channelName,
-  callerId: incomingCall.callerId,
-  callerSocketId: incomingCall.callerSocketId,
-});
+    // ✅ ÉTAPE 2 — Émission unifiée avec callType
+    socketService.socket?.emit("accept-call", {
+      channelName: incomingCall.channelName,
+      callerSocketId: incomingCall.callerSocketId,
+      callType: incomingCall.callType, // 🔥 CLÉ - détermine audio ou vidéo
+    });
 
+    // 🔥 CLÉ : déclenche l'affichage de VideoCallScreen
+    setAcceptedCall(incomingCall);
 
-  // 🔥 CLÉ : déclenche l'affichage de VideoCallScreen
-  setAcceptedCall(incomingCall);
+    // 🔥 NETTOYAGE ABSOLU (manquant chez toi)
+    setIncomingCall(null);
 
-  // 🔥 NETTOYAGE ABSOLU (manquant chez toi)
-  setIncomingCall(null);
-
-  localStorage.setItem(
-    "activeCall",
-    JSON.stringify(incomingCall)
-  );
-}, [incomingCall]);
-
+    localStorage.setItem(
+      "activeCall",
+      JSON.stringify(incomingCall)
+    );
+  }, [incomingCall]);
 
   /* ❌ Refuser */
   const rejectCall = useCallback(() => {
@@ -91,12 +90,12 @@ const acceptCall = useCallback(() => {
     const socket = socketService.socket;
     if (!socket) return;
 
-    socket.on("incoming-video-call", handleIncomingCall);
-    socket.on("incoming-audio-call", handleIncomingCall);
+    // ✅ ÉTAPE 1 — Un seul event unifié
+    socket.on("incoming-call", handleIncomingCall);
 
     return () => {
-      socket.off("incoming-video-call", handleIncomingCall);
-      socket.off("incoming-audio-call", handleIncomingCall);
+      // ✅ ÉTAPE 1 — Cleanup unifié
+      socket.off("incoming-call", handleIncomingCall);
     };
   }, [handleIncomingCall]);
 
@@ -117,7 +116,7 @@ const acceptCall = useCallback(() => {
         showIncomingCallModal,
         acceptCall,
         rejectCall,
-        acceptedCall,          // ✅ Exposé      // ✅ Exposé
+        acceptedCall,          // ✅ Exposé
         getActiveCall,
         clearActiveCall,
       }}
