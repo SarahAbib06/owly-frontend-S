@@ -36,6 +36,8 @@ import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
+import MessageRequestBanner from "./MessageRequestBanner";
+
     
 
 
@@ -149,6 +151,24 @@ const { conversations: myConversations, loading: convLoading } = useConversation
 
 const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
+
+
+console.log('🔍 DEBUG MESSAGE REQUEST:', {
+  isMessageRequest: selectedChat?.isMessageRequest,
+  messageRequestFor: selectedChat?.messageRequestFor,
+  messageRequestFrom: selectedChat?.messageRequestFrom,
+  currentUserId: user?.id,
+  isForMe: selectedChat?.messageRequestFor?.toString() === user?.id?.toString()
+});
+
+// ✅ CORRECTION ICI : Vérifier que JE SUIS le destinataire (messageRequestFor)
+const isIncomingMessageRequest = 
+  selectedChat?.isMessageRequest === true && 
+  selectedChat?.messageRequestFor?.toString() === user?.id?.toString();
+
+console.log('🚨 isIncomingMessageRequest =', isIncomingMessageRequest);
+
+// 🔥 NOUVEAU : Bannière Demande de message (comme Messenger)
 
 
 
@@ -751,7 +771,41 @@ const handleAcceptCall = () => {
     
 
 
+// À ajouter dans ChatWindow.jsx, dans la section useEffect des sockets
 
+useEffect(() => {
+  if (!socketService.socket) return;
+
+  // Écouter quand une demande est acceptée
+  const handleRequestAccepted = (data) => {
+    console.log("✅ Demande de message acceptée:", data);
+    
+    // Si c'est ma conversation, rafraîchir
+    if (data.conversationId === selectedChat?._id) {
+      // Mettre à jour l'état local ou rafraîchir
+      window.location.reload(); // solution simple
+      // OU mieux : mettre à jour l'état React
+    }
+  };
+
+  // Écouter quand une demande est supprimée
+  const handleRequestDeleted = (data) => {
+    console.log("🗑️ Demande de message supprimée:", data);
+    
+    // Si c'est ma conversation, retourner à la liste
+    if (data.conversationId === selectedChat?._id) {
+      onBack();
+    }
+  };
+
+  socketService.socket.on("message_request_accepted", handleRequestAccepted);
+  socketService.socket.on("message_request_deleted", handleRequestDeleted);
+
+  return () => {
+    socketService.socket.off("message_request_accepted", handleRequestAccepted);
+    socketService.socket.off("message_request_deleted", handleRequestDeleted);
+  };
+}, [selectedChat, onBack]);
 
 
 
@@ -1099,6 +1153,81 @@ const handleAcceptCall = () => {
         </div>
       </header>
 
+      {/* 🔥 DEMANDE DE MESSAGE - Bannière propre et réutilisable */}
+{isIncomingMessageRequest && (
+  <MessageRequestBanner
+    conversationName={conversationName}
+    conversationAvatar={conversationAvatar}
+    onAccept={async () => {
+      const token = localStorage.getItem("token");
+      try {
+        console.log('🟢 Acceptation demande pour conversation:', selectedChat._id);
+        
+        const res = await fetch("http://localhost:5000/api/relations/accept-request", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ conversationId: selectedChat._id }),
+        });
+
+        const data = await res.json();
+        console.log('✅ Réponse accept:', data);
+
+        if (res.ok) {
+          window.location.reload(); // ou une meilleure méthode plus tard
+        } else {
+          console.error('❌ Erreur accept:', data);
+          alert(data.error || "Erreur lors de l'acceptation");
+        }
+      } catch (err) {
+        console.error('❌ Erreur réseau accept:', err);
+        alert("Erreur réseau");
+      }
+    }}
+    onDelete={async () => {
+      if (!confirm("Supprimer cette demande de message ?")) return;
+
+      const token = localStorage.getItem("token");
+      try {
+        console.log('🔴 Suppression demande pour conversation:', selectedChat._id);
+        console.log('📋 Données conversation:', {
+          _id: selectedChat._id,
+          isMessageRequest: selectedChat.isMessageRequest,
+          messageRequestFor: selectedChat.messageRequestFor,
+          messageRequestFrom: selectedChat.messageRequestFrom,
+          currentUserId: user?.id
+        });
+        
+        const res = await fetch("http://localhost:5000/api/relations/delete-request", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ conversationId: selectedChat._id }),
+        });
+
+        const data = await res.json();
+        console.log('✅ Réponse delete:', data);
+
+        if (res.ok) {
+          onBack(); // Retour à la liste
+        } else {
+          console.error('❌ Erreur delete:', data);
+          alert(data.error || "Erreur lors de la suppression");
+        }
+      } catch (err) {
+        console.error('❌ Erreur réseau delete:', err);
+        alert("Erreur réseau");
+      }
+    }}
+  />
+)}
+
+      {/* SECTION MESSAGES ÉPINGLÉS */}
+
       {/* SECTION MESSAGES ÉPINGLÉS */}
             {/* SECTION MESSAGES ÉPINGLÉS - VERSION SCROLLABLE HORIZONTALE */}
             {/* SECTION MESSAGES ÉPINGLÉS - UNE SEULE LIGNE SCROLLABLE */}
@@ -1283,7 +1412,7 @@ const handleAcceptCall = () => {
 
 
         <div className="flex items-center gap-2  w-full">
-          <div className="flex-1 flex items-center gap-1 px-2 py-2 rounded-xl  bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
+          <div className="flex-1 flex items-center gap-2 px-4 py-4 rounded-xl  bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
             <Smile
               size={18}
               className="text-gray-700 dark:text-gray-300 cursor-pointer"
@@ -1302,7 +1431,7 @@ const handleAcceptCall = () => {
             />
             <input
               type="text"
-              className=" flex items-center flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
+              className=" flex items-center flex-1 bg-transparent outline-none text-xs text-myBlack dark:text-white"
               placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
               value={inputText}
               onChange={handleInputChange}
@@ -1313,7 +1442,7 @@ const handleAcceptCall = () => {
             />
           </div>
           <button
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
+            className="w-12 h-12 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
             style={{ background: sendBtnColor || "#FFD700" }}
             onClick={
      selectedFile

@@ -1,95 +1,152 @@
-
 // src/components/SearchModal.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, User, MessageCircle, QrCode, Camera, Upload, UserCheck } from 'lucide-react';
 import jsQR from 'jsqr';
 
 const SearchModal = ({ onClose, onUserSelect }) => {
-  const [activeTab, setActiveTab] = useState('search'); // 'search' ou 'scan'
+  const [activeTab, setActiveTab] = useState('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState([]);
-  const [contacts, setContacts] = useState([]); // ← REMPLACÉ
+  const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [loadingContacts, setLoadingContacts] = useState(false); // ← AJOUTÉ
+  const [loadingContacts, setLoadingContacts] = useState(false);
   const [error, setError] = useState('');
   
-  // États pour le scanner QR
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
- // Dans SearchModal.jsx - fonction fetchContacts simplifiée
+  // 🔥 CHARGEMENT DES CONTACTS AU DÉMARRAGE
 const fetchContacts = async () => {
   try {
     setLoadingContacts(true);
     const token = localStorage.getItem('token');
     
-    console.log('🔄 Chargement des contacts...');
-    
     const response = await fetch('http://localhost:5000/api/relations/contacts', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     
-    console.log('Status:', response.status);
-    
-    if (!response.ok) {
-      throw new Error(`Erreur HTTP: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
     
     const data = await response.json();
     console.log('📊 Contacts reçus:', data);
     
-    // data est déjà un tableau, pas besoin de data.contacts
-    setContacts(data);
+    // 🔥 DEBUG : Afficher les IDs pour voir les doublons
+    console.log('🔍 IDs des contacts:', data.map(c => c._id));
     
+    // 🔥 DÉDOUBLONNAGE CÔTÉ FRONTEND (au cas où backend échoue)
+    const uniqueContacts = [];
+    const seenIds = new Set();
+    
+    for (const contact of data) {
+      const id = contact._id || contact.id;
+      if (!seenIds.has(id)) {
+        seenIds.add(id);
+        uniqueContacts.push(contact);
+      }
+    }
+    
+    console.log('✅ Contacts uniques après filtrage:', uniqueContacts.length);
+    console.log('🔍 IDs uniques:', uniqueContacts.map(c => c._id));
+    
+    setContacts(uniqueContacts);
   } catch (error) {
     console.error('❌ Erreur chargement contacts:', error);
-    setError('Impossible de charger les contacts: ' + error.message);
+    setError('Impossible de charger les contacts');
     setContacts([]);
   } finally {
     setLoadingContacts(false);
   }
 };
-  // RECHERCHE PAR USERNAME
+
+  // 🔥 RECHERCHE PAR USERNAME
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
     try {
       setLoading(true);
       setError('');
-      
+      setUsers([]);
+
       const token = localStorage.getItem('token');
       const response = await fetch(
         `http://localhost:5000/api/search/users?username=${encodeURIComponent(searchQuery)}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
+        { headers: { 'Authorization': `Bearer ${token}` } }
       );
       
-      if (!response.ok) {
-        throw new Error('Erreur de recherche');
-      }
+      if (!response.ok) throw new Error('Erreur de recherche');
       
       const data = await response.json();
-      setUsers(data);
+      console.log("📋 Résultats de recherche:", data);
+
+      setUsers(Array.isArray(data) ? data : []);
       
       if (data.length === 0) {
         setError('Aucun utilisateur trouvé');
       }
     } catch (error) {
-      console.error('Erreur recherche:', error);
+      console.error('❌ Erreur recherche:', error);
       setError('Erreur lors de la recherche');
     } finally {
       setLoading(false);
     }
   };
 
-  // SCANNER QR CODE
+  // 🔥 OUVRIR/CRÉER UNE CONVERSATION AVEC UN UTILISATEUR
+  const handleOpenConversation = async (targetUser) => {
+    console.log("💬 Ouverture conversation avec:", targetUser);
+
+    const token = localStorage.getItem('token');
+
+    try {
+      // 1️⃣ Créer ou récupérer la conversation
+      const res = await fetch('http://localhost:5000/api/conversations/private', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ receiverId: targetUser._id })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur serveur');
+      }
+
+      const data = await res.json();
+      console.log("✅ Conversation créée/récupérée:", data);
+
+      if (data.success && data.conversation) {
+        // 2️⃣ Passer l'objet complet à onUserSelect
+
+        console.log('🔥 Conversation API Response:', data.conversation); 
+onUserSelect({
+  _id: data.conversation._id,
+  id: data.conversation.id,
+  type: "private",
+  participants: [targetUser],
+  name: targetUser.username,
+  unreadCount: 0,
+  lastMessageAt: new Date(),
+  isFromArchived: false,
+  
+  // 🔥 RÉCUPÉRER LES VRAIES VALEURS DE L'API
+  isMessageRequest: data.conversation.isMessageRequest ?? true, // fallback si undefined
+  messageRequestFor: data.conversation.messageRequestFor,
+  messageRequestFrom: data.conversation.messageRequestFrom,
+});
+
+onClose();
+      }
+    } catch (err) {
+      console.error("❌ Erreur ouverture conversation:", err);
+      alert("Impossible d'ouvrir la conversation : " + err.message);
+    }
+  };
+
+  // QR CODE (inchangé)
   const startQRScanner = async () => {
     try {
       setScanning(true);
@@ -106,7 +163,7 @@ const fetchContacts = async () => {
       }
     } catch (error) {
       console.error('Erreur caméra:', error);
-      setError('Impossible d\'accéder à la caméra: ' + error.message);
+      setError('Impossible d\'accéder à la caméra');
       setActiveTab('search');
     }
   };
@@ -140,15 +197,14 @@ const fetchContacts = async () => {
       }
     }
     
-    // Continue à scanner tant qu'on est en mode scan
     requestAnimationFrame(scanFrame);
   };
 
   const handleQRScan = async (qrData) => {
     try {
       stopQRScanner();
-      
       const token = localStorage.getItem('token');
+      
       const response = await fetch('http://localhost:5000/api/qr/scan', {
         method: 'POST',
         headers: {
@@ -172,7 +228,6 @@ const fetchContacts = async () => {
     }
   };
 
-  // Upload d'image QR
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -201,7 +256,7 @@ const fetchContacts = async () => {
     reader.readAsDataURL(file);
   };
 
-  // Effets
+  // EFFETS
   useEffect(() => {
     if (activeTab === 'scan') {
       startQRScanner();
@@ -209,26 +264,19 @@ const fetchContacts = async () => {
       stopQRScanner();
     }
     
-    return () => {
-      stopQRScanner();
-    };
+    return () => stopQRScanner();
   }, [activeTab]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-      if (e.key === 'Enter' && activeTab === 'search') {
-        handleSearch();
-      }
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'Enter' && activeTab === 'search') handleSearch();
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchQuery, activeTab]);
 
-  // Charger les contacts au démarrage
   useEffect(() => {
     if (activeTab === 'search') {
       fetchContacts();
@@ -239,7 +287,7 @@ const fetchContacts = async () => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-neutral-800 rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden shadow-xl">
         
-        {/* En-tête minimaliste */}
+        {/* En-tête */}
         <div className="flex justify-between items-center p-4 border-b">
           <div className="flex items-center gap-2">
             <Search size={20} className="text-gray-600" />
@@ -256,7 +304,7 @@ const fetchContacts = async () => {
         {/* Contenu */}
         <div className="p-4 overflow-y-auto max-h-[calc(80vh-80px)]">
           
-          {/* Onglets horizontaux */}
+          {/* Onglets */}
           <div className="flex mb-4 bg-gray-100 dark:bg-neutral-700 p-1 rounded-lg">
             <button
               className={`flex-1 py-2 text-center text-sm font-medium rounded-md transition-colors ${
@@ -281,7 +329,6 @@ const fetchContacts = async () => {
           </div>
 
           {activeTab === 'search' ? (
-            // RECHERCHE PAR USERNAME
             <div>
               {/* Champ de recherche */}
               <div className="mb-4">
@@ -302,7 +349,6 @@ const fetchContacts = async () => {
                     <Search size={20} />
                   </button>
                 </div>
-                
               </div>
 
               {/* Contacts suggérés */}
@@ -311,13 +357,13 @@ const fetchContacts = async () => {
                 {loadingContacts ? (
                   <div className="text-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-2 text-sm text-gray-600">Chargement des contacts...</p>
+                    <p className="mt-2 text-sm text-gray-600">Chargement...</p>
                   </div>
                 ) : contacts.length > 0 ? (
                   <div className="space-y-2">
                     {contacts.map((contact) => (
                       <div
-                        key={contact.id}
+                        key={contact._id}
                         className="flex items-center justify-between p-3 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-xl"
                       >
                         <div className="flex items-center gap-3">
@@ -339,20 +385,13 @@ const fetchContacts = async () => {
                           <div>
                             <p className="font-medium">{contact.username}</p>
                             <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${
-                                contact.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
-                              }`}></div>
-                              <span className="text-xs text-gray-500">
-                                {contact.status === 'online' ? 'En ligne' : 'Hors ligne'}
-                              </span>
-                              {contact.isContact && (
-                                <UserCheck size={12} className="text-blue-500 ml-1" />
-                              )}
+                              <UserCheck size={12} className="text-blue-500" />
+                              <span className="text-xs text-gray-500">Contact</span>
                             </div>
                           </div>
                         </div>
                         <button
-                          onClick={() => onUserSelect && onUserSelect(contact.contact || contact)}
+                          onClick={() => handleOpenConversation(contact)}
                           className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
                           title="Envoyer un message"
                         >
@@ -378,7 +417,7 @@ const fetchContacts = async () => {
               {loading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-600">Recherche en cours...</p>
+                  <p className="mt-2 text-sm text-gray-600">Recherche...</p>
                 </div>
               ) : users.length > 0 ? (
                 <div>
@@ -418,16 +457,7 @@ const fetchContacts = async () => {
                           </div>
                         </div>
                         <button
-                          onClick={() => {
-                          if (onUserSelect) {
-                            const tempChat = {
-                              _id: `direct_${user._id}`,
-                              participants: [user],
-                              type: "private",
-                            };
-                            onUserSelect(tempChat);
-                          }
-                        }}
+                          onClick={() => handleOpenConversation(user)}
                           className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
                           title="Envoyer un message"
                         >
@@ -444,17 +474,16 @@ const fetchContacts = async () => {
               )}
             </div>
           ) : (
-            // SCANNER QR CODE
+            /* SCANNER QR CODE (inchangé) */
             <div>
               <div className="text-center mb-6">
                 <h3 className="font-medium mb-2">Scanner un QR Code</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Scannez le code QR d'un utilisateur pour l'ajouter
+                  Scannez le code QR d'un utilisateur
                 </p>
               </div>
               
               {scanResult ? (
-                // Résultat du scan
                 <div className="text-center p-4">
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
                     {scanResult.profilePicture ? (
@@ -474,7 +503,7 @@ const fetchContacts = async () => {
                   <div className="flex gap-2 justify-center">
                     <button
                       onClick={() => {
-                        onUserSelect && onUserSelect(scanResult);
+                        handleOpenConversation(scanResult);
                         onClose();
                       }}
                       className="flex-1 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2"
@@ -495,7 +524,6 @@ const fetchContacts = async () => {
                   </button>
                 </div>
               ) : (
-                // Scanner en cours
                 <div>
                   {scanning ? (
                     <div className="relative mb-6">
@@ -508,7 +536,6 @@ const fetchContacts = async () => {
                       />
                       <canvas ref={canvasRef} className="hidden" />
                       
-                      {/* Cadre de scan */}
                       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48">
                         <div className="absolute -top-1 -left-1 w-6 h-6 border-t-2 border-l-2 border-white" />
                         <div className="absolute -top-1 -right-1 w-6 h-6 border-t-2 border-r-2 border-white" />
@@ -519,11 +546,10 @@ const fetchContacts = async () => {
                   ) : (
                     <div className="border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded-2xl p-8 text-center mb-6">
                       <QrCode className="mx-auto mb-4 text-gray-400" size={48} />
-                      <p className="text-gray-600 dark:text-gray-300">Préparation du scanner...</p>
+                      <p className="text-gray-600 dark:text-gray-300">Préparation...</p>
                     </div>
                   )}
 
-                  {/* Upload d'image */}
                   <div className="mb-4">
                     <label className="block text-center">
                       <span className="text-sm text-gray-600 dark:text-gray-300 mb-2 block">

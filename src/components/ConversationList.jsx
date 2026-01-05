@@ -98,7 +98,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
     <aside className="h-screen bg-myWhite dark:bg-neutral-900 flex flex-col">
       
       {/* HEADER */}
-      <div className="px-4 pt-3 sm:px-6 sm:pt-4 sm:pb-2 items-center justify-between">
+      <div className="flex px-4 pt-3 sm:px-6 sm:pt-4 sm:pb-2 items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Owly
         </h2>

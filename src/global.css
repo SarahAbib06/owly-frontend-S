@@ -4,6 +4,7 @@
 
 /* === Import Tailwind v4 === */
 @import "tailwindcss/theme";
+@import "tw-animate-css";
 
 /* === Définition du thème === */
 @theme {
