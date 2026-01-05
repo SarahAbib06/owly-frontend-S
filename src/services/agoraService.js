@@ -5,101 +5,150 @@ class AgoraService {
     this.client = null;
     this.localAudioTrack = null;
     this.localVideoTrack = null;
-    this.remoteUsers = new Map(); // uid -> {audioTrack, videoTrack, domElement}
+    this.remoteUsers = new Map();
     this.isJoined = false;
+    this.isInitialized = false; // ✅ Nouveau flag
     this.appId = import.meta.env.VITE_AGORA_APP_ID || '5f2572ca8769462696d7751b8ed764ca';
     
-    // Callback pour notifier les nouvelles vidéos
     this.onRemoteVideoAdded = null;
     this.onRemoteVideoRemoved = null;
-       this.onRemoteAudioAdded = null; // <-- NOUVEAU : pour l'audio
-    this.onRemoteAudioRemoved = null; // <-- NOUVEAU : pour l'audio
+    this.onRemoteAudioAdded = null;
+    this.onRemoteAudioRemoved = null;
   }
 
-  // Initialiser le client
   async initializeClient() {
-    this.client = AgoraRTC.createClient({ 
-      mode: "rtc", 
-      codec: "vp8" 
-    });
-
-    // Gérer les événements
-    this.client.on("user-published", this.handleUserPublished.bind(this));
-    this.client.on("user-unpublished", this.handleUserUnpublished.bind(this));
-    this.client.on("user-left", this.handleUserLeft.bind(this));
-    
-    // Écouter les stats
-    this.client.on("network-quality", (stats) => {
-      console.log("📊 Qualité réseau:", stats);
-    });
+  // ✅ Empêche la double init
+  if (this.isInitialized && this.client) {
+    console.log("⚠️ Client déjà initialisé");
+    return;
   }
 
-  // Rejoindre un canal
-   // Rejoindre un canal (version modifiée)
-  // Rejoindre un canal
+  console.log("🟢 Création client Agora");
+
+  // ✅ CRÉATION AVANT TOUT
+  this.client = AgoraRTC.createClient({
+    mode: "rtc",
+    codec: "vp8",
+  });
+
+  // ✅ EVENTS APRÈS CRÉATION
+  this.client.on("user-joined", user => {
+    console.log("👀 USER JOINED", user.uid);
+  });
+
+  this.client.on("user-published", this.handleUserPublished.bind(this));
+  this.client.on("user-unpublished", this.handleUserUnpublished.bind(this));
+  this.client.on("user-left", this.handleUserLeft.bind(this));
+
+  this.client.on("network-quality", stats => {
+    console.log("📊 Qualité réseau:", stats);
+  });
+
+  this.client.on("connection-state-change", curState => {
+    console.log("🔌 Connection state:", curState);
+  });
+
+  this.isInitialized = true;
+  console.log("✅ Client Agora initialisé");
+}
+
+
+  // ✅ CORRECTION 2 — joinChannel PROPRE selon l'ordre officiel
   async joinChannel(channelName, token, uid, audioOnly = false) {
-    console.log("🔗 Tentative de connexion:", { 
-      channelName, 
-      uid, 
-      audioOnly,
-      appId: this.appId 
-    });
-    
-    if (!this.client) {
-      await this.initializeClient();
+    console.log("🔗 joinChannel()", { channelName, uid, audioOnly });
+
+    // 0️⃣ Vérifier si déjà joint
+    if (this.isJoined) {
+      console.warn("⚠️ Déjà joint au canal, abort join");
+      return { success: true };
     }
 
     try {
-      const numericUid = Number(uid) || 0;
-      
+      // 1️⃣ INITIALISER LE CLIENT (UNE SEULE FOIS)
+      if (!this.client || !this.isInitialized) {
+        await this.initializeClient();
+      }
+
+      const numericUid = Number(uid) || null;
+      console.log("🧪 AGORA JOIN PARAMS", {
+  appId: this.appId,
+  channelName,
+  token: token?.slice(0, 10) + "...",
+  uid
+});
+
+
+      // 2️⃣ JOIN D'ABORD
       await this.client.join(
         this.appId,
         channelName,
         token,
-        numericUid
+        numericUid,
       );
 
+      console.log("✅ JOIN OK - État:", this.client.connectionState);
       this.isJoined = true;
-      console.log(`✅ Canal ${channelName} rejoint, uid: ${numericUid}, audioOnly: ${audioOnly}`);
-      
-      // Créer les tracks
+
+      // 3️⃣ CRÉER TRACKS APRÈS JOIN
       await this.createLocalTracks();
-      
+
+      if (audioOnly && this.localVideoTrack) {
+        await this.localVideoTrack.setEnabled(false);
+      }
+
+      // 4️⃣ PUBLISH
       if (audioOnly) {
-        // Pour les appels audio, désactiver la caméra
-        if (this.localVideoTrack) {
-          await this.localVideoTrack.setEnabled(false);
-          console.log("📹 Caméra désactivée pour appel audio");
-        }
-        
-        // Publier seulement l'audio si on veut
-        if (this.localAudioTrack) {
-          await this.client.publish([this.localAudioTrack]);
-          console.log("📤 Track audio publié");
-        }
+        await this.client.publish(this.localAudioTrack);
+        console.log("📤 Audio publié");
       } else {
-        // Pour les appels vidéo, publier audio + vidéo
-        if (this.localAudioTrack && this.localVideoTrack) {
-          await this.client.publish([this.localAudioTrack, this.localVideoTrack]);
-          console.log("🎥 Tracks audio+vidéo publiés");
-        }
+        await this.client.publish([
+          this.localAudioTrack,
+          this.localVideoTrack
+        ]);
+        console.log("📤 Audio + Vidéo publiés");
+      }
+
+      console.log("🎉 Canal rejoint avec succès");
+      return { success: true };
+
+    } catch (err) {
+      console.error("❌ joinChannel FAILED", err);
+      this.isJoined = false;
+      
+      // Nettoyer en cas d'erreur
+      try {
+        await this.client.leave();
+      } catch (leaveErr) {}
+      
+      // Réinitialiser les tracks
+      if (this.localAudioTrack) {
+        this.localAudioTrack.stop();
+        this.localAudioTrack.close();
+        this.localAudioTrack = null;
+      }
+      if (this.localVideoTrack) {
+        this.localVideoTrack.stop();
+        this.localVideoTrack.close();
+        this.localVideoTrack = null;
       }
       
-      return { success: true, uid: numericUid };
-      
-    } catch (error) {
-      console.error("❌ Erreur joinChannel:", {
-        code: error.code,
-        message: error.message,
-        name: error.name
-      });
-      return { success: false, error };
+      throw err;
     }
   }
-  // Créer les tracks audio/vidéo locaux
+
   async createLocalTracks() {
     try {
       console.log("🎬 Création des tracks locaux...");
+      
+      // Libérer les anciens tracks s'ils existent
+      if (this.localAudioTrack) {
+        this.localAudioTrack.stop();
+        this.localAudioTrack.close();
+      }
+      if (this.localVideoTrack) {
+        this.localVideoTrack.stop();
+        this.localVideoTrack.close();
+      }
       
       [this.localAudioTrack, this.localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
         {
@@ -108,107 +157,111 @@ class AgoraService {
             channels: 1,
             bitrate: 128,
           },
-          AEC: true, // Annulation d'écho
-          ANS: true, // Réduction de bruit
+          AEC: true,
+          ANS: true,
         },
         {
           encoderConfig: {
             width: 640,
-            height: 480, // Augmenté pour meilleure qualité
+            height: 480,
             frameRate: 24,
             bitrateMin: 800,
             bitrateMax: 1200,
           },
-          optimizationMode: "motion", // Meilleur pour la vidéo
+          optimizationMode: "motion",
         }
       );
       
       console.log("✅ Tracks créés:", {
         audio: !!this.localAudioTrack,
-        video: !!this.localVideoTrack,
-        videoTrackId: this.localVideoTrack?.trackId
+        video: !!this.localVideoTrack
       });
       
     } catch (error) {
       console.error("❌ Erreur création tracks:", error);
-      // Fallback: essayer séparément
+      
+      // Fallback simple
       try {
-        this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-        this.localVideoTrack = await AgoraRTC.createCameraVideoTrack();
-        console.log("✅ Tracks créés en fallback");
-      } catch (fallbackError) {
-        console.error("❌ Fallback échoué:", fallbackError);
-        throw error;
+        this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
+          encoderConfig: {
+            sampleRate: 48000,
+            channels: 1,
+            bitrate: 128,
+          }
+        });
+        console.log("✅ Audio track créé (fallback)");
+      } catch (audioError) {
+        console.error("❌ Fallback audio échoué:", audioError);
+      }
+      
+      try {
+        this.localVideoTrack = await AgoraRTC.createCameraVideoTrack({
+          encoderConfig: {
+            width: 640,
+            height: 480,
+            frameRate: 15,
+            bitrateMin: 500,
+            bitrateMax: 1000,
+          }
+        });
+        console.log("✅ Video track créé (fallback)");
+      } catch (videoError) {
+        console.error("❌ Fallback vidéo échoué:", videoError);
+      }
+      
+      if (!this.localAudioTrack && !this.localVideoTrack) {
+        throw new Error("Impossible de créer les tracks audio/vidéo");
       }
     }
   }
 
-  // Publier les tracks locaux
-  async publishLocalTracks() {
-    try {
-      if (this.localAudioTrack && this.localVideoTrack) {
-        await this.client.publish([this.localAudioTrack, this.localVideoTrack]);
-        console.log("📤 Tracks publiés avec succès");
-        
-        // Vérifier la publication
-        const stats = await this.client.getLocalVideoStats();
-        console.log("📊 Stats vidéo locale:", stats);
-      } else {
-        console.error("❌ Tracks manquants pour publication");
-      }
-    } catch (error) {
-      console.error("❌ Erreur publication:", error);
-    }
-  }
-
-  // Gérer les utilisateurs distants - CORRIGÉ
-    // Gérer les utilisateurs distants - VERSION AMÉLIORÉE
-  async handleUserPublished(user, mediaType) {
+  handleUserPublished(user, mediaType) {
     console.log(`👤 User ${user.uid} published ${mediaType}`);
     
     try {
-      await this.client.subscribe(user, mediaType);
-      console.log(`✅ Abonné à ${user.uid} pour ${mediaType}`);
-      
-      if (mediaType === 'audio') {
-        const audioTrack = user.audioTrack;
-        if (audioTrack) {
-          console.log(`🔊 Audio track reçue pour ${user.uid}`);
-          
-          this.remoteUsers.set(user.uid, { 
-            ...this.remoteUsers.get(user.uid), 
-            audioTrack 
-          });
-          
-          // Jouer l'audio IMMÉDIATEMENT
-          audioTrack.play();
-          console.log(`🔊 Audio joué pour ${user.uid}`);
-          
-          // Pour les appels audio, on pourrait notifier le composant
-          if (this.onRemoteAudioAdded) {
-            this.onRemoteAudioAdded(user.uid, audioTrack);
+      this.client.subscribe(user, mediaType).then(() => {
+        console.log(`✅ Abonné à ${user.uid} pour ${mediaType}`);
+        
+        if (mediaType === 'audio') {
+          const audioTrack = user.audioTrack;
+          if (audioTrack) {
+            console.log(`🔊 Audio track reçue pour ${user.uid}`);
+            
+            this.remoteUsers.set(user.uid, { 
+              ...(this.remoteUsers.get(user.uid) || {}), 
+              audioTrack 
+            });
+            
+            audioTrack.play().catch(err => {
+              console.error(`❌ Erreur play audio ${user.uid}:`, err);
+            });
+            
+            if (this.onRemoteAudioAdded) {
+              this.onRemoteAudioAdded(user.uid, audioTrack);
+            }
           }
         }
-      }
-      
-      if (mediaType === 'video') {
-        const videoTrack = user.videoTrack;
-        if (videoTrack) {
-          console.log(`🎥 Video track reçue pour ${user.uid}`);
-          
-          this.remoteUsers.set(user.uid, { 
-            ...this.remoteUsers.get(user.uid), 
-            videoTrack 
-          });
-          
-          // Notifier le composant React
-          if (this.onRemoteVideoAdded) {
-            this.onRemoteVideoAdded(user.uid, videoTrack);
+        
+        if (mediaType === 'video') {
+          const videoTrack = user.videoTrack;
+          if (videoTrack) {
+            console.log(`🎥 Video track reçue pour ${user.uid}`);
+            
+            this.remoteUsers.set(user.uid, { 
+              ...(this.remoteUsers.get(user.uid) || {}), 
+              videoTrack 
+            });
+            
+            if (this.onRemoteVideoAdded) {
+              this.onRemoteVideoAdded(user.uid, videoTrack);
+            }
           }
         }
-      }
+      }).catch(error => {
+        console.error(`❌ Erreur subscription ${mediaType}:`, error);
+      });
     } catch (error) {
-      console.error(`❌ Erreur subscription ${mediaType}:`, error);
+      console.error(`❌ Erreur handleUserPublished:`, error);
     }
   }
 
@@ -229,7 +282,6 @@ class AgoraService {
         userData.videoTrack.stop();
         userData.videoTrack = null;
         
-        // Notifier le composant React
         if (this.onRemoteVideoRemoved) {
           this.onRemoteVideoRemoved(user.uid);
         }
@@ -241,31 +293,31 @@ class AgoraService {
     console.log(`👤 User ${user.uid} a quitté`);
     this.remoteUsers.delete(user.uid);
     
-    // Notifier le composant React
     if (this.onRemoteVideoRemoved) {
       this.onRemoteVideoRemoved(user.uid);
     }
   }
 
-  // QUITTER LE CANAL - AMÉLIORÉ
   async leaveChannel() {
     try {
       console.log("🚪 Début leaveChannel");
       
-      // Dépublier les tracks locaux
+      // Arrêter et nettoyer les tracks locaux
       if (this.localAudioTrack) {
         this.localAudioTrack.stop();
         this.localAudioTrack.close();
+        this.localAudioTrack = null;
         console.log("🔇 Audio local arrêté");
       }
       
       if (this.localVideoTrack) {
         this.localVideoTrack.stop();
         this.localVideoTrack.close();
+        this.localVideoTrack = null;
         console.log("📹 Vidéo locale arrêtée");
       }
       
-      // Arrêter toutes les tracks distantes
+      // Arrêter les tracks distants
       for (const [uid, userData] of this.remoteUsers.entries()) {
         if (userData.audioTrack) {
           userData.audioTrack.stop();
@@ -275,18 +327,15 @@ class AgoraService {
         }
       }
       
-      // Quitter le canal
-      if (this.client) {
+      this.remoteUsers.clear();
+      
+      // Quitter le client
+      if (this.client && this.isJoined) {
         await this.client.leave();
         console.log("✅ Client Agora quitté");
       }
       
-      // Réinitialiser
-      this.localAudioTrack = null;
-      this.localVideoTrack = null;
-      this.remoteUsers.clear();
       this.isJoined = false;
-      
       console.log("✅ Canal complètement quitté");
       
     } catch (error) {
@@ -294,20 +343,23 @@ class AgoraService {
     }
   }
 
-  // MÉTHODE POUR JOUER LA VIDÉO DISTANTE DANS UN ÉLÉMENT DOM
   playRemoteVideo(uid, domElement) {
     const userData = this.remoteUsers.get(uid);
     if (userData?.videoTrack && domElement) {
-      console.log(`🎬 Jouer vidéo ${uid} dans DOM`);
-      userData.videoTrack.play(domElement);
-      return true;
+      try {
+        userData.videoTrack.play(domElement);
+        console.log(`🎬 Vidéo ${uid} jouée dans DOM`);
+        return true;
+      } catch (error) {
+        console.error(`❌ Erreur play vidéo ${uid}:`, error);
+        return false;
+      }
     } else {
       console.warn(`⚠️ Video track manquante pour ${uid} ou DOM invalide`);
       return false;
     }
   }
 
-  // Activer/désactiver le microphone
   async toggleMicrophone(enabled) {
     if (this.localAudioTrack) {
       await this.localAudioTrack.setEnabled(enabled);
@@ -315,7 +367,6 @@ class AgoraService {
     }
   }
 
-  // Activer/désactiver la caméra
   async toggleCamera(enabled) {
     if (this.localVideoTrack) {
       await this.localVideoTrack.setEnabled(enabled);
@@ -323,7 +374,6 @@ class AgoraService {
     }
   }
 
-  // Changer la caméra
   async switchCamera(deviceId) {
     if (this.localVideoTrack) {
       await this.localVideoTrack.setDevice(deviceId);
@@ -331,7 +381,6 @@ class AgoraService {
     }
   }
 
-  // Obtenir les périphériques disponibles
   async getDevices() {
     const devices = await AgoraRTC.getDevices();
     const audioDevices = devices.filter(d => d.kind === 'audioinput');
@@ -345,7 +394,6 @@ class AgoraService {
     return { audioDevices, videoDevices };
   }
 
-  // Obtenir les statistiques
   async getStats() {
     if (!this.client) return null;
     
