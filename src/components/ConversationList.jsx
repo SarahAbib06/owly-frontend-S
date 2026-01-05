@@ -14,7 +14,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
   const [showArchivedOnly, setShowArchivedOnly] = useState(false);
   const [archivedList, setArchivedList] = useState([]);
   const [loadingArchived, setLoadingArchived] = useState(false);
-  
+  const currentUserId = localStorage.getItem("userId"); // ID de l'utilisateur connecté
   const { 
     conversations, 
     loading, 
@@ -26,13 +26,19 @@ export default function ConversationList({ onSelect, onNewChat }) {
   const listToDisplay = showArchivedOnly ? archivedList : conversations;
 
   // Filtrer les conversations selon la recherche
-  const filteredList = listToDisplay.filter((conv) => {
-    const conversationName = conv.isGroup 
-      ? conv.groupName 
-      : conv.participants?.[0]?.username || "Utilisateur";
-    
-    return conversationName.toLowerCase().includes(search.toLowerCase());
-  });
+const filteredList = listToDisplay.filter((conv) => {
+  const isGroup = conv.isGroup || conv.type === 'group';
+  const otherParticipant = conv.participants?.find(p => p._id !== currentUserId);
+
+  // fallback si undefined
+  const conversationName = isGroup
+    ? conv.groupName
+    : otherParticipant?.username || "Utilisateur";
+
+  return (conversationName || "Utilisateur")
+    .toLowerCase()
+    .includes(search.toLowerCase());
+});
 
   // Écouter les nouveaux messages pour mettre à jour la liste
   useEffect(() => {
@@ -161,13 +167,15 @@ export default function ConversationList({ onSelect, onNewChat }) {
           filteredList.map((conv) => {
             // Extraire les infos de la conversation
             const isGroup = conv.isGroup || conv.type === 'group';
-            const conversationName = isGroup 
-              ? conv.groupName 
-              : conv.participants?.[0]?.username || "Utilisateur";
-            
-            const avatar = isGroup
-              ? "/group-avatar.png"
-              : conv.participants?.[0]?.profilePicture || "/default-avatar.png";
+            const otherParticipant = conv.participants?.find(p => p._id !== currentUserId);
+
+const conversationName = isGroup 
+  ? conv.groupName 
+  : otherParticipant?.username || "Utilisateur";
+
+const avatar = isGroup
+  ? "/group-avatar.png"
+  : otherParticipant?.profilePicture || "/default-avatar.png";
             
             const lastMessage = conv.lastMessage?.content || t("messages.noMessages") || "Aucun message";
             
