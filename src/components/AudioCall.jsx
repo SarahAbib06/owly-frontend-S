@@ -11,6 +11,7 @@ export default function AudioCall() {
   const [isMuted, setIsMuted] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [isPeerConnected, setIsPeerConnected] = useState(false);
+  const [callStartTime, setCallStartTime] = useState(null); // 🆕 HEURE DE DÉBUT D'APPEL
 
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
@@ -79,14 +80,14 @@ export default function AudioCall() {
   const handleEndCall = () => {
     console.log("📞 Raccrochage de l'appel vocal...");
     
-    // 🆕 ENVOYER LE MESSAGE D'APPEL TERMINÉ AVEC LA DURÉE
-    // Le récepteur peut aussi envoyer le message, mais il sera créé par l'initiateur
+    // 🆕 ENVOYER LE MESSAGE D'APPEL TERMINÉ AVEC LA DURÉE ET L'HEURE DE DÉBUT
     if (globalSocket?.connected) {
       globalSocket.emit("call-ended", {
         conversationId: currentCall.conversation?._id,
         callType: "audio",
         duration: callDuration,
-        initiatorId: currentCall?.isInitiator ? user._id : currentCall?.targetUserId
+        initiatorId: currentCall?.isInitiator ? user._id : currentCall?.targetUserId,
+        startTime: callStartTime // 🆕 AJOUT DE L'HEURE DE DÉBUT
       });
     }
     
@@ -102,6 +103,14 @@ export default function AudioCall() {
     stopRingtone();
     endCall();
   };
+
+  // 🆕 ENREGISTRER L'HEURE DE DÉBUT QUAND L'APPEL COMMENCE
+  useEffect(() => {
+    if (currentCall && !callStartTime && (isPeerConnected || callDuration > 0)) {
+      setCallStartTime(new Date());
+      console.log("⏱️ Heure de début d'appel audio enregistrée:", new Date().toISOString());
+    }
+  }, [currentCall, isPeerConnected, callDuration]);
 
   const toggleMute = () => {
     if (!localStreamRef.current) return;

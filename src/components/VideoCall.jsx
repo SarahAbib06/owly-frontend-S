@@ -24,6 +24,7 @@ export default function VideoCall() {
   const [callState, setCallState] = useState('initiating'); // initiating, waiting_peer, exchanging, connected, failed
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [callStartTime, setCallStartTime] = useState(null); // 🆕 HEURE DE DÉBUT D'APPEL
 
   const pcRef = useRef(null);
   const localVideoRef = useRef(null);
@@ -111,14 +112,14 @@ export default function VideoCall() {
   const handleEndCall = () => {
     console.log("📞 Fin appel vidéo");
     
-    // 🆕 ENVOYER LE MESSAGE D'APPEL TERMINÉ AVEC LA DURÉE
-    // Le récepteur peut aussi envoyer le message, mais il sera créé par l'initiateur
+    // 🆕 ENVOYER LE MESSAGE D'APPEL TERMINÉ AVEC LA DURÉE ET L'HEURE DE DÉBUT
     if (globalSocket?.connected) {
       globalSocket.emit("call-ended", {
         conversationId: currentCall.conversation?._id,
         callType: "video",
         duration: callDuration,
-        initiatorId: currentCall?.isInitiator ? user._id : currentCall?.targetUserId
+        initiatorId: currentCall?.isInitiator ? user._id : currentCall?.targetUserId,
+        startTime: callStartTime // 🆕 AJOUT DE L'HEURE DE DÉBUT
       });
     }
     
@@ -205,6 +206,14 @@ export default function VideoCall() {
       console.log("📹 CAMERA: state updated, cameraOff =", !newEnabled);
     }
   };
+
+  // 🆕 ENREGISTRER L'HEURE DE DÉBUT QUAND L'APPEL COMMENCE
+  useEffect(() => {
+    if (currentCall && !callStartTime && (isPeerConnected || callState === 'connected')) {
+      setCallStartTime(new Date());
+      console.log("⏱️ Heure de début d'appel enregistrée:", new Date().toISOString());
+    }
+  }, [currentCall, isPeerConnected, callState]);
 
   const createPeerConnection = () => {
     try {
