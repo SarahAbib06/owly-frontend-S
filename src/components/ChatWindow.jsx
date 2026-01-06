@@ -20,15 +20,16 @@ import { useTyping } from "../hooks/useTyping";
 import { useReactions } from "../hooks/useReactions";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
-import socketService from "../services/socketService";
+import { useAppel } from "../context/AppelContext";
+import VideoCall from "./VideoCall";
+import AudioCall from "./AudioCall";
+import IncomingCallModal from "./IncomingCallModal.jsx";
 import ThemeSelector from "./ThemeSelect";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
 const SeenIconGray = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 48 48">
@@ -101,6 +102,7 @@ const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥
 export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { startCall, currentCall } = useAppel();
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
 
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -121,7 +123,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
-  const [isCalling, setIsCalling] = useState(false);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -178,7 +179,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
       setInputText("");
     } catch (error) {
       console.error("Erreur envoi message:", error);
-      toast.error("Erreur lors de l'envoi du message");
+      alert("Erreur lors de l'envoi du message");
     }
   };
 
@@ -199,7 +200,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
       }
     } catch (error) {
       console.error("Erreur upload fichier:", error);
-      toast.error("Erreur lors de l'envoi du fichier");
+      alert("Erreur lors de l'envoi du fichier");
     }
   };
 
@@ -210,7 +211,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
         await stopAndSend();
       } catch (error) {
         console.error("Erreur envoi vocal:", error);
-        toast.error("Erreur lors de l'envoi du message vocal");
+        alert("Erreur lors de l'envoi du message vocal");
       }
     } else {
       await startRecording();
@@ -336,6 +337,111 @@ export default function ChatWindow({ selectedChat, onBack }) {
     return () => clearInterval(id);
   }, [themeEmojis]);
 
+  // ============ FONCTIONS D'APPEL VIDÉO/VOCAL ============
+
+  // FONCTION POUR DÉMARRER UN APPEL VIDÉO
+  const handleVideoCall = () => {
+    if (!selectedChat) {
+      alert('Aucune conversation sélectionnée');
+      return;
+    }
+    
+    if (selectedChat.isGroup) {
+      alert("Les appels de groupe ne sont pas encore disponibles");
+      return;
+    }
+    
+    if (!selectedChat.participants || selectedChat.participants.length < 2) {
+      alert('Impossible de trouver le destinataire');
+      return;
+    }
+    
+    // Vérifier les permissions AVANT de lancer l'appel
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Votre navigateur ne supporte pas les appels vidéo');
+      return;
+    }
+    
+    // Demander la permission caméra/micro
+    navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        width: { ideal: 640 }, 
+        height: { ideal: 480 } 
+      }, 
+      audio: true 
+    })
+      .then(stream => {
+        // Arrêter le stream temporaire (il sera redémarré dans VideoCall)
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Lancer l'appel vidéo
+        console.log('📹 Lancement appel vidéo avec:', selectedChat.participants);
+        startCall(selectedChat, 'video');
+      })
+      .catch(error => {
+        console.error('❌ Erreur permission vidéo:', error);
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          alert('Permission caméra/micro requise pour l\'appel vidéo');
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+          alert('Caméra ou micro non détecté. Vérifiez vos périphériques.');
+        } else {
+          alert('Erreur lors de l\'accès à la caméra/micro: ' + error.message);
+        }
+      });
+  };
+
+  // FONCTION POUR DÉMARRER UN APPEL VOCAL
+  const handleAudioCall = () => {
+    if (!selectedChat) {
+      alert('Aucune conversation sélectionnée');
+      return;
+    }
+    
+    if (selectedChat.isGroup) {
+      alert("Les appels de groupe ne sont pas encore disponibles");
+      return;
+    }
+    
+    if (!selectedChat.participants || selectedChat.participants.length < 2) {
+      alert('Impossible de trouver le destinataire');
+      return;
+    }
+    
+    // Vérifier les permissions AVANT de lancer l'appel
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Votre navigateur ne supporte pas les appels vocaux');
+      return;
+    }
+    
+    // Demander la permission micro
+    navigator.mediaDevices.getUserMedia({ 
+      audio: { 
+        echoCancellation: true,
+        noiseSuppression: true 
+      } 
+    })
+      .then(stream => {
+        // Arrêter le stream temporaire
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Lancer l'appel vocal
+        console.log('📞 Lancement appel vocal avec:', selectedChat.participants);
+        startCall(selectedChat, 'audio');
+      })
+      .catch(error => {
+        console.error('❌ Erreur permission audio:', error);
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          alert('Permission micro requise pour l\'appel vocal');
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+          alert('Micro non détecté. Vérifiez vos périphériques.');
+        } else {
+          alert('Erreur lors de l\'accès au micro: ' + error.message);
+        }
+      });
+  };
+
   const bubbleClasses = (fromMe) =>
     fromMe
       ? "bg-myYellow2 dark:bg-mydarkYellow text-myBlack rounded-t-xl rounded-bl-xl rounded-br-none px-3 py-2 text-sm"
@@ -350,37 +456,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
     ? "/group-avatar.png"
     : selectedChat?.participants?.[0]?.profilePicture || "/default-avatar.png";
 
-  // 🔥 Fonction pour initier un appel
-  const handleInitiateCall = async (type) => {
-    if (!selectedChat) return;
-
-    try {
-      // Vérifier si l'utilisateur a les permissions
-      if (!selectedChat._id || !user) {
-        toast.error("Impossible de démarrer l'appel");
-        return;
-      }
-
-      setIsCalling(true);
-      
-      // Démarrer l'appel via Socket.io
-      socketService.socket.emit(`initiate-${type}-call`, {
-        conversationId: selectedChat._id,
-        callerName: user.username || "Utilisateur",
-        timestamp: new Date()
-      });
-
-      toast.success(`Appel ${type === 'video' ? 'vidéo' : 'audio'} démarré...`);
-      
-    } catch (error) {
-      console.error("❌ Erreur démarrage appel:", error);
-      toast.error(`Erreur: ${error.message || "Impossible de démarrer l'appel"}`);
-    } finally {
-      setIsCalling(false);
-    }
-  };
-
-  // 🔥 Composant Message CORRIGÉ
+  // 🔥 Composant Message
   const MessageBubble = ({ msg }) => {
     const longPressTimer = useRef(null);
 
@@ -408,6 +484,8 @@ export default function ChatWindow({ selectedChat, onBack }) {
 
     const fromMe =
       currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
+
+    console.log("🔍 message from", { currentUserId, messageSenderId, fromMe, msg });
 
     const { reactions, addReaction, removeReaction } = useReactions(msg._id);
 
@@ -452,7 +530,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
         setShowMessageMenu(null);
       } catch (error) {
         console.error("Erreur épinglage:", error);
-        toast.error("Erreur lors de l'épinglage du message");
       }
     };
 
@@ -461,10 +538,8 @@ export default function ChatWindow({ selectedChat, onBack }) {
         try {
           await deleteMessage(msg._id);
           setShowMessageMenu(null);
-          toast.success("Message supprimé");
         } catch (error) {
           console.error("Erreur suppression:", error);
-          toast.error("Erreur lors de la suppression du message");
         }
       }
     };
@@ -546,6 +621,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
               >
                 <button
                   onClick={() => {
+                    console.log("🟡 click Réagir pour", msg._id);
                     setShowReactionPicker(msg._id);
                     setShowMessageMenu(null);
                   }}
@@ -562,7 +638,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
                 </button>
                 <button
                   onClick={() => {
-                    toast.info("Sélectionnez une conversation de destination");
+                    alert("Sélectionnez une conversation de destination");
                     setShowMessageMenu(null);
                   }}
                   className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
@@ -639,300 +715,288 @@ export default function ChatWindow({ selectedChat, onBack }) {
   }
 
   return (
-    <div
-      className="relative flex flex-col w-full h-full bg-myWhite dark:bg-neutral-900 text-myBlack dark:text-white transition-colors duration-300 min-w-[150px]"
-      style={themeStyle}
-    >
-      {/* Floating emojis */}
+    <>
+      {/* Composants d'appel */}
+      {currentCall?.callType === 'video' && <VideoCall />}
+      {currentCall?.callType === 'audio' && <AudioCall />}
+      <IncomingCallModal />
+
       <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
+        className="relative flex flex-col w-full h-full bg-myWhite dark:bg-neutral-900 text-myBlack dark:text-white transition-colors duration-300 min-w-[150px]"
+        style={themeStyle}
       >
-        {floatingEmojis.map((e) => {
-          const randomEmoji =
-            Array.isArray(themeEmojis) && themeEmojis.length > 0
-              ? themeEmojis[Math.floor(Math.random() * themeEmojis.length)]
-              : null;
-          if (!randomEmoji) return null;
-          return (
-            <span
-              key={e.id}
-              style={{
-                position: "absolute",
-                left: `${e.left}%`,
-                top: `${e.top}%`,
-                fontSize: `${e.size}px`,
-                opacity: 0.2 + Math.random() * 0.25,
-                transform: `rotate(${e.rotate}deg)`,
-                pointerEvents: "none",
-                transition:
-                  "top 0.06s linear, left 0.06s linear, transform 0.06s linear",
-                WebkitTextStroke: "0px transparent",
-                userSelect: "none",
-              }}
-            >
-              {randomEmoji}
-            </span>
-          );
-        })}
-      </div>
-
-      {/* HEADER */}
-      <header className="flex items-center justify-between px-2 py-2 border-b border-gray-300 dark:border-gray-700 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
-        <div className="flex items-center gap-2 min-w-0">
-          <button onClick={onBack} className="md:hidden mr-2 text-xl">
-            ←
-          </button>
-          <img
-            src={conversationAvatar}
-            alt="avatar"
-            className="w-8 h-8 rounded-full object-cover"
-          />
-          <div className="truncate">
-            <div className="text-sm font-semibold truncate">
-              {conversationName}
-            </div>
-            <div className="text-xs truncate text-gray-700 dark:text-gray-300">
-              {isTyping && typingUsers.length > 0 ? (
-                <span className="text-green-500 font-medium">
-                  {t("chat.typing") || "En train d'écrire"}...
-                </span>
-              ) : selectedChat?.isGroup ? (
-                `${selectedChat?.participants?.length || 0} membres`
-              ) : (
-                t("chat.online") || "En ligne"
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Bouton appel audio */}
-          <button
-            onClick={() => handleInitiateCall('audio')}
-            disabled={isCalling || !selectedChat}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Appel audio"
-          >
-            {isCalling ? (
-              <Loader2 size={18} className="text-green-600 animate-spin" />
-            ) : (
-              <Phone size={18} className="text-green-600" />
-            )}
-          </button>
-
-          {/* Bouton appel vidéo */}
-          <button
-            onClick={() => handleInitiateCall('video')}
-            disabled={isCalling || !selectedChat}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Appel vidéo"
-          >
-            {isCalling ? (
-              <Loader2 size={18} className="text-blue-600 animate-spin" />
-            ) : (
-              <Video size={18} className="text-blue-600" />
-            )}
-          </button>
-
-          <button onClick={() => setIsOptionsOpen(true)}>
-            <MoreVertical
-              size={18}
-              className="text-gray-600 dark:text-gray-300 cursor-pointer"
-            />
-          </button>
-        </div>
-      </header>
-
-      {/* SECTION MESSAGES ÉPINGLÉS */}
-      {showPinnedSection && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 px-3 py-2 z-20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Pin size={14} className="text-yellow-600 dark:text-yellow-400" />
-              <span className="text-xs font-medium text-yellow-800 dark:text-yellow-300">
-                {pinnedMessages.length} message
-                {pinnedMessages.length > 1 ? "s" : ""} épinglé
-                {pinnedMessages.length > 1 ? "s" : ""}
+        {/* Floating emojis */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
+        >
+          {floatingEmojis.map((e) => {
+            const randomEmoji =
+              Array.isArray(themeEmojis) && themeEmojis.length > 0
+                ? themeEmojis[Math.floor(Math.random() * themeEmojis.length)]
+                : null;
+            if (!randomEmoji) return null;
+            return (
+              <span
+                key={e.id}
+                style={{
+                  position: "absolute",
+                  left: `${e.left}%`,
+                  top: `${e.top}%`,
+                  fontSize: `${e.size}px`,
+                  opacity: 0.2 + Math.random() * 0.25,
+                  transform: `rotate(${e.rotate}deg)`,
+                  pointerEvents: "none",
+                  transition:
+                    "top 0.06s linear, left 0.06s linear, transform 0.06s linear",
+                  WebkitTextStroke: "0px transparent",
+                  userSelect: "none",
+                }}
+              >
+                {randomEmoji}
               </span>
-            </div>
-            <button
-              onClick={() => setShowPinnedSection(false)}
-              className="text-yellow-600 dark:text-yellow-400"
-            >
-              <X size={14} />
-            </button>
-          </div>
-          <div className="mt-1 text-xs text-gray-700 dark:text-gray-300 truncate">
-            {pinnedMessages[0]?.content || "Message épinglé"}
-          </div>
+            );
+          })}
         </div>
-      )}
 
-      {/* THEME SELECTOR */}
-      {showThemeSelector && (
-        <ThemeSelector
-          onSelectTheme={applyTheme}
-          onRemoveTheme={removeTheme}
-          onClose={() => setShowThemeSelector(false)}
-        />
-      )}
-
-      {/* MESSAGES */}
-      <main
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-2 py-2 space-y-3 relative z-10"
-        onClick={(e) => {
-          if (
-            e.target.closest(".message-menu") ||
-            e.target.closest(".reaction-picker")
-          ) {
-            return;
-          }
-          setShowMessageMenu(null);
-          setShowReactionPicker(null);
-        }}
-      >
-        {messages.map((msg, i) => {
-          const showDate =
-            i === 0 ||
-            messages[i - 1].createdAt?.split("T")[0] !==
-              msg.createdAt?.split("T")[0];
-
-          return (
-            <div key={msg._id}>
-              {showDate && (
-                <div className="text-center text-[10px] text-gray-700 dark:text-gray-300 my-2">
-                  {formatDateLabel(msg.createdAt, t)}
-                </div>
-              )}
-              <MessageBubble msg={msg} index={i} />
-            </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </main>
-
-      {/* INPUT */}
-      <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
-        {isRecording && (
-          <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">
-              {Math.floor(recordingTime / 60)}:
-              {(recordingTime % 60).toString().padStart(2, "0")}
-            </span>
-            <button onClick={cancelRecording} className="ml-4 text-xs underline">
-              Annuler
+        {/* HEADER */}
+        <header className="flex items-center justify-between px-2 py-2 border-b border-gray-300 dark:border-gray-700 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
+          <div className="flex items-center gap-2 min-w-0">
+            <button onClick={onBack} className="md:hidden mr-2 text-xl">
+              ←
             </button>
+            <img
+              src={conversationAvatar}
+              alt="avatar"
+              className="w-8 h-8 rounded-full object-cover"
+            />
+            <div className="truncate">
+              <div className="text-sm font-semibold truncate">
+                {conversationName}
+              </div>
+              <div className="text-xs truncate text-gray-700 dark:text-gray-300">
+                {isTyping && typingUsers.length > 0 ? (
+                  <span className="text-green-500 font-medium">
+                    {t("chat.typing") || "En train d'écrire"}...
+                  </span>
+                ) : selectedChat?.isGroup ? (
+                  `${selectedChat?.participants?.length || 0} membres`
+                ) : (
+                  t("chat.online") || "En ligne"
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Phone
+              size={16}
+              className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 transition-colors"
+              onClick={handleAudioCall}
+            />
+            <Video
+              size={16}
+              className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 transition-colors"
+              onClick={handleVideoCall}
+            />
+            <button onClick={() => setIsOptionsOpen(true)}>
+              <MoreVertical
+                size={16}
+                className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 transition-colors"
+              />
+            </button>
+          </div>
+        </header>
+
+        {/* SECTION MESSAGES ÉPINGLÉS */}
+        {showPinnedSection && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 px-3 py-2 z-20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Pin size={14} className="text-yellow-600 dark:text-yellow-400" />
+                <span className="text-xs font-medium text-yellow-800 dark:text-yellow-300">
+                  {pinnedMessages.length} message
+                  {pinnedMessages.length > 1 ? "s" : ""} épinglé
+                  {pinnedMessages.length > 1 ? "s" : ""}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowPinnedSection(false)}
+                className="text-yellow-600 dark:text-yellow-400"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="mt-1 text-xs text-gray-700 dark:text-gray-300 truncate">
+              {pinnedMessages[0]?.content || "Message épinglé"}
+            </div>
           </div>
         )}
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 px-2 py-2 rounded-xl flex-1 bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
-            <Smile
-              size={18}
-              className="text-gray-700 dark:text-gray-300 cursor-pointer"
-            />
-            <Paperclip
-              size={18}
-              className="text-gray-700 dark:text-gray-300 cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
-              accept="image/*,video/*,application/*"
-            />
-            <input
-              type="text"
-              className="flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
-              placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
-              value={inputText}
-              onChange={handleInputChange}
-              onKeyPress={(e) =>
-                e.key === "Enter" && !isRecording && handleSendMessage()
-              }
-              disabled={isRecording}
-            />
-          </div>
-          <button
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
-            style={{ background: sendBtnColor || "#FFD700" }}
-            onClick={
-              inputText.trim() === "" ? handleMicClick : handleSendMessage
-            }
-          >
-            {inputText.trim() === "" ? (
-              <Mic
-                size={18}
-                className={`text-gray-700 dark:text-gray-300 ${
-                  isRecording ? "animate-pulse text-red-500" : ""
-                }`}
-              />
-            ) : (
-              <Send size={18} />
-            )}
-          </button>
-        </div>
-      </footer>
-
-      {/* MODAUX D'APPEL (rendus globalement dans App.jsx) */}
-
-      {isOptionsOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/30 z-30"
-            onClick={() => setIsOptionsOpen(false)}
-          ></div>
-          <ChatOptionsMenu
-            selectedChat={{
-              ...selectedChat,
-              openInfo: () => setIsInfoOpen(true),
-              openTheme: () => {
-                setShowThemeSelector(true);
-                setIsOptionsOpen(false);
-              },
-            }}
-            onClose={() => setIsOptionsOpen(false)}
-            onOpenSearch={() => setOpenSearch(true)}
+        {/* THEME SELECTOR */}
+        {showThemeSelector && (
+          <ThemeSelector
+            onSelectTheme={applyTheme}
+            onRemoveTheme={removeTheme}
+            onClose={() => setShowThemeSelector(false)}
           />
-        </>
-      )}
+        )}
 
-      {isInfoOpen && (
-        <InfoContactModal
-          chat={{
-            ...selectedChat,
-            openTheme: () => setShowThemeSelector(true),
+        {/* MESSAGES */}
+        <main
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto px-2 py-2 space-y-3 relative z-10"
+          onClick={(e) => {
+            if (
+              e.target.closest(".message-menu") ||
+              e.target.closest(".reaction-picker")
+            ) {
+              return;
+            }
+            setShowMessageMenu(null);
+            setShowReactionPicker(null);
           }}
-          onClose={() => setIsInfoOpen(false)}
-        />
-      )}
+        >
+          {messages.map((msg, i) => {
+            const showDate =
+              i === 0 ||
+              messages[i - 1].createdAt?.split("T")[0] !==
+                msg.createdAt?.split("T")[0];
 
-      {openSearch && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpenSearch(false)}
-          ></div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="absolute bottom-20 right-6 w-[300px] bg-white dark:bg-gray-700 rounded-lg shadow-lg p-3 z-50"
-          >
-            <input
-              type="text"
-              placeholder={t("chat.searchPlaceholder") || "Rechercher..."}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 text-xs text-myBlack dark:text-white bg-transparent"
+            return (
+              <div key={msg._id}>
+                {showDate && (
+                  <div className="text-center text-[10px] text-gray-700 dark:text-gray-300 my-2">
+                    {formatDateLabel(msg.createdAt, t)}
+                  </div>
+                )}
+                <MessageBubble msg={msg} index={i} />
+              </div>
+            );
+          })}
+          <div ref={messagesEndRef} />
+        </main>
+
+        {/* INPUT */}
+        <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
+          {isRecording && (
+            <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
+              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">
+                {Math.floor(recordingTime / 60)}:
+                {(recordingTime % 60).toString().padStart(2, "0")}
+              </span>
+              <button onClick={cancelRecording} className="ml-4 text-xs underline">
+                Annuler
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 px-2 py-2 rounded-xl flex-1 bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
+              <Smile
+                size={18}
+                className="text-gray-700 dark:text-gray-300 cursor-pointer"
+              />
+              <Paperclip
+                size={18}
+                className="text-gray-700 dark:text-gray-300 cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              />
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+                accept="image/*,video/*,application/*"
+              />
+              <input
+                type="text"
+                className="flex-1 bg-transparent outline-none text-sm text-myBlack dark:text-white"
+                placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
+                value={inputText}
+                onChange={handleInputChange}
+                onKeyPress={(e) =>
+                  e.key === "Enter" && !isRecording && handleSendMessage()
+                }
+                disabled={isRecording}
+              />
+            </div>
+            <button
+              className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
+              style={{ background: sendBtnColor || "#FFD700" }}
+              onClick={
+                inputText.trim() === "" ? handleMicClick : handleSendMessage
+              }
+            >
+              {inputText.trim() === "" ? (
+                <Mic
+                  size={18}
+                  className={`text-gray-700 dark:text-gray-300 ${
+                    isRecording ? "animate-pulse text-red-500" : ""
+                  }`}
+                />
+              ) : (
+                <Send size={18} />
+              )}
+            </button>
+          </div>
+        </footer>
+
+        {/* MENUS MODAUX */}
+        {isOptionsOpen && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/30 z-30"
+              onClick={() => setIsOptionsOpen(false)}
+            ></div>
+            <ChatOptionsMenu
+              selectedChat={{
+                ...selectedChat,
+                openInfo: () => setIsInfoOpen(true),
+                openTheme: () => {
+                  setShowThemeSelector(true);
+                  setIsOptionsOpen(false);
+                },
+              }}
+              onClose={() => setIsOptionsOpen(false)}
+              onOpenSearch={() => setOpenSearch(true)}
             />
-          </motion.div>
-        </>
-      )}
-    </div>
+          </>
+        )}
+
+        {isInfoOpen && (
+          <InfoContactModal
+            chat={{
+              ...selectedChat,
+              openTheme: () => setShowThemeSelector(true),
+            }}
+            onClose={() => setIsInfoOpen(false)}
+          />
+        )}
+
+        {openSearch && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setOpenSearch(false)}
+            ></div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-20 right-6 w-[300px] bg-white dark:bg-gray-700 rounded-lg shadow-lg p-3 z-50"
+            >
+              <input
+                type="text"
+                placeholder={t("chat.searchPlaceholder") || "Rechercher..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 text-xs text-myBlack dark:text-white bg-transparent"
+              />
+            </motion.div>
+          </>
+        )}
+      </div>
+    </>
   );
 }
