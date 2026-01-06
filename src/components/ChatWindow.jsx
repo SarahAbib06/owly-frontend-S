@@ -137,6 +137,16 @@ const { conversations: myConversations, loading: convLoading } = useConversation
         }
       )?._id;
 
+      const otherParticipant = selectedChat?.isGroup
+  ? null
+  : selectedChat?.participants?.find(
+      participant => {
+        const participantId = participant._id || participant.id;
+        const currentUserId = user?._id || user?.id || user?.userId;
+        return String(participantId) !== String(currentUserId);
+      }
+    );
+
   const otherUserName = selectedChat?.isGroup
     ? null
     : selectedChat?.participants?.find(
@@ -669,17 +679,17 @@ const handleAcceptCall = () => {
 
   const bubbleClasses = (fromMe) =>
     fromMe
-      ? "bg-myYellow2 dark:bg-mydarkYellow text-myBlack rounded-t-xl rounded-bl-xl rounded-br-none px-3 py-2 text-sm"
-      : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:text-white rounded-t-xl rounded-br-xl rounded-bl-none px-3 py-2 text-sm";
+      ? "bg-myYellow2 dark:bg-mydarkYellow text-myBlack rounded-t-lg rounded-bl-lg rounded-br-none px-4 py-4 text-xs"
+      : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:!text-white rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-4 text-xs";
 
   // Nom de la conversation
-  const conversationName = selectedChat?.isGroup
-    ? selectedChat.groupName
-    : selectedChat?.participants?.[0]?.username || "Utilisateur";
+const conversationName = selectedChat?.isGroup
+  ? selectedChat.groupName
+  : otherParticipant?.username || "Utilisateur";
 
-  const conversationAvatar = selectedChat?.isGroup
-    ? "/group-avatar.png"
-    : selectedChat?.participants?.[0]?.profilePicture || "/default-avatar.png";
+const conversationAvatar = selectedChat?.isGroup
+  ? "/group-avatar.png"
+  : otherParticipant?.profilePicture || "/default-avatar.png";
 
   // 🔥 Composant Message CORRIGÉ
   const MessageBubble = ({ msg }) => {
@@ -1320,11 +1330,13 @@ useEffect(() => {
 
           return (
             <div key={msg._id}>
-              {showDate && (
-                <div className="text-center text-[10px] text-gray-700 dark:text-gray-300 my-2">
-                  {formatDateLabel(msg.createdAt, t)}
-                </div>
-              )}
+{showDate && (
+  <div className="flex justify-center my-3">
+    <span className="bg-myYellow2 dark:bg-mydarkYellow text-gray-900 text-[10px] px-5 py-2 rounded-lg">
+      {formatDateLabel(msg.createdAt, t)}
+    </span>
+  </div>
+)}
               <MessageBubble msg={msg} index={i} />
             </div>
           );
@@ -1441,18 +1453,20 @@ useEffect(() => {
               disabled={isRecording}
             />
           </div>
-          <button
-            className="w-12 h-12 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack"
-            style={{ background: sendBtnColor || "#FFD700" }}
-            onClick={
-     selectedFile
-    ? handleSendMessage
-    : inputText.trim() === ""
-    ? handleMicClick
-    : handleSendMessage
-}
-
-          >
+<button
+  className={`
+    w-12 h-12 flex items-center justify-center rounded-xl
+    text-sm font-bold text-myBlack
+    bg-myYellow2 dark:bg-mydarkYellow
+  `}
+  onClick={
+    selectedFile
+      ? handleSendMessage
+      : inputText.trim() === ""
+      ? handleMicClick
+      : handleSendMessage
+  }
+>
             {selectedFile || inputText.trim() !== "" ? (
   <Send size={18} />
 ) : (

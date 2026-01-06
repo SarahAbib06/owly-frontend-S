@@ -15,6 +15,11 @@ export default function ConversationList({ onSelect, onNewChat }) {
   const [archivedList, setArchivedList] = useState([]);
   const [loadingArchived, setLoadingArchived] = useState(false);
   
+  // 🔥 NOUVEAU : État pour stocker les derniers messages
+  const [lastMessages, setLastMessages] = useState({});
+
+  const currentUserId = localStorage.getItem('userId');
+
   const { 
     conversations, 
     loading, 
@@ -22,23 +27,104 @@ export default function ConversationList({ onSelect, onNewChat }) {
     markAsRead 
   } = useConversations();
 
-
   const listToDisplay = showArchivedOnly ? archivedList : conversations;
+
+  // 🔥 CHARGER LE DERNIER MESSAGE POUR CHAQUE CONVERSATION
+  useEffect(() => {
+    const fetchLastMessages = async () => {
+      const messages = {};
+      
+      for (const conv of listToDisplay) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(
+            `http://localhost:5000/api/messages/${conv._id}?page=1&limit=1`,
+            {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.messages && data.messages.length > 0) {
+              const lastMsg = data.messages[0];
+              
+              // Formatter le message selon son type
+              let preview = '';
+              if (lastMsg.typeMessage === 'text') {
+                preview = lastMsg.content;
+              } else if (lastMsg.typeMessage === 'image') {
+                preview = '📷 Photo';
+              } else if (lastMsg.typeMessage === 'video') {
+                preview = '🎥 Vidéo';
+              } else if (lastMsg.typeMessage === 'audio') {
+                preview = '🎤 Audio';
+              } else if (lastMsg.typeMessage === 'file') {
+                preview = '📎 Fichier';
+              }
+              
+              messages[conv._id] = {
+                content: preview,
+                senderId: lastMsg.Id_sender || lastMsg.senderId,
+                createdAt: lastMsg.createdAt || lastMsg.timestamp
+              };
+            }
+          }
+        } catch (error) {
+          console.error(`Erreur chargement message conv ${conv._id}:`, error);
+        }
+      }
+      
+      setLastMessages(messages);
+    };
+
+    if (listToDisplay.length > 0) {
+      fetchLastMessages();
+    }
+  }, [listToDisplay]);
 
   // Filtrer les conversations selon la recherche
   const filteredList = listToDisplay.filter((conv) => {
-    const conversationName = conv.isGroup 
-      ? conv.groupName 
-      : conv.participants?.[0]?.username || "Utilisateur";
+    const otherParticipant = conv.participants?.find(
+      p => p._id !== currentUserId
+    );
     
+    const conversationName = conv.isGroup
+      ? conv.groupName
+      : otherParticipant?.username || "Utilisateur";
+   
     return conversationName.toLowerCase().includes(search.toLowerCase());
   });
 
   // Écouter les nouveaux messages pour mettre à jour la liste
   useEffect(() => {
-    const handleNewMessage = (message) => {
-      console.log("📨 Nouveau message reçu dans la liste");
-      // Les conversations seront automatiquement mises à jour via le hook
+    const handleNewMessage = (data) => {
+      console.log("📨 Nouveau message reçu dans la liste:", data);
+      
+      // Mettre à jour le dernier message pour cette conversation
+      if (data.conversationId) {
+        let preview = '';
+        if (data.typeMessage === 'text') {
+          preview = data.content;
+        } else if (data.typeMessage === 'image') {
+          preview = '📷 Photo';
+        } else if (data.typeMessage === 'video') {
+          preview = '🎥 Vidéo';
+        } else if (data.typeMessage === 'audio') {
+          preview = '🎤 Audio';
+        } else if (data.typeMessage === 'file') {
+          preview = '📎 Fichier';
+        }
+        
+        setLastMessages(prev => ({
+          ...prev,
+          [data.conversationId]: {
+            content: preview,
+            senderId: data.Id_sender || data.senderId,
+            createdAt: data.createdAt || data.timestamp || new Date()
+          }
+        }));
+      }
     };
 
     socketService.onNewMessage(handleNewMessage);
@@ -59,24 +145,23 @@ export default function ConversationList({ onSelect, onNewChat }) {
   };
 
   const toggleArchived = async () => {
-  const newShow = !showArchivedOnly;
-  setShowArchivedOnly(newShow);
+    const newShow = !showArchivedOnly;
+    setShowArchivedOnly(newShow);
 
-  if (newShow && archivedList.length === 0) {
-    setLoadingArchived(true);
-    try {
-      // Récupère l'ID de l'utilisateur (adapte si tu as un autre moyen)
-      const userId = localStorage.getItem('userId'); // ou utilise useAuth si tu l'as
-      if (userId) {
-        const res = await conversationService.getArchivedConversations(userId);
-        setArchivedList(res.conversations || []);
+    if (newShow && archivedList.length === 0) {
+      setLoadingArchived(true);
+      try {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          const res = await conversationService.getArchivedConversations(userId);
+          setArchivedList(res.conversations || []);
+        }
+      } catch (err) {
+        console.error("Erreur chargement archivées", err);
       }
-    } catch (err) {
-      console.error("Erreur chargement archivées", err);
+      setLoadingArchived(false);
     }
-    setLoadingArchived(false);
-  }
-};
+  };
 
   if (loading) {
     return (
@@ -103,22 +188,20 @@ export default function ConversationList({ onSelect, onNewChat }) {
           Owly
         </h2>
 
-                {/* === BOUTON NOUVELLE DISCUSSION (+) === */}
-          <button
-            onClick={onNewChat}
-            className="
-              rounded-xl shrink-0
-             
-              text-yellow-500
-              bg-[#f0f0f0] dark:bg-[#2E2F2F]
-              hover:bg-gray-200 dark:hover:bg-neutral-700
-              transition
-               p-2.5 md:p-3
-            "
-            title="Nouvelle discussion"
-          >
-            <Plus size={18} />
-          </button>
+        <button
+          onClick={onNewChat}
+          className="
+            rounded-xl shrink-0
+            text-yellow-500
+            bg-[#f0f0f0] dark:bg-[#2E2F2F]
+            hover:bg-gray-200 dark:hover:bg-neutral-700
+            transition
+            p-2.5 md:p-3
+          "
+          title="Nouvelle discussion"
+        >
+          <Plus size={18} />
+        </button>
       </div>
 
       {/* BARRE DE RECHERCHE */}
@@ -131,7 +214,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
               placeholder={t("messages.searchFriends") || "Rechercher..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 min-w-0 bg-transparent outline-none text-sm placeholder-gray-500 dark:placeholder-gray-400 text-myBlack dark:text-white"
+              className="flex-1 min-w-0 bg-transparent outline-none text-xs placeholder-gray-500 dark:placeholder-gray-400 text-myBlack dark:text-white"
             />
           </div>
           
@@ -141,7 +224,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
           >
             <SlidersHorizontal 
               size={18} 
-              className={` ${showArchivedOnly ? "text-myYellow" : "text-gray-600 dark:text-gray-300"}`}
+              className={`${showArchivedOnly ? "text-myYellow" : "text-gray-600 dark:text-gray-300"}`}
             />
           </button>
         </div>
@@ -152,29 +235,42 @@ export default function ConversationList({ onSelect, onNewChat }) {
         {filteredList.length === 0 ? (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <p>
-            {showArchivedOnly 
-              ? (loadingArchived ? "Chargement..." : "Aucune conversation archivée")
-              : t("messages.noConversations") || "Aucune conversation"}
-          </p>
+              {showArchivedOnly
+                ? (loadingArchived ? "Chargement..." : "Aucune conversation archivée")
+                : t("messages.noConversations") || "Aucune conversation"}
+            </p>
           </div>
         ) : (
           filteredList.map((conv) => {
-            // Extraire les infos de la conversation
             const isGroup = conv.isGroup || conv.type === 'group';
-            const conversationName = isGroup 
-              ? conv.groupName 
-              : conv.participants?.[0]?.username || "Utilisateur";
             
+            // Trouver l'autre participant
+            const otherParticipant = conv.participants?.find(
+              p => p._id !== currentUserId
+            );
+            
+            const conversationName = isGroup
+              ? conv.groupName
+              : otherParticipant?.username || "Utilisateur";
+           
             const avatar = isGroup
               ? "/group-avatar.png"
-              : conv.participants?.[0]?.profilePicture || "/default-avatar.png";
+              : otherParticipant?.profilePicture || "/default-avatar.png";
+           
+            // 🔥 UTILISER LE DERNIER MESSAGE DEPUIS L'ÉTAT
+            const lastMsg = lastMessages[conv._id];
+            let lastMessage = t("messages.noMessages") || "Aucun message";
             
-            const lastMessage = conv.lastMessage?.content || t("messages.noMessages") || "Aucun message";
-            
-            const time = conv.lastMessageAt 
-              ? new Date(conv.lastMessageAt).toLocaleTimeString('fr-FR', { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
+            if (lastMsg) {
+              const isMine = lastMsg.senderId === currentUserId;
+              const prefix = isMine ? "Vous : " : "";
+              lastMessage = prefix + lastMsg.content;
+            }
+           
+            const time = conv.lastMessageAt
+              ? new Date(conv.lastMessageAt).toLocaleTimeString('fr-FR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
                 })
               : "";
 
