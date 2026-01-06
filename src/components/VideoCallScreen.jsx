@@ -33,6 +33,12 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
   const callTimerRef = useRef(null);
   const channelNameRef = useRef(callChat?._id ? `call_${callChat._id}` : null);
   const agoraStartedRef = useRef(false);
+  const callStatusRef = useRef('idle'); // ✅ AJOUTÉ pour fixer le timeout
+  
+  // ✅ Mettre à jour la ref quand le state change
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
   
   useEffect(() => {
     setCurrentCallType(effectiveCallType);
@@ -127,13 +133,11 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
       setIsCalling(false);
       handleEndCall();
     });
-
-    socket.on('call-ended', (data) => {
-      console.log('📞 Appel terminé par l\'autre utilisateur:', data);
-      if (data.channelName === channelNameRef.current) {
-        handleEndCall();
-      }
-    });
+    
+socket.on('call-ended', (data) => {
+  if (data.channelName !== channelNameRef.current) return;
+  handleEndCall();
+});
 
     socket.on('call-initiated', (data) => {
       console.log('📞 Appel initié avec succès:', data);
@@ -317,8 +321,9 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
       
       console.log('📤 Événement envoyé:', callData);
       
+      // ✅ CORRECTION 3: Utiliser la ref au lieu du state pour éviter stale state
       setTimeout(() => {
-        if (callStatus === 'calling' && !isCallActive) {
+        if (callStatusRef.current === 'calling' && !isCallActive) {
           console.log('⏰ Timeout: Appel non répondu');
           setDebugInfo('Appel non répondu (timeout)');
           alert('L\'appel n\'a pas été répondu');
@@ -442,29 +447,29 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
     }
   };
 
- const endCall = async () => {
-  console.log("📞 Fin de l'appel demandée");
+  const endCall = async () => {
+    console.log("📞 Fin de l'appel demandée");
 
-  clearInterval(callTimerRef.current);
-  setDebugInfo("Fin de l'appel...");
+    clearInterval(callTimerRef.current);
+    setDebugInfo("Fin de l'appel...");
 
-  // 🔒 Empêche tout redémarrage Agora
-  agoraStartedRef.current = false;
+    // ✅ CORRECTION 1: NE PAS mettre agoraStartedRef.current = false ici
+    // Laisser le leaveChannel() gérer cela
+    // agoraStartedRef.current = false; // ❌ SUPPRIMÉ
 
-  // ❗️NE PAS quitter la room ici
-  // ❗️NE PAS calculer recipientId
-  // ❗️NE PAS envoyer leave-call-room
+    // ✅ ENVOYER chatId POUR CRÉER LE MESSAGE D'APPEL
+    socketService.socket?.emit("end-call", {
+  chatId: callChat?._id,
+  channelName: channelNameRef.current
+});
 
-  // ✅ UN SEUL EVENT → le serveur gère tout
-  socketService.socket?.emit("end-call");
 
-  // 🔌 Quitter Agora localement
-  await agoraService.leaveChannel();
+    // 🔌 Quitter Agora localement
+    await agoraService.leaveChannel();
 
-  // 🧹 Nettoyage UI
-  handleEndCall();
-};
-
+    // 🧹 Nettoyage UI
+    handleEndCall();
+  };
 
   const handleEndCall = () => {
     setIsCallActive(false);
@@ -634,7 +639,7 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
             <button 
               className="control-btn btn-end-call"
               onClick={endCall}
-              title="Terminer l\'appel"
+              title="Terminer l'appel"
               disabled={isUpgradingToVideo}
             >
               <Phone size={20} />
@@ -714,7 +719,7 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
               <button 
                 className="control-btn btn-end-call"
                 onClick={endCall}
-                title="Terminer l\'appel"
+                title="Terminer l'appel"
               >
                 <Phone size={20} />
               </button>
@@ -741,7 +746,7 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
             <h3>Appel {currentCallType === 'audio' ? 'audio' : 'vidéo'} en cours...</h3>
             <p>Appel de {callChat?.participants?.[0]?.username || 'Utilisateur'}</p>
             <p className="debug-info">{debugInfo}</p>
-            <p className="debug-info">En attente d\'acceptation...</p>
+            <p className="debug-info">En attente d'acceptation...</p>
           </div>
           
           <div className="calling-controls">
@@ -777,12 +782,12 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
             {currentCallType === 'audio' ? (
               <>
                 <Phone size={24} />
-                <span>Démarrer l\'appel audio</span>
+                <span>Démarrer l'appel audio</span>
               </>
             ) : (
               <>
                 <Video size={24} />
-                <span>Démarrer l\'appel vidéo</span>
+                <span>Démarrer l'appel vidéo</span>
               </>
             )}
           </button>
@@ -793,7 +798,7 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
         </div>
         
         <div className="permissions-note">
-          <p>Assurez-vous d\'avoir autorisé l\'accès au micro{currentCallType === 'video' ? ' et à la caméra' : ''}</p>
+          <p>Assurez-vous d'avoir autorisé l'accès au micro{currentCallType === 'video' ? ' et à la caméra' : ''}</p>
         </div>
       </div>
     </div>

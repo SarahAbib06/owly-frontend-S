@@ -98,6 +98,74 @@ const fileToBase64 = (file) =>
 
 const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "🎉"];
 
+// 🔥 COMPOSANT POUR AFFICHER UN MESSAGE D'APPEL
+const CallMessage = ({ callType, callResult, duration, fromMe }) => {
+  // Icônes selon le type
+  const CallIcon = callType === "audio" ? Phone : Video;
+  
+  // Couleur selon le statut
+  const getStatusColor = () => {
+    switch (callResult) {
+      case "missed":
+        return "text-red-500";
+      case "rejected":
+        return "text-orange-500";
+      case "ended":
+        return "text-green-500";
+      default:
+        return "text-gray-500";
+    }
+  };
+
+  // Texte selon le statut
+  const getStatusText = () => {
+    switch (callResult) {
+      case "missed":
+        return "Appel manqué";
+      case "rejected":
+        return "Appel refusé";
+      case "ended":
+        return "Appel terminé";
+      default:
+        return "Appel";
+    }
+  };
+
+  // Format durée (mm:ss)
+  const formatDuration = (seconds) => {
+    if (!seconds || seconds === 0) return null;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const durationText = formatDuration(duration);
+
+  return (
+    <div className="flex items-center gap-2 py-1">
+      {/* Icône d'appel */}
+      <CallIcon size={18} className={getStatusColor()} />
+      
+      {/* Informations d'appel */}
+      <div className="flex flex-col">
+        <span className={`text-xs font-medium ${getStatusColor()}`}>
+          Appel {callType === "audio" ? "audio" : "vidéo"}
+        </span>
+        
+        <div className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-400">
+          <span>{getStatusText()}</span>
+          {durationText && (
+            <>
+              <span>•</span>
+              <span>{durationText}</span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -170,6 +238,32 @@ export default function ChatWindow({ selectedChat, onBack }) {
       clearActiveCall(); // Nettoyer le contexte d'appel
     }
   }, [selectedChat, incomingCall, getActiveCall, clearActiveCall]);
+
+  // 🔥 Gérer l'enregistrement du message côté client
+  useEffect(() => {
+    if (!selectedChat) return;
+
+    const handleSaveCallMessage = async (data) => {
+      console.log("💾 [ChatWindow] Enregistrement message d'appel:", data);
+      
+      try {
+        // Émettre vers le serveur pour enregistrer en DB
+        socketService.emit("call-message", {
+          ...data,
+          chatId: selectedChat._id
+        });
+      } catch (error) {
+        console.error("❌ Erreur save call message:", error);
+      }
+    };
+
+   socketService.socket?.on("save-call-message", handleSaveCallMessage);
+
+return () => {
+  socketService.socket?.off("save-call-message", handleSaveCallMessage);
+};
+
+  }, [selectedChat]);
 
   // 🔥 Charger les messages épinglés
   useEffect(() => {
@@ -492,8 +586,10 @@ export default function ChatWindow({ selectedChat, onBack }) {
                 />
               )}
 
+              {/* ✅ MESSAGE TEXTE */}
               {msg.typeMessage === "text" && msg.content}
 
+              {/* ✅ MESSAGE IMAGE */}
               {msg.typeMessage === "image" && (
                 <img
                   src={msg.fileUrl}
@@ -503,6 +599,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
                 />
               )}
 
+              {/* ✅ MESSAGE VIDÉO */}
               {msg.typeMessage === "video" && (
                 <video
                   src={msg.fileUrl}
@@ -512,10 +609,12 @@ export default function ChatWindow({ selectedChat, onBack }) {
                 />
               )}
 
+              {/* ✅ MESSAGE AUDIO */}
               {msg.typeMessage === "audio" && (
                 <AudioMessage src={msg.content || msg.fileUrl} />
               )}
 
+              {/* ✅ MESSAGE FICHIER */}
               {msg.typeMessage === "file" && (
                 <a
                   href={msg.fileUrl}
@@ -524,6 +623,16 @@ export default function ChatWindow({ selectedChat, onBack }) {
                 >
                   📎 {msg.fileName || "Fichier"}
                 </a>
+              )}
+
+              {/* 🔥 NOUVEAU : MESSAGE APPEL */}
+              {msg.typeMessage === "call" && (
+                <CallMessage
+                  callType={msg.callType}
+                  callResult={msg.callResult}
+                  duration={msg.duration}
+                  fromMe={fromMe}
+                />
               )}
             </div>
 
