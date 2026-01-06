@@ -18,6 +18,7 @@ export const AppelProvider = ({ children }) => {
   const socketRef = React.useRef(null);
   const ringtoneRef = React.useRef(null);
   const currentCallRef = React.useRef(null);
+  const callAcceptedRef = React.useRef(false);
 
   // Initialiser la connexion socket globale
   useEffect(() => {
@@ -87,6 +88,13 @@ export const AppelProvider = ({ children }) => {
       console.log('❌ Appel refusé:', data);
       const active = currentCallRef.current;
       if (active && data.callId && active.callId && data.callId === active.callId) {
+        // 🆕 CRÉER UN MESSAGE D'APPEL MANQUÉ SI C'EST L'INITIATEUR
+        if (active.isInitiator && !callAcceptedRef.current && socketRef.current?.connected) {
+          socketRef.current.emit('call-missed', {
+            conversationId: active.conversation?._id,
+            callType: active.callType
+          });
+        }
         setCurrentCall(null);
         setCallAccepted(false);
         setCallState('ended');
@@ -149,6 +157,11 @@ export const AppelProvider = ({ children }) => {
   useEffect(() => {
     currentCallRef.current = currentCall;
   }, [currentCall]);
+
+  // 🆕 Garder une ref de callAccepted pour vérifier si l'appel a été accepté
+  useEffect(() => {
+    callAcceptedRef.current = callAccepted;
+  }, [callAccepted]);
 
   const playRingtone = () => {
     try {

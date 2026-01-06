@@ -110,6 +110,18 @@ export default function VideoCall() {
 
   const handleEndCall = () => {
     console.log("📞 Fin appel vidéo");
+    
+    // 🆕 ENVOYER LE MESSAGE D'APPEL TERMINÉ AVEC LA DURÉE
+    // Le récepteur peut aussi envoyer le message, mais il sera créé par l'initiateur
+    if (globalSocket?.connected) {
+      globalSocket.emit("call-ended", {
+        conversationId: currentCall.conversation?._id,
+        callType: "video",
+        duration: callDuration,
+        initiatorId: currentCall?.isInitiator ? user._id : currentCall?.targetUserId
+      });
+    }
+    
     if (globalSocket?.connected && currentCall?.targetUserId) {
       globalSocket.emit("hang-up", {
         conversationId: currentCall.conversation?._id,
@@ -871,56 +883,69 @@ export default function VideoCall() {
       left: 0,
       right: 0,
       bottom: 0,
-      background: '#111',
+      background: '#000',
       color: 'white',
       zIndex: 9999,
       display: 'flex',
       flexDirection: 'column'
     }}>
-      {/* En-tête */}
+      {/* En-tête - Design sobre */}
       <div style={{
-        padding: '15px 20px',
-        background: 'rgba(0,0,0,0.8)',
+        padding: '12px 20px',
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(10px)',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        borderBottom: '1px solid rgba(249, 238, 52, 0.2)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Icône jaune */}
           <div style={{
             width: 40,
             height: 40,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '8px',
+            background: '#F9EE34',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(249, 238, 52, 0.3)'
           }}>
-            <Video size={20} />
+            <Video size={20} color="#000" strokeWidth={2} />
           </div>
           <div>
-            <div style={{ fontWeight: 'bold', fontSize: 16 }}>
+            <div style={{ fontWeight: '600', fontSize: 15, color: '#fff' }}>
               {currentCall.targetUsername || 'Utilisateur'}
             </div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>
+            <div style={{ fontSize: 11, opacity: 0.7, color: '#ccc' }}>
               {status}
               {callDuration > 0 && ` • ${formatDuration(callDuration)}`}
             </div>
           </div>
         </div>
         
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={() => setIsMinimized(true)}
             style={{
               background: 'rgba(255,255,255,0.1)',
-              color: 'white',
-              border: 'none',
-              borderRadius: 5,
+              color: '#F9EE34',
+              border: '1px solid rgba(249, 238, 52, 0.3)',
+              borderRadius: '8px',
               padding: '8px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = 'rgba(249, 238, 52, 0.15)';
+              e.target.style.borderColor = 'rgba(249, 238, 52, 0.5)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'rgba(255,255,255,0.1)';
+              e.target.style.borderColor = 'rgba(249, 238, 52, 0.3)';
             }}
           >
             <Minimize2 size={18} />
@@ -930,14 +955,23 @@ export default function VideoCall() {
             onClick={() => setIsFullscreen(!isFullscreen)}
             style={{
               background: 'rgba(255,255,255,0.1)',
-              color: 'white',
-              border: 'none',
-              borderRadius: 5,
+              color: '#F9EE34',
+              border: '1px solid rgba(249, 238, 52, 0.3)',
+              borderRadius: '8px',
               padding: '8px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = 'rgba(249, 238, 52, 0.15)';
+              e.target.style.borderColor = 'rgba(249, 238, 52, 0.5)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'rgba(255,255,255,0.1)';
+              e.target.style.borderColor = 'rgba(249, 238, 52, 0.3)';
             }}
           >
             {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -946,19 +980,27 @@ export default function VideoCall() {
           <button
             onClick={handleEndCall}
             style={{
-              background: '#f44336',
+              background: 'rgba(200, 60, 60, 0.8)',
               color: 'white',
               border: 'none',
-              borderRadius: 5,
-              padding: '8px 16px',
+              borderRadius: '8px',
+              padding: '8px 14px',
               cursor: 'pointer',
-              fontWeight: 'bold',
+              fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
-              gap: 5
+              gap: 6,
+              fontSize: 12,
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = 'rgba(200, 60, 60, 1)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'rgba(200, 60, 60, 0.8)';
             }}
           >
-            <Phone size={18} style={{ transform: 'rotate(135deg)' }} />
+            <Phone size={16} style={{ transform: 'rotate(135deg)' }} />
             Raccrocher
           </button>
         </div>
@@ -1127,69 +1169,109 @@ export default function VideoCall() {
         </div>
       </div>
 
-      {/* Contrôles */}
+      {/* Contrôles - Design sobre avec jaune */}
       <div style={{
-        padding: '20px',
-        background: 'rgba(0,0,0,0.8)',
+        padding: '16px 20px',
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(10px)',
         display: 'flex',
         justifyContent: 'center',
-        gap: 20
+        gap: 16,
+        borderTop: '1px solid rgba(249, 238, 52, 0.2)'
       }}>
+        {/* Micro */}
         <button
           onClick={toggleMute}
           style={{
-            width: 60,
-            height: 60,
-            borderRadius: '50%',
-            background: isMuted ? '#f44336' : 'rgba(255,255,255,0.2)',
-            color: 'white',
-            border: 'none',
+            width: 52,
+            height: 52,
+            borderRadius: '12px',
+            background: isMuted ? 'rgba(200, 60, 60, 0.9)' : 'rgba(255,255,255,0.1)',
+            color: isMuted ? 'white' : '#F9EE34',
+            border: isMuted ? 'none' : '1px solid rgba(249, 238, 52, 0.3)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            boxShadow: isMuted ? '0 2px 8px rgba(200, 60, 60, 0.4)' : 'none'
+          }}
+          onMouseEnter={(e) => {
+            if (!isMuted) {
+              e.target.style.background = 'rgba(249, 238, 52, 0.15)';
+              e.target.style.borderColor = 'rgba(249, 238, 52, 0.5)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isMuted) {
+              e.target.style.background = 'rgba(255,255,255,0.1)';
+              e.target.style.borderColor = 'rgba(249, 238, 52, 0.3)';
+            }
           }}
         >
-          <Mic size={24} />
+          <Mic size={24} strokeWidth={2} />
         </button>
         
+        {/* Caméra */}
         <button
           onClick={toggleCamera}
           style={{
-            width: 60,
-            height: 60,
-            borderRadius: '50%',
-            background: cameraOff ? '#f44336' : 'rgba(255,255,255,0.2)',
-            color: 'white',
-            border: 'none',
+            width: 52,
+            height: 52,
+            borderRadius: '12px',
+            background: cameraOff ? 'rgba(200, 60, 60, 0.9)' : 'rgba(255,255,255,0.1)',
+            color: cameraOff ? 'white' : '#F9EE34',
+            border: cameraOff ? 'none' : '1px solid rgba(249, 238, 52, 0.3)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            boxShadow: cameraOff ? '0 2px 8px rgba(200, 60, 60, 0.4)' : 'none'
+          }}
+          onMouseEnter={(e) => {
+            if (!cameraOff) {
+              e.target.style.background = 'rgba(249, 238, 52, 0.15)';
+              e.target.style.borderColor = 'rgba(249, 238, 52, 0.5)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!cameraOff) {
+              e.target.style.background = 'rgba(255,255,255,0.1)';
+              e.target.style.borderColor = 'rgba(249, 238, 52, 0.3)';
+            }
           }}
         >
-          <Video size={24} />
+          <Video size={24} strokeWidth={2} />
         </button>
         
+        {/* Raccrocher */}
         <button
           onClick={handleEndCall}
           style={{
-            width: 60,
-            height: 60,
-            borderRadius: '50%',
-            background: '#f44336',
+            width: 52,
+            height: 52,
+            borderRadius: '12px',
+            background: 'rgba(200, 60, 60, 0.9)',
             color: 'white',
             border: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            boxShadow: '0 2px 8px rgba(200, 60, 60, 0.4)'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = 'rgba(200, 60, 60, 1)';
+            e.target.style.boxShadow = '0 4px 12px rgba(200, 60, 60, 0.6)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = 'rgba(200, 60, 60, 0.9)';
+            e.target.style.boxShadow = '0 2px 8px rgba(200, 60, 60, 0.4)';
           }}
         >
-          <Phone size={24} style={{ transform: 'rotate(135deg)' }} />
+          <Phone size={24} style={{ transform: 'rotate(135deg)' }} strokeWidth={2} />
         </button>
       </div>
 

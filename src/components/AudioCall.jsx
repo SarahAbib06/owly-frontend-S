@@ -79,6 +79,17 @@ export default function AudioCall() {
   const handleEndCall = () => {
     console.log("📞 Raccrochage de l'appel vocal...");
     
+    // 🆕 ENVOYER LE MESSAGE D'APPEL TERMINÉ AVEC LA DURÉE
+    // Le récepteur peut aussi envoyer le message, mais il sera créé par l'initiateur
+    if (globalSocket?.connected) {
+      globalSocket.emit("call-ended", {
+        conversationId: currentCall.conversation?._id,
+        callType: "audio",
+        duration: callDuration,
+        initiatorId: currentCall?.isInitiator ? user._id : currentCall?.targetUserId
+      });
+    }
+    
     if (globalSocket?.connected) {
       globalSocket.emit("hang-up", {
         conversationId: currentCall.conversation?._id,
@@ -505,7 +516,7 @@ export default function AudioCall() {
       left: 0,
       right: 0,
       bottom: 0,
-      background: "linear-gradient(135deg, #FF6B6B 0%, #FF8C42 100%)",
+      background: "#0f0f0f",
       color: "white",
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
       zIndex: 9999,
@@ -520,17 +531,18 @@ export default function AudioCall() {
         padding: "40px",
         maxWidth: "600px"
       }}>
-        {/* Icône de profil */}
+        {/* Icône de profil - Jaune */}
         <div style={{
           width: 120,
           height: 120,
-          borderRadius: "50%",
-          background: "rgba(255,255,255,0.2)",
+          borderRadius: "20px",
+          background: "#F9EE34",
           margin: "0 auto 30px",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 60
+          fontSize: 60,
+          boxShadow: "0 4px 16px rgba(249, 238, 52, 0.3)"
         }}>
           🎤
         </div>
@@ -539,16 +551,18 @@ export default function AudioCall() {
         <h1 style={{ 
           margin: "0 0 10px 0", 
           fontSize: 32,
-          fontWeight: "bold"
+          fontWeight: "600",
+          color: "#fff"
         }}>
           {otherUser}
         </h1>
 
         {/* Statut */}
         <p style={{ 
-          fontSize: 18, 
+          fontSize: 16, 
           margin: "10px 0",
-          opacity: 0.9
+          opacity: 0.8,
+          color: "#aaa"
         }}>
           {status}
         </p>
@@ -556,30 +570,31 @@ export default function AudioCall() {
         {/* Durée */}
         {isPeerConnected && (
           <p style={{ 
-            margin: "15px 0", 
-            fontSize: 24, 
-            fontWeight: "bold", 
-            color: "#FFE66D" 
+            margin: "20px 0", 
+            fontSize: 26, 
+            fontWeight: "600", 
+            color: "#F9EE34" 
           }}>
-            Durée: {formatDuration(callDuration)}
+            {formatDuration(callDuration)}
           </p>
         )}
 
         {!isPeerConnected && (
           <div style={{
             marginTop: "20px",
-            fontSize: "16px",
+            fontSize: "14px",
             display: "flex",
             justifyContent: "center",
-            gap: "10px",
-            alignItems: "center"
+            gap: "8px",
+            alignItems: "center",
+            color: "#888"
           }}>
             <div style={{
               display: "inline-block",
-              width: "12px",
-              height: "12px",
+              width: "8px",
+              height: "8px",
               borderRadius: "50%",
-              background: "#FFE66D",
+              background: "#F9EE34",
               animation: "pulse 1.5s infinite"
             }}></div>
             Connexion en cours...
@@ -587,10 +602,10 @@ export default function AudioCall() {
         )}
       </div>
 
-      {/* Contrôles */}
+      {/* Contrôles - Design sobre */}
       <div style={{
         display: "flex",
-        gap: "20px",
+        gap: "16px",
         justifyContent: "center",
         padding: "30px",
         position: "absolute",
@@ -601,25 +616,30 @@ export default function AudioCall() {
         <button
           onClick={handleEndCall}
           style={{
-            background: "#FF1744",
+            background: "rgba(200, 60, 60, 0.9)",
             color: "white",
-            padding: "15px 30px",
-            borderRadius: "50px",
+            padding: "14px 28px",
+            borderRadius: "12px",
             border: "none",
-            fontSize: "16px",
+            fontSize: "15px",
             cursor: "pointer",
-            fontWeight: "bold",
+            fontWeight: "600",
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            minWidth: "150px",
+            minWidth: "140px",
             justifyContent: "center",
-            boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
-            transition: "transform 0.2s",
-            transform: "scale(1)"
+            boxShadow: "0 4px 12px rgba(200, 60, 60, 0.3)",
+            transition: "all 0.2s"
           }}
-          onMouseOver={(e) => e.target.style.transform = "scale(1.1)"}
-          onMouseOut={(e) => e.target.style.transform = "scale(1)"}
+          onMouseEnter={(e) => {
+            e.target.style.background = "rgba(200, 60, 60, 1)";
+            e.target.style.boxShadow = "0 6px 16px rgba(200, 60, 60, 0.5)";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = "rgba(200, 60, 60, 0.9)";
+            e.target.style.boxShadow = "0 4px 12px rgba(200, 60, 60, 0.3)";
+          }}
         >
           📞 Raccrocher
         </button>
@@ -628,27 +648,36 @@ export default function AudioCall() {
         <button
           onClick={toggleMute}
           style={{
-            background: isMuted ? "#757575" : "#2196F3",
-            color: "white",
-            padding: "15px 30px",
-            borderRadius: "50px",
-            border: "none",
-            fontSize: "16px",
+            background: isMuted ? "rgba(200, 60, 60, 0.9)" : "rgba(249, 238, 52, 0.15)",
+            color: isMuted ? "white" : "#F9EE34",
+            padding: "14px 28px",
+            borderRadius: "12px",
+            border: isMuted ? "none" : "1px solid rgba(249, 238, 52, 0.3)",
+            fontSize: "15px",
             cursor: "pointer",
-            fontWeight: "bold",
+            fontWeight: "600",
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            minWidth: "150px",
+            minWidth: "140px",
             justifyContent: "center",
-            boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
-            transition: "transform 0.2s",
-            transform: "scale(1)"
+            boxShadow: isMuted ? "0 4px 12px rgba(200, 60, 60, 0.3)" : "none",
+            transition: "all 0.2s"
           }}
-          onMouseOver={(e) => e.target.style.transform = "scale(1.1)"}
-          onMouseOut={(e) => e.target.style.transform = "scale(1)"}
+          onMouseEnter={(e) => {
+            if (!isMuted) {
+              e.target.style.background = "rgba(249, 238, 52, 0.25)";
+              e.target.style.borderColor = "rgba(249, 238, 52, 0.5)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isMuted) {
+              e.target.style.background = "rgba(249, 238, 52, 0.15)";
+              e.target.style.borderColor = "rgba(249, 238, 52, 0.3)";
+            }
+          }}
         >
-          {isMuted ? "🎤 Micro coupé" : "🎤 Couper micro"}
+          {isMuted ? "🎤 Micro OFF" : "🎤 Couper"}
         </button>
       </div>
 
