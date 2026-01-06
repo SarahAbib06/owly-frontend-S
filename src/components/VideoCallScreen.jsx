@@ -442,32 +442,29 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
     }
   };
 
-  const endCall = async () => {
-    console.log('📞 Fin de l\'appel demandée');
-    clearInterval(callTimerRef.current);
-    setDebugInfo('Fin de l\'appel...');
-    
-    agoraStartedRef.current = false;
-    
-    if (channelNameRef.current) {
-      socketService.socket.emit('leave-call-room', channelNameRef.current);
-      
-      const recipientId = callChat?.participants?.find?.(
-        p => (p._id || p.id) !== (user._id || user.id)
-      )?._id;
-      
-      if (recipientId) {
-        socketService.socket.emit('end-call', {
-          channelName: channelNameRef.current,
-          recipientIds: [recipientId],
-          callType: currentCallType
-        });
-      }
-    }
+ const endCall = async () => {
+  console.log("📞 Fin de l'appel demandée");
 
-    await agoraService.leaveChannel();
-    handleEndCall();
-  };
+  clearInterval(callTimerRef.current);
+  setDebugInfo("Fin de l'appel...");
+
+  // 🔒 Empêche tout redémarrage Agora
+  agoraStartedRef.current = false;
+
+  // ❗️NE PAS quitter la room ici
+  // ❗️NE PAS calculer recipientId
+  // ❗️NE PAS envoyer leave-call-room
+
+  // ✅ UN SEUL EVENT → le serveur gère tout
+  socketService.socket?.emit("end-call");
+
+  // 🔌 Quitter Agora localement
+  await agoraService.leaveChannel();
+
+  // 🧹 Nettoyage UI
+  handleEndCall();
+};
+
 
   const handleEndCall = () => {
     setIsCallActive(false);
