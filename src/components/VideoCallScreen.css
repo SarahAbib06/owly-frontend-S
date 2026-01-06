@@ -624,3 +624,81 @@
 .btn-close:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+/* Styles pour le bouton upgrade to video */
+.upgrade-video-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  transition: all 0.3s ease;
+}
+
+.upgrade-video-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%) !important;
+  transform: scale(1.05);
+}
+
+.upgrade-video-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.upgrading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.upgrading-message {
+  margin-top: 15px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  text-align: center;
+}
+
+.upgrading-message p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Amélioration de l'UI audio call pour accommoder le nouveau bouton */
+.audio-call-container .control-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.audio-call-container .control-btn {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.audio-call-container .btn-active {
+  background: rgba(255, 59, 48, 0.3);
+}
+
+.audio-call-container .btn-end-call {
+  background: #ff3b30;
+}
+
+.audio-call-container .btn-end-call:hover:not(:disabled) {
+  background: #ff1a1a;
+}
