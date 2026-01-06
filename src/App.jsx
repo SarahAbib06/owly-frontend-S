@@ -1,146 +1,105 @@
 import "./i18n";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import { CallProvider, useCall } from "./context/CallContext"; // IMPORT MODIFIÉ
-import IncomingCallModal from "./components/IncomingCallModal";
 import RockPaper from "./pages/RockPaper";
 import Register from "./pages/Register.jsx";
 import Login from "./pages/Login.jsx";
 import Welcome from "./pages/Welcome.jsx";
 import OtpPage from "./pages/OtpPage";
-
 import TicTacToe2 from "./components/TicTacToe2";
 import MessagesPage from "./pages/MessagesPage";
 import MainLayout from "./components/MainLayout";
 import SettingsPage from "./pages/SettingsPage";
 import ForgotPassword from "./pages/ForgotPassword";
-
-import VideoCall from "./components/VideoCall";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MemoryGame from "./components/MemoryGame";
-
 import OwlyQuiz from "./components/OwlyQuiz";
-
 import GamesPage from "./pages/GamesPage";
 
-// Créez un composant wrapper qui inclut le modal
-const AppWithCallProvider = ({ children }) => {
-  return (
-    <CallProvider>
-      {children}
-      <CallModal />
-    </CallProvider>
-  );
-};
-
-// Composant séparé pour le modal (à l'intérieur du CallProvider)
-const CallModal = () => {
-  const { incomingCall, showIncomingCallModal, acceptCall, rejectCall } = useCall();
-
-  if (!showIncomingCallModal) return null;
-
-  return (
-    <IncomingCallModal
-      callData={incomingCall}
-      onAccept={acceptCall}
-      onReject={rejectCall}
-    />
-  );
-};
 
 export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppWithCallProvider>
-          <Routes>
-            {/* Route par défaut */}
-            <Route path="/" element={<Welcome />} />
+        
+        <Routes>
+          {/* Route par défaut */}
+          <Route path="/" element={<Welcome />} />
 
-            {/* Routes publiques */}
-            <Route path="/welcome" element={<Welcome />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/OtpPage" element={<OtpPage />} />
-            <Route path="/ForgotPassword" element={<ForgotPassword />} />
+          {/* Routes publiques */}
+          <Route path="/welcome" element={<Welcome />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/OtpPage" element={<OtpPage />} />
+          <Route path="/ForgotPassword" element={<ForgotPassword />} />
 
-            {/* Layout avec sidebar/header */}
-            <Route element={<MainLayout />}>
-              {/* Ces pages doivent être accessibles avec layout mais protégées */}
-              <Route
-                path="/MessagesPage"
-                element={
-                  <ProtectedRoute>
-                    <MessagesPage />
-                  </ProtectedRoute>
-                }
-              />
+          {/* Layout avec sidebar/header */}
+          <Route element={<MainLayout />}>
+            {/* Ces pages doivent être accessibles avec layout mais protégées */}
+            <Route
+              path="/MessagesPage"
+              element={
+                <ProtectedRoute>
+                  <MessagesPage />
+                </ProtectedRoute>
+              }
+            />
 
-              <Route
-                path="/Settings"
-                element={
-                  <ProtectedRoute>
-                    <SettingsPage />
-                  </ProtectedRoute>
-                }
-              />
+            <Route
+              path="/Settings"
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
 
-              <Route
-                path="/video-call"
-                element={
-                  <ProtectedRoute>
-                    <VideoCall roomId="room123" />
-                  </ProtectedRoute>
-                }
-              />
+            <Route
+              path="/tic-tac-toe2"
+              element={
+                <ProtectedRoute>
+                  <TicTacToe2 />
+                </ProtectedRoute>
+              }
+            />
 
-              <Route
-                path="/tic-tac-toe2"
-                element={
-                  <ProtectedRoute>
-                    <TicTacToe2 />
-                  </ProtectedRoute>
-                }
-              />
+            <Route
+              path="/memory-game"
+              element={
+                <ProtectedRoute>
+                  <MemoryGame />
+                </ProtectedRoute>
+              }
+            />
 
-              <Route
-                path="/memory-game"
-                element={
-                  <ProtectedRoute>
-                    <MemoryGame />
-                  </ProtectedRoute>
-                }
-              />
+            <Route
+              path="/games"
+              element={
+                <ProtectedRoute>
+                  <GamesPage />
+                </ProtectedRoute>
+              }
+            />
 
-              <Route
-                path="/games"
-                element={
-                  <ProtectedRoute>
-                    <GamesPage />
-                  </ProtectedRoute>
-                }
-              />
+            <Route
+              path="/rock-paper-scissors"
+              element={
+                <ProtectedRoute>
+                  <RockPaper />
+                </ProtectedRoute>
+              }
+            />
 
-              <Route
-                path="/rock-paper-scissors"
-                element={
-                  <ProtectedRoute>
-                    <RockPaper />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/owly-quiz"
-                element={
-                  <ProtectedRoute>
-                    <OwlyQuiz />
-                  </ProtectedRoute>
-                }
-              />
-            </Route>
-          </Routes>
-        </AppWithCallProvider>
+            <Route
+              path="/owly-quiz"
+              element={
+                <ProtectedRoute>
+                  <OwlyQuiz />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+        </Routes>
       </AuthProvider>
     </Router>
   );
