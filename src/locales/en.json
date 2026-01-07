@@ -23,6 +23,16 @@
     "alreadyHaveAccount": "Already have an account?",
     "login": "Login"
   },
+
+   "profilPic": {
+    "title": "Choose your profile picture",
+    "subtitle": "You can add a picture now or later",
+    "chooseImage": "Choose an image",
+    "choose": "Confirm",
+    "ignore": "Ignore"
+  },
+
+  
    "formCard": {
     "leftText1": "Every conversation takes flight",
     "leftText2": "Connect instantly with your friends, share your moments, and always stay in touch."

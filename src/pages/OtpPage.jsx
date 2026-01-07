@@ -69,7 +69,7 @@ const OtpPage = () => {
         // Vérification OTP pour inscription
         await verifyOtp(email, otpCode);
         setSuccess(t("otp.success") || "Compte créé avec succès !");
-        setTimeout(() => navigate(redirectTo), 1500); // Redirige vers login
+        setTimeout(() => navigate("/profil-pic", { state: { email } }), 1500); // Redirige vers login
       } else if (type === 'inactivity') {
         // Vérification OTP pour inactivité
         await verifyInactivityOtp(token, otpCode);

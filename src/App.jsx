@@ -9,6 +9,7 @@ import Register from "./pages/Register.jsx";
 import Login from "./pages/Login.jsx";
 import Welcome from "./pages/Welcome.jsx";
 import OtpPage from "./pages/OtpPage";
+import ProfilPic from "./pages/ProfilPic.jsx";
 
 import TicTacToe2 from "./components/TicTacToe2";
 import MessagesPage from "./pages/MessagesPage";
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/OtpPage" element={<OtpPage />} />
             <Route path="/ForgotPassword" element={<ForgotPassword />} />
+            <Route path="/profil-pic" element={<ProfilPic />} />
 
             {/* Layout avec sidebar/header */}
             <Route element={<MainLayout />}>

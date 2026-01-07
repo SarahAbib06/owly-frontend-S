@@ -24,6 +24,16 @@
     "alreadyHaveAccount": "Vous avez déjà un compte ?",
     "login": "Se connecter"
   },
+
+  "profilPic": {
+    "title": "Choisir votre photo de profil",
+    "subtitle": "Vous pouvez ajouter une photo maintenant ou plus tard",
+    "chooseImage": "Choisir une image",
+    "choose": "Confirmer ",
+    "ignore": "Ignorer"
+  },
+
+  
   "formCard": {
     "leftText1": "Chaque conversation prend son envol",
     "leftText2": "Connectez-vous instantanément avec vos proches, partagez vos moments et restez toujours en contact."

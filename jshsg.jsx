@@ -1,149 +1,131 @@
-const initializeCall = async () => {
-  try {
-    setConnectionStatus('gettingstream');
-    
-    // 1. Stream local
-    let stream;
-    try {
-      stream = await webRTCService.getLocalStream();
-    } catch (mediaError) {
-        console.error('❌ Erreur accès média:', mediaError);
+// frontend/src/pages/MessagesPage.jsx
+import { useState } from "react";
+import { useOutletContext } from "react-router-dom";
+import ConversationList from "../components/ConversationList";
+import ChatWindow from "../components/ChatWindow";
+import WelcomeChatScreen from "../components/WelcomeChatScreen";
+import { Search, Plus, QrCode, PanelLeftClose } from "lucide-react";
+import SearchModal from "../components/SearchModal";
+import ResizablePanel from "../components/ResizablePanel";
 
-        if (mediaError.name === 'NotAllowedError') {
-          throw new Error('Accès à la caméra/micro refusé. Veuillez autoriser l\'accès dans les paramètres de votre navigateur.');
-        } else if (mediaError.name === 'NotFoundError') {
-          throw new Error('Aucun périphérique caméra/micro trouvé. Vérifiez vos connexions.');
-        } else if (mediaError.name === 'NotReadableError') {
-          throw new Error('La caméra/micro est déjà utilisée par une autre application.');
-        } else {
-          throw new Error('Erreur d\'accès aux périphériques média: ' + mediaError.message);
-        }
-      }
-    
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = stream;
-    }
-    
-    setConnectionStatus('creatingconnection');
-    
-    // 2. CORRECTION: Déterminer rôle SANS selectedChat
-    const currentUserId = user?.id;
-    if (!currentUserId) {
-      throw new Error('ID utilisateur manquant');
-    }
-    
-    const isReceiver = callData.receiverId === currentUserId;
-    const isInitiator = !isReceiver; // Caller = Initiator WebRTC
-    
-    const remoteUserId = isInitiator ? callData.callerId : callData.receiverId;
-    
-    setRemoteUserId(remoteUserId);
-    remoteUserIdRef.current = remoteUserId;
-    
-    console.log('✅ RÔLE DÉTERMINÉ:', {
-      isReceiver,
-      isInitiator,
-      remoteUserId,
-      currentUserId,
-      callData
+export default function Messages() {
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(360);
+
+  const { setChatOpen } = useOutletContext();
+
+  const openChat = (chat, isFromArchived = false) => {
+    setSelectedChat({
+      ...chat,
+      isFromArchived,
     });
-    
-    // 3. Configurer callbacks WebRTC
-    webRTCService.onSignal = async (signal) => {
-      console.log('📡 Signal à envoyer:', signal.type);
-      const callId = callData.callId;
-      
-      if (signal.type === 'offer') {
-        socketService.socket?.emit('call:offer', {
-          callId,
-          receiverId: remoteUserId,
-          signal
-        });
-      } else if (signal.type === 'answer') {
-        socketService.socket?.emit('call:answer', {
-          callId,
-          callerId: remoteUserId,
-          signal
-        });
-      } else if (signal.type === 'candidate') {
-        socketService.socket?.emit('call:ice-candidate', {
-          callId,
-          candidate: signal.candidate
-        });
-      }
-    };
-    
-    webRTCService.onStream = (remoteStream) => {
-      console.log('✅ Stream distant reçu');
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = remoteStream;
-      }
-      setConnectionStatus('connected');
-    };
-    
-    // 4. Écouteurs socket communs
-    socketService.onCallIceCandidate = (data) => {
-      console.log('🧊 ICE candidate reçu:', data.candidate);
-      if (data.candidate) {
-        webRTCService.addIceCandidate(data.candidate);
-      }
-    };
-    
-    socketService.onCallEnded = handleEndCall;
-    
-    // 5. Logique selon rôle
-    if (isInitiator) {
-      // CALLER: Crée PeerConnection et attend ANSWER
-      console.log('📞 CALLER: J\'attends une OFFER/ANSWER');
-      setConnectionStatus('waitingoffer');
-      
-      socketService.onCallOffer = async (data) => {
-        if (webRTCService.peerConnection) {
-          console.log('PeerConnection existe déjà');
-          return;
-        }
-        console.log('📨 OFFER reçue');
-        webRTCService.createPeerConnection(false);
-        await webRTCService.setRemoteDescription(data.signal);
-        await webRTCService.createAnswer();
-      };
-      
-      socketService.onCallAnswer = async (data) => {
-        console.log('📨 ANSWER reçue');
-        await webRTCService.setRemoteDescription(data.signal);
-        setConnectionStatus('connected');
-      };
-      
-    } else {
-      // RECEIVER: Attend call:accepted puis crée OFFER
-      console.log('📱 RECEIVER: J\'attends call:accepted');
-      setConnectionStatus('waitingaccept');
-      
-      const handleCallAccepted = async (data) => {
-        if (webRTCService.peerConnection) {
-          console.log('PeerConnection existe déjà');
-          return;
-        }
-        console.log('✅ call:accepted reçu - Création OFFER');
-        webRTCService.createPeerConnection(true);
-        setTimeout(() => {
-          webRTCService.createOffer();
-          setConnectionStatus('waitinganswer');
-        }, 100);
-      };
-      
-      socketService.onCallAccepted = handleCallAccepted;
-      
-      socketService.onCallAnswer = async (data) => {
-        console.log('📨 ANSWER reçue (receiver side)');
-        await webRTCService.setRemoteDescription(data.signal);
-        setConnectionStatus('connected');
-      };
-    }
-    
-  } catch (error) {
-    console.error('❌ Erreur initialisation:', error);
-    setConnectionStatus('error');
-    setError(error.message);
-  }
-};
+    setChatOpen(true);
+  };
+
+  const closeChat = () => {
+    setSelectedChat(null);
+    setChatOpen(false);
+  };
+
+  const handleResize = (newWidth) => {
+    setPanelWidth(newWidth);
+  };
+
+  return (
+    <div className="flex h-screen relative">
+      {/* LISTE DES CONVERSATIONS */}
+      <div className={`
+        ${selectedChat ? "hidden md:block" : "block"} 
+        border-r border-gray-300 dark:border-gray-700
+        w-full md:w-auto
+      `}>
+        {/* Version mobile : ConversationList normal */}
+        <div className="md:hidden h-full">
+          <ConversationList
+            onSelect={openChat}
+            onNewChat={() => setShowSearchModal(true)}
+          />
+        </div>
+        
+        {/* Version desktop : avec ResizablePanel */}
+        <div className="hidden md:block h-full">
+          <ResizablePanel 
+            defaultWidth={360}
+            minWidth={280}
+            maxWidth={600}
+            onResize={handleResize}
+          >
+            <ConversationList
+              onSelect={openChat}
+              onNewChat={() => setShowSearchModal(true)}
+            />
+          </ResizablePanel>
+        </div>
+      </div>
+
+      {/* FENÊTRE DE CHAT */}
+      <div className={`flex-1 ${selectedChat ? "block" : "hidden md:block"}`}>
+        {selectedChat ? (
+          <>
+            <ChatWindow
+              selectedChat={selectedChat}
+              onBack={closeChat}
+            />
+            {/* Bouton retour sur mobile */}
+            <button
+              onClick={closeChat}
+              className="absolute top-4 left-4 z-50 p-2 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-shadow md:hidden"
+            >
+              <PanelLeftClose size={20} />
+            </button>
+          </>
+        ) : (
+          <div className="hidden md:flex flex-1 h-full w-full justify-center items-center">
+            <WelcomeChatScreen />
+          </div>
+        )}
+      </div>
+
+      {/* MODAL DE RECHERCHE */}
+      {showSearchModal && (
+        <SearchModal 
+          onClose={() => setShowSearchModal(false)}
+          onUserSelect={async (user) => {
+            setShowSearchModal(false);
+            const token = localStorage.getItem('token');
+
+            try {
+              const res = await fetch('http://localhost:5000/api/conversations/private', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ receiverId: user._id })
+              });
+
+              if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Erreur serveur');
+              }
+
+              const data = await res.json();
+
+              if (data.success && data.conversation) {
+                openChat({
+                  _id: data.conversation._id,
+                  type: 'private',
+                  participants: [user]
+                });
+              }
+            } catch (err) {
+              console.error(err);
+              alert("Impossible d'ouvrir la conversation");
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
