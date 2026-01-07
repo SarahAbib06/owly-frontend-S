@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import ParametresMenu from "../components/ParametresMenu";
 import ParametresGeneral from "../components/ParametresGenral";
 import ParametresConfidentialite from "../components/ParametresConfidentialite";
+import ParametresAide from "../components/ParametresAide";
 import DerniereConnexion from "../components/DerniereConnexion";
 import Statut from "../components/Statut";
 import Profile from "../components/Profile";
@@ -57,6 +58,10 @@ export default function SettingsPage() {
 
         {selectedMenu === "general" && (
           <ParametresGeneral setSelectedMenu={setSelectedMenu} />
+        )}
+
+                {selectedMenu === "help" && (
+          <ParametresAide setSelectedMenu={setSelectedMenu} />
         )}
 
         {selectedMenu === "profil" && (
