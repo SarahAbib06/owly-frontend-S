@@ -1,13 +1,37 @@
 // src/components/Sidebar.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
-import { Feather, MessageCircle, Users, Sparkles, Gamepad2, Settings, Menu } from 'lucide-react';
+import { MessageCircle, Users, Sparkles, Gamepad2, Settings, Menu } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../hooks/useAuth";
+import { profileService } from "../services/profileService";
 
 export default function Sidebar() {
   const { t } = useTranslation();
+  const { user: authUser } = useAuth();
+  const [userProfile, setUserProfile] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // CHARGER LE PROFIL EXACTEMENT COMME DANS PROFILE.JSX
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profile = await profileService.getProfile();
+        setUserProfile(profile);
+      } catch (err) {
+        console.error("Erreur chargement profil dans Sidebar:", err);
+        if (authUser) {
+          setUserProfile(authUser);
+        }
+      }
+    };
+
+    loadProfile();
+  }, [authUser]);
+
+  // Utiliser le profil chargé ou les données d'authentification
+  const user = userProfile || authUser;
 
   const iconHoverVariants = {
     hover: { 
@@ -15,6 +39,25 @@ export default function Sidebar() {
       transition: { duration: 0.2 }
     },
     tap: { scale: 0.98 }
+  };
+
+  // Fonction pour obtenir la photo de profil
+  const getProfilePictureUrl = () => {
+    if (!user) {
+      return "https://ui-avatars.com/api/?name=User&background=F9EE34&color=000&bold=true&size=128";
+    }
+
+    if (!user.profilePicture) {
+      const name = user.username || "User";
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F9EE34&color=000&bold=true&size=128`;
+    }
+
+    return user.profilePicture;
+  };
+
+  // Fonction pour rediriger vers les paramètres avec section profil
+  const goToProfile = () => {
+    window.location.href = "/settings?section=profil";
   };
 
   return (
@@ -26,31 +69,24 @@ export default function Sidebar() {
         <div className="flex flex-col items-center gap-3">
           
           {/* OWLY LOGO */}
-<NavLink to="/welcome">
-  {({ isActive }) => (
-    <motion.div 
-      whileHover="hover"
-      whileTap="tap"
-      variants={iconHoverVariants}
-      className="flex flex-col items-center gap-0.5 group"
-    >
-      <div className={`rounded-md transition-all duration-300 ${
-        isActive 
-          ? "bg-black dark:bg-[#F9EE34] shadow-lg" 
-          : "hover:bg-gray-300 dark:hover:bg-gray-700"
-      }`}>
-<img 
-  src="/logo.png" 
-  alt="OWLY Logo" 
-  className={`
-    w-15 h-15 object-contain transition duration-300
-    dark:brightness-0 dark:invert
-  `}
-/>
-      </div>
-    </motion.div>
-  )}
-</NavLink>
+          <motion.button 
+            onClick={() => window.location.reload()}
+            whileHover="hover"
+            whileTap="tap"
+            variants={iconHoverVariants}
+            className="flex flex-col items-center gap-0.5 group focus:outline-none"
+          >
+            <div className="rounded-md transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-700">
+              <img 
+                src="/logo.png" 
+                alt="OWLY Logo" 
+                className={`
+                  w-15 h-15 object-contain transition duration-300
+                  dark:brightness-0 dark:invert
+                `}
+              />
+            </div>
+          </motion.button>
 
           {/* MESSAGES */}
           <NavLink to="/MessagesPage">
@@ -220,31 +256,32 @@ export default function Sidebar() {
             )}
           </NavLink>
 
-          {/* PROFIL */}
-          <NavLink to="/profile">
-            {({ isActive }) => (
-              <motion.div 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex flex-col items-center gap-0.5 group"
-              >
-                <div className={`rounded-full transition-all duration-300 ${
-                  isActive 
-                    ? "bg-[#F9EE34] p-0.5 shadow-lg ring-2 ring-[#F9EE34]" 
-                    : ""
-                }`}>
-                  <img 
-                    src="/assets/profile.jpg" 
-                    alt="profile" 
-                    className="w-14 h-14 rounded-full object-cover border-2 border-myBlack transition" 
-                  />
-                </div>
-                <span className="text-xs font-medium mt-1 text-myBlack dark:text-white">
-                  {t("sidebar.Profile")}
-                </span>
-              </motion.div>
-            )}
-          </NavLink>
+          {/* PROFIL - PHOTO CLIQUABLE VERS /settings?section=profil */}
+          <div className="flex flex-col items-center gap-0.5 group">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex flex-col items-center gap-0.5 cursor-pointer"
+              onClick={goToProfile}
+            >
+              {/* SUPPRIMÉ LE PREMIER DIV JAUNE - GARDÉ SEULEMENT LE CONTENEUR DE LA PHOTO */}
+              <div className="w-14 h-14 rounded-full border-2 border-myBlack overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800">
+                <img 
+                  src={getProfilePictureUrl()} 
+                  alt={user?.username || "Profile"} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    const name = user?.username || "User";
+                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F9EE34&color=000&bold=true&size=128`;
+                  }}
+                />
+              </div>
+              <span className="text-xs font-medium mt-1 text-myBlack dark:text-white truncate max-w-[70px]">
+                {user?.username || "Utilisateur"}
+              </span>
+            </motion.div>
+          </div>
         </div>
       </div>
 
@@ -438,23 +475,41 @@ export default function Sidebar() {
                     </motion.button>
                   </div>
 
-                  {/* Profile */}
-                  <motion.div 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 mb-4"
+                  {/* Profile - PHOTO CLIQUABLE VERS /settings?section=profil */}
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      goToProfile();
+                    }}
+                    className="w-full focus:outline-none text-left"
                   >
-                    <img 
-                      src="/assets/profile.jpg" 
-                      alt="profile" 
-                      className="w-14 h-14 rounded-full object-cover border-2 border-[#F9EE34] shadow-md" 
-                    />
-                    <div>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">Rayane ARAB</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Voir le profil</p>
-                    </div>
-                  </motion.div>
+                    <motion.div 
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 mb-4 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all duration-300 cursor-pointer"
+                    >
+                      {/* SUPPRIMÉ LE PREMIER DIV JAUNE ICI AUSSI */}
+                      <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-myBlack">
+                        <img 
+                          src={getProfilePictureUrl()} 
+                          alt={user?.username || "Profile"} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            const name = user?.username || "User";
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F9EE34&color=000&bold=true&size=128`;
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[160px]">
+                          {user?.username || "Utilisateur"}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Voir le profil</p>
+                      </div>
+                    </motion.div>
+                  </button>
 
                   {/* Menu Items */}
                   <div className="space-y-2">

@@ -63,7 +63,7 @@ const Register = () => {
         state: { 
           email: formData.email,
           type: 'register',
-          redirectTo: '/login' // Redirige vers login après OTP
+          redirectTo: '/MessagesPage' // Redirige vers login après OTP
         } 
       });
     } catch (err) {

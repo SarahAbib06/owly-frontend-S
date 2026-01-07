@@ -984,13 +984,24 @@ useEffect(() => {
           )}
 
           <div
-            className={`text-[8px] mt-1 flex items-center gap-1 ${
-              fromMe ? "justify-end" : "justify-start"
-            } text-gray-700 dark:text-gray-300`}
-          >
-            <span>{messageTime}</span>
-            {fromMe && msg.seen && <SeenIconGray />}
-          </div>
+  className={`text-[10px] mt-1 flex items-center gap-1.5 ${
+    fromMe ? "justify-end" : "justify-start"
+  } text-gray-500 dark:text-gray-400`}
+>
+  <span>{messageTime}</span>
+
+  {fromMe && (
+    <span className="flex items-center gap-1">
+      {msg._id.startsWith("pending_") || msg.status === "sending" ? (
+        <span className="flex items-center gap-1 text-gray-400">
+          ✓
+        </span>
+      ) : (
+        <span className="text-gray-400">✓✓</span>
+      )}
+    </span>
+  )}
+</div>
         </div>
       </div>
     );
