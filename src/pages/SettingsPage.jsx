@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import ParametresMenu from "../components/ParametresMenu";
 import ParametresGeneral from "../components/ParametresGenral";
 import ParametresConfidentialite from "../components/ParametresConfidentialite";
+import ParametresAide from "../components/ParametresAide";
 import DerniereConnexion from "../components/DerniereConnexion";
 import Statut from "../components/Statut";
 import Profile from "../components/Profile";
@@ -60,6 +61,10 @@ const [bannerSelection, setBannerSelection] = useState("always");
 
         {selectedMenu === "general" && (
           <ParametresGeneral setSelectedMenu={setSelectedMenu} />
+        )}
+
+                {selectedMenu === "help" && (
+          <ParametresAide setSelectedMenu={setSelectedMenu} />
         )}
 
         {selectedMenu === "profil" && (
