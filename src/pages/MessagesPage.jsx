@@ -4,15 +4,14 @@ import { useOutletContext } from "react-router-dom";
 import ConversationList from "../components/ConversationList";
 import ChatWindow from "../components/ChatWindow";
 import WelcomeChatScreen from "../components/WelcomeChatScreen";
-import { Search, Plus, QrCode, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Search, Plus, QrCode, PanelLeftClose } from "lucide-react";
 import SearchModal from "../components/SearchModal";
-import ResizablePanel from "../components/ResizablePanel"; // NOUVEAU IMPORT
+import ResizablePanel from "../components/ResizablePanel";
 
 export default function Messages() {
   const [selectedChat, setSelectedChat] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false); // État pour cacher/afficher
-  const [panelWidth, setPanelWidth] = useState(360); // Largeur par défaut
+  const [panelWidth, setPanelWidth] = useState(360);
 
   const { setChatOpen } = useOutletContext();
 
@@ -29,53 +28,58 @@ export default function Messages() {
     setChatOpen(false);
   };
 
-  const togglePanel = () => {
-    setIsPanelCollapsed(!isPanelCollapsed);
-  };
-
   const handleResize = (newWidth) => {
     setPanelWidth(newWidth);
   };
 
   return (
     <div className="flex h-screen relative">
-      {/* LISTE DES CONVERSATIONS AVEC REDIMENSIONNEMENT */}
+      {/* LISTE DES CONVERSATIONS */}
       <div className={`
-        ${selectedChat && !isPanelCollapsed ? "hidden md:block" : "block"} 
+        ${selectedChat ? "hidden md:block" : "block"} 
         border-r border-gray-300 dark:border-gray-700
-        transition-all duration-300 ease-in-out
-        ${isPanelCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100'}
+        w-full md:w-auto
       `}>
-        <ResizablePanel 
-          defaultWidth={360}
-          minWidth={280}
-          maxWidth={600}
-          onResize={handleResize}
-        >
+        {/* Version mobile : ConversationList normal */}
+        <div className="md:hidden h-full">
           <ConversationList
             onSelect={openChat}
             onNewChat={() => setShowSearchModal(true)}
           />
-        </ResizablePanel>
+        </div>
+        
+        {/* Version desktop : avec ResizablePanel */}
+        <div className="hidden md:block h-full">
+          <ResizablePanel 
+            defaultWidth={360}
+            minWidth={280}
+            maxWidth={600}
+            onResize={handleResize}
+          >
+            <ConversationList
+              onSelect={openChat}
+              onNewChat={() => setShowSearchModal(true)}
+            />
+          </ResizablePanel>
+        </div>
       </div>
-
-      {/* BOUTON TOGGLE POUR CACHER/AFFICHER (optionnel) */}
-      <button
-        onClick={togglePanel}
-        className="absolute top-4 left-4 z-20 p-2 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-shadow md:hidden"
-      >
-        {isPanelCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
-      </button>
 
       {/* FENÊTRE DE CHAT */}
       <div className={`flex-1 ${selectedChat ? "block" : "hidden md:block"}`}>
         {selectedChat ? (
-          <ChatWindow
-            selectedChat={selectedChat}
-            onBack={closeChat}
-            onTogglePanel={togglePanel} // Passer la fonction de toggle
-            isPanelCollapsed={isPanelCollapsed}
-          />
+          <>
+            <ChatWindow
+              selectedChat={selectedChat}
+              onBack={closeChat}
+            />
+            {/* Bouton retour sur mobile */}
+            <button
+              onClick={closeChat}
+              className="absolute top-4 left-4 z-50 p-2 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-shadow md:hidden"
+            >
+              <PanelLeftClose size={20} />
+            </button>
+          </>
         ) : (
           <div className="hidden md:flex flex-1 h-full w-full justify-center items-center">
             <WelcomeChatScreen />
