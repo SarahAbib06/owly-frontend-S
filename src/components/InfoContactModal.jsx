@@ -159,7 +159,10 @@ const toggleFavorite = async () => {
         )}
 
         {activeSection === "media" && (
-          <MediaDocument onBack={() => setActiveSection("info")} />
+         <MediaDocument
+  onBack={() => setActiveSection("info")}
+  conversationId={chat?._id}
+/>
         )}
 
         {activeSection === "info" && (

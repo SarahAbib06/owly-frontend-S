@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { GiGamepad } from "react-icons/gi";
 import { useTranslation } from "react-i18next";
-
+import { IoArrowBackOutline } from "react-icons/io5";
 export default function GamesPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -16,24 +16,38 @@ export default function GamesPage() {
 
   return (
     <div className="min-h-[calc(100vh-2rem)] p-6 flex flex-col items-center justify-start bg-myYellow text-black dark:text-white">
-      
-      {/* HEADER */}
-      <div className="w-full max-w-4xl flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <GiGamepad className="text-yellow-600" /> {t("gamesPage.choose_game")}
-        </h1>
+<div className="w-full max-w-4xl mx-auto px-4 mb-8">
+  {/* Header */}
+  <div className="flex items-center justify-start">
 
-        {/* Bouton retour vers la page parent */}
-        <button
-          onClick={() => navigate("/MessagesPage")} // <-- toujours revenir à la page parent
-          className="px-4 py-2 bg-black text-myYellow font-bold rounded-lg hover:bg-gray-800 transition"
-        >
-          {t("gamesPage.back")}
-        </button>
-      </div>
+    {/* Bouton icône retour */}
+    <button
+      onClick={() => navigate("/MessagesPage")}
+      className="
+        p-2 
+        bg-black text-yellow-400 
+        rounded-full 
+        shadow-md 
+        hover:bg-gray-800 hover:text-yellow-300 
+        transition
+        flex items-center justify-center
+      "
+    >
+      <IoArrowBackOutline className="text-2xl sm:text-3xl" />
+    </button>
+
+    {/* Titre centré */}
+    <h1 className="flex-1 text-center text-3xl font-bold flex items-center justify-center gap-3">
+      <GiGamepad className="text-yellow-600" /> {t("gamesPage.choose_game")}
+    </h1>
+
+  </div>
+</div>
+
 
       {/* GRILLE DES JEUX */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-4xl">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
+
         {games.map((game, idx) => (
           <div
             key={idx}

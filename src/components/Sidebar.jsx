@@ -8,6 +8,7 @@ import { MdMessage, MdGroups, MdSettings } from "react-icons/md";
 import { GiGamepad } from "react-icons/gi";
 
 import { useTranslation } from "react-i18next";
+import owlylogo from "../assets/images/owlylogo.png";
 
 export default function Sidebar() {
   const { t } = useTranslation();
@@ -21,15 +22,18 @@ export default function Sidebar() {
         {/* TOP ICONS */}
         <div className="flex flex-col items-center gap-5">
           {/* OWLY LOGO */}
-          <NavLink to="/welcome">
-            {({ isActive }) => (
-              <div className="flex flex-col items-center gap-0.5 group">
-                <div className={`p-3 rounded-md transition ${isActive ? "bg-black dark:bg-[#F9EE34]" : "hover:bg-gray-300 dark:hover:bg-gray-700"}`}>
-                  <FaFeatherAlt className={`w-6 h-6 transition ${isActive ? "text-white dark:text-black" : "text-myBlack dark:text-white"}`} />
-                </div>
-              </div>
-            )}
-          </NavLink>
+          <div
+  onClick={() => window.location.reload()}
+  className="flex flex-col items-center gap-0.5 group cursor-pointer"
+>
+  <div className="p-3 rounded-md transition hover:bg-gray-300 dark:hover:bg-gray-700">
+    <img
+  src={owlylogo}
+  alt="Owly logo"
+  className="w-6 h-6 object-contain scale-350 dark:invert"
+/>
+  </div>
+</div>
 
           {/* MESSAGES */}
           <NavLink to="/MessagesPage">

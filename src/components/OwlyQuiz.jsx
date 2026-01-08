@@ -4,16 +4,15 @@ import { useNavigate } from "react-router-dom";
 import clickSound from "../assets/sounds/click.wav";
 import winSound from "../assets/sounds/win.wav";
 import loseSound from "../assets/sounds/lose.wav";
+import { IoArrowBackOutline } from "react-icons/io5";
+
+import { useTranslation } from "react-i18next";
 
 const OWLY_IMAGE = "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=600&q=60";
 const MEMORY_ICONS = ["🌿", "🌸", "⭐", "🐦"];
-const STORY_PARAGRAPHS = [
-  "Owly est né au cœur de la forêt d'Early, sous les étoiles. Dès son plus jeune âge, il montra une curiosité insatiable pour les mystères de la nature et les secrets des anciens arbres majestueux qui peuplaient la forêt. Son premier objectif fut d'apprendre à connaître les sons de la forêt et à identifier chaque créature par ses chants.",
-  "Après le premier triomphe, Owly comprit que la forêt avait une logique et un ordre subtil. Il réalisa que chaque chemin, chaque rivière et chaque arbre avait un rôle précis dans l'écosystème. Ses nouvelles aventures lui apprirent l'importance de l'observation attentive et de la patience.",
-  "Les épreuves suivantes apprirent à Owly la patience et la mémoire. Il devait se souvenir des séquences des fleurs, des chants des oiseaux, et des couleurs des feuilles à travers les saisons. Chaque succès renforçait sa confiance et sa compréhension de l'environnement qui l'entourait.",
-  "Avant le dernier défi, Owly rencontra des créatures fantastiques. Chacune lui enseigna une leçon unique sur le courage, la logique et la créativité. Il devait utiliser toutes ces compétences combinées pour résoudre des énigmes complexes et naviguer à travers les labyrinthes de la forêt.",
-  "Enfin, Owly découvrit la clairière des sages, un lieu mystique où la lumière filtrait à travers un dôme de feuilles scintillantes. Ici, il comprit la valeur de la sagesse, du partage et de la curiosité. Son parcours le transforma profondément et il était désormais prêt à transmettre ses connaissances."
-];
+
+
+
 
 const PUZZLE_PIECES = [
   { id: 0, order: 0 },
@@ -35,6 +34,8 @@ const btnStyle = {
 };
 
 function playSound(sound) {
+    
+
   try { const a = new Audio(sound); a.volume = 0.75; a.play().catch(()=>{}); } catch(e){}
 }
 
@@ -59,6 +60,9 @@ function pieceBgPos(idx){
 }
 
 export default function OwlyQuiz(){
+  const { t } = useTranslation();
+   const STORY_PARAGRAPHS = t("owlyQuiz.story", { returnObjects: true });
+const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
   const navigate = useNavigate();
   const [stage,setStage]=useState("intro");
   const [storyIndex,setStoryIndex]=useState(0);
@@ -82,7 +86,7 @@ export default function OwlyQuiz(){
   const [obsOptions,setObsOptions] = useState([]);
   const [showGrid,setShowGrid] = useState(true);
 
-  const [finalQues,setFinalQues]=useState({question:"Quel est le message final ?",options:["Gagner","Apprendre","Protéger","Dormir"],correct:2});
+  const [finalQues,setFinalQues]=useState({question:"Que symbolise Owly dans l’histoire ?",options:["Pouvoir", "Connexion", "Richesse", "Secret"],correct:2});
 
   const [windowWidth,setWindowWidth] = useState(window.innerWidth);
 
@@ -172,7 +176,11 @@ export default function OwlyQuiz(){
     }
 
     if(type==="finalPuzzle"){
-      setFinalQues({question:"Quel est le message final ?",options:shuffleArray(["Gagner","Apprendre","Protéger","Dormir"]),correct:2});
+       setFinalQues({
+    question: t("owlyQuiz.final.question"),
+    options: shuffleArray(t("owlyQuiz.final.options", { returnObjects: true })),
+    correct: 2
+  });
     }
 
     setStage("challenge");
@@ -208,13 +216,18 @@ export default function OwlyQuiz(){
     if(i===finalQues.correct) onWin(); else onFail();
   };
 
-  const onWin=()=>{
-    playSound(winSound);
-    if(timerRef.current) clearInterval(timerRef.current);
-    setStage("story");
-    setStoryIndex(prev=>prev+1);
-  };
+ const onWin = () => {
+  playSound(winSound);
+  if (timerRef.current) clearInterval(timerRef.current);
 
+  // Si c’est le dernier paragraphe
+  if (storyIndex + 1 >= STORY_PARAGRAPHS.length) {
+    setStage("finished");
+  } else {
+    setStage("story");
+    setStoryIndex(prev => prev + 1);
+  }
+};
   const onFail=()=>{
     playSound(loseSound);
     if(timerRef.current) clearInterval(timerRef.current);
@@ -225,43 +238,53 @@ export default function OwlyQuiz(){
   const resetGame=()=>{ setStage("intro"); setStoryIndex(0); };
 
   return(
-    <div style={{minHeight:"100vh",backgroundColor:"#FFFF99",padding:20,color:"#000",display:"flex",flexDirection:"column",alignItems:"center"}}>
-
-      {/* BOUTON RETOUR */}
-      <div style={{width:"100%", maxWidth:720, display:"flex", justifyContent:"flex-start"}}>
-       <button
-  onClick={() => navigate("/games")}
+ <div
   style={{
-    position: "absolute",
-    top: "20px",
-    left: "20px",
-    padding: "10px 20px",
-    borderRadius: 10,
-    background: "#ffd54f",
-    border: "none",
-    cursor: "pointer",
-    fontWeight: "700",
-    fontSize: 16,
-    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
-    zIndex: 1000
+    height: "100vh",
+    backgroundColor: "#FFFF99",
+    padding: 20,
+    color: "#000",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center", // ✅ centre verticalement
+    overflow: "hidden"        // ✅ supprime le scroll
   }}
 >
-  ⬅ Retour
-</button>
-      </div>
+{/* BOUTON RETOUR */}
+<div className="w-full max-w-[720px] flex justify-start mb-4">
+  <button
+    onClick={() => navigate("/games")}
+    className="
+      p-3 
+      bg-black text-yellow-400 
+      rounded-full 
+      shadow-lg 
+      hover:bg-gray-800 hover:text-yellow-300 
+      transition 
+      flex items-center justify-center
+      cursor-pointer
+    "
+  >
+    <IoArrowBackOutline className="text-2xl sm:text-3xl" />
+  </button>
+</div>
 
-      <motion.h1 initial={{y:-50,opacity:0}} animate={{y:0,opacity:1}} style={{fontSize:"3rem"}}>🦉 Owly Quiz 🦉</motion.h1>
+
+      <motion.h1 initial={{y:-50,opacity:0}} animate={{y:0,opacity:1}} style={{fontSize:"3rem"}}>🦉 {t("owlyQuiz.title")} 🦉</motion.h1>
 
       {/* INTRO */}
       {stage==="intro" && <div style={{maxWidth:720,textAlign:"center",marginTop:40,padding:20,background:"#fff",borderRadius:12}}>
-        <p>Ce jeu raconte l'histoire d'Owly. Pour la découvrir, réussis chaque défi.</p>
-        <button onClick={startChallenge} style={btnStyle}>Start</button>
+     <p>{t("owlyQuiz.intro")}</p>
+            <button onClick={startChallenge} style={btnStyle}>
+      {t("owlyQuiz.btn.start")}
+    </button>
       </div>}
 
       {/* PUZZLE */}
       {stage==="challenge" && challengeType==="puzzle" && <div style={{marginTop:30}}>
-        <h2>Puzzle — reconstitue l'image</h2>
-        <p>Timer : {timer}s</p>
+       <h2>{t("owlyQuiz.puzzle.title")}</h2>
+<p>{t("owlyQuiz.puzzle.timer")} : {timer}s</p>
         <div style={{
           display:"grid",
           gridTemplateColumns:`repeat(3, ${getPuzzleSize()}px)`,
@@ -288,18 +311,35 @@ export default function OwlyQuiz(){
 
       {/* MEMORY */}
       {stage==="challenge" && challengeType==="memory" && <div style={{textAlign:"center",marginTop:30}}>
-        <h2>Défi mémoire</h2>
+        <h2>{t("owlyQuiz.memory.title")}</h2>
         <div style={{fontSize:32,marginBottom:10}}>
           {playerSeq.length>0 ? playerSeq.map(s=>s) : memorySeq.map(()=> "❓")}
         </div>
-        <div>
-          {memoryButtons.map((s,i)=><button key={i} onClick={()=>onMemoryClick(s)} style={btnStyle}>{s}</button>)}
-        </div>
+        <div
+  style={{
+    display: "flex",
+    gap: 12,
+    justifyContent: "center",
+    flexWrap: "wrap",
+    marginTop: 16
+  }}
+>
+  {memoryButtons.map((s, i) => (
+    <button
+      key={i}
+      onClick={() => onMemoryClick(s)}
+      style={{ ...btnStyle, minWidth: 60 }}
+    >
+      {s}
+    </button>
+  ))}
+</div>
+
       </div>}
 
       {/* CUPS */}
       {stage==="challenge" && challengeType==="cups" && <div style={{textAlign:"center",marginTop:30}}>
-        <h2>Défi rapidité & logique — Trouve la boule !</h2>
+        <h2>{t("owlyQuiz.cups.title")}</h2>
         <div style={{display:"flex",gap:20,justifyContent:"center",marginTop:20}}>
           {cups.map((c,i)=>
             <div key={i} onClick={()=>onCupClick(i)}
@@ -312,14 +352,14 @@ export default function OwlyQuiz(){
 
       {/* OBSERVATION VISUELLE */}
       {stage==="challenge" && challengeType==="obsChallenge" && <div style={{textAlign:"center",marginTop:30}}>
-        <h2>Défi d'observation visuelle</h2>
+      <h2>{t("owlyQuiz.observation.title")}</h2>
         {showGrid ? (
           <div style={{display:"grid",gridTemplateColumns:`repeat(2, ${getPuzzleSize()}px)`,gap:10,justifyContent:"center",marginTop:20}}>
             {obsGrid.map((icon,i)=><div key={i} style={{width:getPuzzleSize(),height:getPuzzleSize(),fontSize:getPuzzleSize()/2,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #000",borderRadius:8}}>{icon}</div>)}
           </div>
         ) : (
           <>
-            <p>Quel symbole était à la position {obsQuestion.index + 1} ?</p>
+            <p>{t("owlyQuiz.observation.question", { pos: obsQuestion.index + 1 })}</p>
             <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:20}}>
               {obsOptions.map((icon,i)=>
                 <button key={i} onClick={()=>{if(icon===obsQuestion.icon) onWin(); else onFail();}} style={btnStyle}>{icon}</button>
@@ -331,33 +371,114 @@ export default function OwlyQuiz(){
 
       {/* FINAL */}
       {stage==="challenge" && challengeType==="finalPuzzle" && <div style={{textAlign:"center",marginTop:30}}>
-        <h2>Question finale</h2>
+       <h2>{t("owlyQuiz.final.title")}</h2>
         <p>{finalQues.question}</p>
-        <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:20}}>
-          {finalQues.options.map((opt,i)=><button key={i} onClick={()=>onFinalClick(i)} style={btnStyle}>{opt}</button>)}
-        </div>
+        <div
+  style={{
+    display: "flex",
+    gap: 12,
+    justifyContent: "center",
+    flexWrap: "wrap",        // ✅ RESPONSIVE
+    marginTop: 20
+  }}
+>
+  {finalQues.options.map((opt, i) => (
+    <button
+      key={i}
+      onClick={() => onFinalClick(i)}
+      style={{
+        ...btnStyle,
+        minWidth: 120,       // ✅ même taille
+        flex: "1 1 120px",   // ✅ s’adapte au mobile
+        maxWidth: 200
+      }}
+    >
+      {opt}
+    </button>
+  ))}
+</div>
+
       </div>}
 
       {/* STORY */}
-      {stage==="story" && <div style={{maxWidth:720,marginTop:40,padding:20,background:"#fff",borderRadius:12}}>
-        <p style={{lineHeight:"1.6rem", fontSize:"1.1rem"}}>{STORY_PARAGRAPHS[storyIndex-1]}</p>
-        <button onClick={nextStage} style={{...btnStyle,marginTop:20}}>Prochain défi</button>
-      </div>}
+{stage==="story" && <div style={{maxWidth:720,marginTop:40,padding:20,background:"#fff",borderRadius:12}}>
+  <p style={{
+  lineHeight: "1.4rem",
+  fontSize: windowWidth < 768 ? "0.9rem" : "1.1rem"
+}}>
+  {STORY_PARAGRAPHS[storyIndex-1]}
+</p>
+
+  {/* Vérifier si c’est le dernier paragraphe */}
+  {storyIndex < STORY_PARAGRAPHS.length ? (
+    <button onClick={nextStage} style={{...btnStyle,marginTop:20}}>{t("owlyQuiz.btn.nextChallenge")}</button>
+  ) : (
+    // Si c’est le dernier, afficher le stage "finished"
+    <div style={{marginTop:20, textAlign:"center"}}>
+      <h2>{t("owlyQuiz.finished.title")}</h2>
+      {STORY_PARAGRAPHS.map((p,i)=>(
+  <p key={i} style={{
+    lineHeight: "1.4rem",
+    fontSize: windowWidth < 768 ? "0.9rem" : "1.1rem"
+  }}>
+    {p}
+  </p>
+))}
+      <button onClick={resetGame} style={{...btnStyle,marginTop:20}}>{t("owlyQuiz.btn.replay")}</button>
+    </div>
+  )}
+</div>}
 
       {/* LOST */}
       {stage==="lost" && <div style={{maxWidth:720,marginTop:40,padding:20,background:"#fff",borderRadius:12,textAlign:"center"}}>
-        <h2>💥 Game Over</h2>
-        <p>Tu as échoué. Réessaye pour continuer l'histoire d'Owly.</p>
-        <button onClick={startChallenge} style={btnStyle}>🔁 Réessayer ce défi</button>
-        <button onClick={resetGame} style={btnStyle}>Recommencer le jeu</button>
+       <h2>{t("owlyQuiz.stages.gameOver")}</h2>
+      <p>{t("owlyQuiz.stages.lostText")}</p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+  <button onClick={startChallenge} style={btnStyle}>
+   {t("owlyQuiz.btn.retry")}
+  </button>
+  <button onClick={resetGame} style={btnStyle}>
+   {t("owlyQuiz.btn.restart")}
+  </button>
+</div>
       </div>}
 
       {/* FIN */}
-      {stage==="finished" && <div style={{maxWidth:720,marginTop:40,padding:20,background:"#fff",borderRadius:12}}>
-        <h2>🎉 Histoire complète d'Owly 🎉</h2>
-        {STORY_PARAGRAPHS.map((p,i)=><p key={i} style={{lineHeight:"1.6rem", fontSize:"1.1rem"}}>{p}</p>)}
-        <button onClick={resetGame} style={{...btnStyle,marginTop:20}}>Rejouer</button>
-      </div>}
+ {/* FIN */}
+{stage==="finished" && (
+  <div
+    style={{
+      width: "100%",
+      maxWidth: 720,
+      marginTop: 40,
+      padding: windowWidth < 768 ? 10 : 20,
+      background: "#fff",
+      borderRadius: 12,
+      boxSizing: "border-box",
+      textAlign: "center"
+    }}
+  >
+    <h2 style={{ fontSize: windowWidth < 768 ? "1.2rem" : "1.5rem" }}> 🎉 {t("owlyQuiz.finished.title")} 🎉</h2>
+    {STORY_SUMMARY.map((p, i) => (
+      <p
+        key={i}
+        style={{
+          lineHeight: windowWidth < 768 ? "1.4rem" : "1.6rem",
+          fontSize: windowWidth < 768 ? "0.9rem" : "1.1rem",
+          marginBottom: 12
+        }}
+      >
+        {p}
+      </p>
+    ))}
+    <button onClick={resetGame} style={{ ...btnStyle, marginTop: 20 }}>
+  {t("owlyQuiz.btn.replay")}
+</button>
+  </div>
+)}
+
+
+
 
     </div>
   );

@@ -295,9 +295,119 @@
     "passwordPlaceholder": "Your password",
     "cancel": "Cancel",
     "confirm": "Delete"
-  }
+  },
+   "rockPaper": {
+    "title": "Rock Paper Scissors",
+    "player": "Player",
+    "bot": "Bot",
+    "result": {
+      "win": "Victory!",
+      "lose": "Defeat...",
+      "draw": "Draw!"
+    },
+    "back": "Back"
+  },
+   "memoryGame": {
+    "timeLeft": "⏳ Time Left",
+    "level": "Level",
+   "start": "Start",
+    "pause": "Pause",
+    "reset": "Reset",
+    "next": "➡ Next",
+    "replay": "🔄 Replay",
+    "levelCompleted": "🎉 Level Completed!",
+    "timeOver": "⏱ Time's up! Restart from Level 1!",
+    "back": "Back"
+  },
+   "guessNumber": {
+    "title": "Guess the Number",
+    "startMessage": "🎯 Guess the number between 1 and {{max}}!",
+    "invalid": "❌ Enter a number between 1 and {{max}}!",
+    "win": "🎉 CONGRATS! You found it in {{count}} attempt!",
+    "win_plural": "🎉 CONGRATS! You found it in {{count}} attempts!",
 
- 
+    "attempts": "Attempts",
+    "placeholder": "Your number...",
+    "go": "GO!",
+    "replay": "Play again",
+
+    "history": "Your guesses",
+
+    "easy": "Easy",
+    "medium": "Medium",
+    "hard": "Hard",
+
+    "hot": "🔥 VERY HOT!",
+    "warm": "🌡️ Hot!",
+    "cool": "😐 Warm",
+    "cold": "❄️ Cold",
+
+    "higher": "📈 Higher!",
+    "lower": "📉 Lower!"
+  },
+   "higher": "It's higher!",
+    "lower": "It's lower!",
+    "owlyQuiz": {
+    "title": "Owly Quiz",
+    "intro": "This game tells the story of Owly. To discover it, complete each challenge.",
+
+    "btn": {
+      "start": "Start",
+      "nextChallenge": "Next challenge",
+      "retry": "🔁 Retry",
+      "restart": "Restart game",
+      "replay": "Play again"
+    },
+
+    "puzzle": {
+      "title": "Puzzle — rebuild the image",
+      "timer": "Time"
+    },
+
+    "memory": {
+      "title": "Memory challenge"
+    },
+
+    "cups": {
+      "title": "Speed & logic challenge — Find the ball!"
+    },
+
+    "observation": {
+      "title": "Visual observation challenge",
+      "question": "Which symbol was at position {{pos}}?"
+    },
+
+    "final": {
+      "title": "Final question",
+       "question": "What does Owly symbolize in the story?",
+      "options": ["Power", "Connection", "Wealth", "Secret"]
+    },
+
+    "stages": {
+      "gameOver": "💥 Game Over",
+      "lostText": "You failed. Try again to continue Owly's story."
+    },
+
+"story": [
+  "Rayane walks through the city, observing the people around him. The street is lively, filled with movement, laughter, and hurried passersby.",
+  "He notices a glowing owl perched on a lamppost, sending a shiver of curiosity down his spine.",
+  "Intrigued, he follows the owl through narrow alleys, discovering mysterious symbols painted on walls and shop windows.",
+  "The city seems to light up gradually, as if each step Rayane takes reveals a long-hidden secret.",
+  "Finally, the owl lands on a quiet square. Rayane approaches and understands the message Owly wants to convey."
+],
+
+"storySummary": [
+  "Rayane walks through the city and notices a glowing owl that catches his attention.",
+  "His curiosity grows, and he decides to follow the mysterious symbol.",
+  "The streets light up, revealing clues about Owly’s story.",
+  "Finally, Owly delivers its message, concluding the adventure."
+],
+  
+"finished": {
+      "title": "Full Story of Owly"
+    }
+   
+  }
 
 }
 
