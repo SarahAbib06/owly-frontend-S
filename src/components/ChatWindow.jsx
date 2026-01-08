@@ -37,6 +37,9 @@ import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
 
+
+
+
     
 
 
@@ -121,6 +124,8 @@ export default function ChatWindow({ selectedChat, onBack }) {
 const [selectedTargetConversation, setSelectedTargetConversation] = useState(null);
 const [showForwardModal, setShowForwardModal] = useState(false);
 const [messageToForward, setMessageToForward] = useState(null);
+const [deletedMessages, setDeletedMessages] = useState([]); // ajouter pour supprimer le message
+
 
 const { conversations: myConversations, loading: convLoading } = useConversations();
 
@@ -201,6 +206,9 @@ useEffect(() => {
 }, [contactStatus.lastSeen, contactStatus.isOnline]);
 
 
+
+
+
 console.log("selectedChat:", selectedChat, "user:", user);
 const contactId = React.useMemo(() => {
   if (!selectedChat || selectedChat.isGroup || !user) return null;
@@ -229,6 +237,37 @@ useEffect(() => {
     })
     .catch(err => console.error("Erreur statut:", err));
 }, [contactId]);
+
+
+// Après les autres useEffect (vers la fin du composant, avant les returns), ajoute :
+// ajouter pour supprimer 
+// Sauvegarder les messages supprimés
+useEffect(() => {
+  if (selectedChat?._id && deletedMessages.length > 0) {
+    localStorage.setItem(
+      `deleted_${selectedChat._id}`,
+      JSON.stringify(deletedMessages)
+    );
+  }
+}, [deletedMessages, selectedChat?._id]);
+
+
+// ajouter pour supprimer 
+// Charger les messages supprimés au démarrage
+useEffect(() => {
+  if (selectedChat?._id) {
+    const saved = localStorage.getItem(`deleted_${selectedChat._id}`);
+    if (saved) {
+      try {
+        setDeletedMessages(JSON.parse(saved));
+      } catch (e) {
+        console.error("Erreur chargement messages supprimés:", e);
+      }
+    }
+  }
+}, [selectedChat?._id]);
+
+// Fin de l'ajout 
 
 // --- useEffect pour écouter les changements en temps réel via socket ---
 useEffect(() => {
@@ -275,6 +314,24 @@ const handleOnline = ({ userId }) => {
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
+  // 🔹 Écoute les thèmes envoyés par l'autre participant
+useEffect(() => {
+  if (!socketService.socket || !selectedChat) return;
+
+  const handleThemeChange = ({ conversationId, theme }) => {
+    if (conversationId === selectedChat._id) {
+      console.log("Thème reçu via socket:", theme);
+      applyTheme(theme, false); // applique le thème reçu mais ne sauvegarde pas localStorage
+    }
+  };
+
+  socketService.socket.on("themeChanged", handleThemeChange);
+
+  return () => {
+    socketService.socket.off("themeChanged", handleThemeChange);
+  };
+}, [selectedChat]);
+
   const [bubbleBg, setBubbleBg] = useState("");
   const [sendBtnColor, setSendBtnColor] = useState("");
   const [themeEmojis, setThemeEmojis] = useState([]);
@@ -404,7 +461,6 @@ const handleOnline = ({ userId }) => {
 
    
 
-
     return () => {
       // Nettoyage
       if (socketService.socket) {
@@ -505,6 +561,7 @@ file.type.startsWith("video/")) {
 
   // Gestion du thème
   const applyTheme = async (theme, save = true) => {
+     console.log("Thème sélectionné :", theme); // <-- AJOUTE ÇA
     let style = {};
     setThemeEmojis([]);
 
@@ -662,15 +719,23 @@ file.type.startsWith("video/")) {
 
   // Nom de la conversation
   const conversationName = selectedChat?.isGroup
-    ? selectedChat.groupName
-    : selectedChat?.participants?.[0]?.username || "Utilisateur";
+  ? selectedChat.groupName
+  : otherUserName || "Utilisateur";
 
-  const conversationAvatar = selectedChat?.isGroup
-    ? "/group-avatar.png"
-    : selectedChat?.participants?.[0]?.profilePicture || "/default-avatar.png";
 
+const conversationAvatar = selectedChat?.isGroup
+  ? "/group-avatar.png"
+  : selectedChat?.participants?.find(
+      participant => String(participant._id) === String(otherUserId)
+    )?.profilePicture || "/default-avatar.png";
+
+
+  // Modifier pour supprimer message 
+  // avant 
+  // const MessageBubble = ({ msg }) => {
+  // Apres
   // 🔥 Composant Message CORRIGÉ
-  const MessageBubble = ({ msg }) => {
+ const MessageBubble = ({ msg, deletedMessages, setDeletedMessages }) => {
     const longPressTimer = useRef(null);
 
     const startLongPress = () => {
@@ -678,6 +743,8 @@ file.type.startsWith("video/")) {
         setShowMessageMenu(msg._id);
       }, 500);
     };
+
+   
 
     const cancelLongPress = () => {
       if (longPressTimer.current) {
@@ -745,17 +812,16 @@ file.type.startsWith("video/")) {
         console.error("Erreur épinglage:", error);
       }
     };
+    
+    // Modifier pour supprimer 
+   const handleDeleteMessage = (msgId) => {
+  if (window.confirm("Supprimer ce message pour moi ?")) {
+    // Ajouter à la liste des messages supprimés
+    setDeletedMessages(prev => [...prev, msgId]);
+    setShowMessageMenu(null);
+  }
+};
 
-    const handleDeleteMessage = async () => {
-      if (window.confirm("Supprimer ce message ?")) {
-        try {
-          await deleteMessage(msg._id);
-          setShowMessageMenu(null);
-        } catch (error) {
-          console.error("Erreur suppression:", error);
-        }
-      }
-    };
     
 
 
@@ -881,7 +947,7 @@ file.type.startsWith("video/")) {
                 </button>
                 {fromMe && (
                   <button
-                    onClick={handleDeleteMessage}
+                    onClick={() => handleDeleteMessage(msg._id)}
                     className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-500"
                   >
                     <Trash2 size={16} /> Supprimer
@@ -927,14 +993,18 @@ file.type.startsWith("video/")) {
             </div>
           )}
 
+          
           <div
-            className={`text-[8px] mt-1 flex items-center gap-1 ${
-              fromMe ? "justify-end" : "justify-start"
-            } text-gray-700 dark:text-gray-300`}
-          >
-            <span>{messageTime}</span>
-            {fromMe && msg.seen && <SeenIconGray />}
-          </div>
+  className={`text-[8px] mt-1 flex items-center gap-1 ${
+    fromMe ? "justify-end" : "justify-start"
+  } text-gray-700 dark:text-gray-300`}
+>
+  <span>{messageTime}</span>
+  {fromMe && msg.seen && <SeenIconGray />}
+</div>
+
+
+         
         </div>
       </div>
     );
@@ -1246,23 +1316,34 @@ file.type.startsWith("video/")) {
           setShowReactionPicker(null);
         }}
       >
-        {messages.map((msg, i) => {
-          const showDate =
-            i === 0 ||
-            messages[i - 1].createdAt?.split("T")[0] !==
-              msg.createdAt?.split("T")[0];
 
-          return (
-            <div key={msg._id}>
-              {showDate && (
-                <div className="text-center text-[10px] text-gray-700 dark:text-gray-300 my-2">
-                  {formatDateLabel(msg.createdAt, t)}
-                </div>
-              )}
-              <MessageBubble msg={msg} index={i} />
-            </div>
-          );
-        })}
+        {/*Modifier pour supprimer  */}
+        {messages
+  .filter(msg => !deletedMessages.includes(msg._id))
+  .map((msg, i) => {
+    const showDate =
+      i === 0 ||
+      messages[i - 1].createdAt?.split("T")[0] !==
+        msg.createdAt?.split("T")[0];
+
+    return (
+      <div key={msg._id}>
+        {showDate && (
+          <div className="text-center text-[10px] text-gray-700 dark:text-gray-300 my-2">
+            {formatDateLabel(msg.createdAt, t)}
+          </div>
+        )}
+        <MessageBubble 
+          msg={msg} 
+          index={i}
+          deletedMessages={deletedMessages}
+          setDeletedMessages={setDeletedMessages}
+        />
+      </div>
+    );
+  })}
+
+  {/*fin de modification*/}
         <div ref={messagesEndRef} />
       </main>
 

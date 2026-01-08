@@ -5,7 +5,7 @@ import logo from "../assets/images/owlylogo.png";
 import { useTranslation } from "react-i18next";
 import { messageService } from "../services/messageService";
 
-export default function MediaDocuments({ onBack, conversationId }) {
+export default function MediaDocument({ onBack, conversationId }) {
   const [activeTab, setActiveTab] = useState("media");
   const [media, setMedia] = useState([]);
   const [files, setFiles] = useState([]);
@@ -91,7 +91,7 @@ export default function MediaDocuments({ onBack, conversationId }) {
 
       {/* 🟡 CONTENU DES ONGLES */}
       {activeTab === "media" ? (
-        fakeMedias.length === 0 ? (
+        media.length === 0 ? (
           /* 🟡 EMPTY STATE POUR MEDIAS */
           <div className="flex flex-col items-center mt-25 justify-center py-10">
             <div className="w-15 h-15 rounded-2xl bg-myYellow flex items-center justify-center shadow mb-6">
