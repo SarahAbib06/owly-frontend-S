@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Star, Archive, Lock, Ban, Trash2 } from "lucide-react";
@@ -8,109 +7,109 @@ import { relationService } from "../services/relationService";
 import { useAuth } from "../hooks/useAuth"; 
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
-
-// ✅ Import des fonctions favoris (A ajouter )
 import { addFavorite, removeFavorite, getFavorites } from "../services/favoritesService";
 
 export default function InfoContactModal({ chat, onClose, onBlockStatusChange }) {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState("info");
   const { user } = useAuth();
-  console.log("Utilisateur connecté:", user);
-
-  // ID de l'autre utilisateur (seulement pour les conversations privées)
-  const otherUserId = chat?.isGroup ? null : chat?.participants?.find(
+  
+  const otherUser = chat?.isGroup ? null : chat?.participants?.find(
     participant => {
       const participantId = participant._id || participant.id;
       const currentUserId = user?._id || user?.id || user?.userId;
       return String(participantId) !== String(currentUserId);
     }
-  )?._id;
-
+  );
+  
+  const otherUserId = otherUser?._id;
+  const displayAvatar = chat?.isGroup 
+    ? chat.avatar 
+    : (otherUser?.avatar || otherUser?.profilePicture || chat.avatar || "/default-avatar.png");
+  
+  const displayName = chat?.isGroup 
+    ? chat.name 
+    : (otherUser?.name || chat.name);
+  
   const { isBlocked, unblock, refresh } = useBlockStatus(otherUserId);
-
-  // États généraux
+  
   const [isImageOpen, setIsImageOpen] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [localIsBlocked, setLocalIsBlocked] = useState(isBlocked);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [actionType, setActionType] = useState("block");
   const [modalUserInfo, setModalUserInfo] = useState({ name: "", avatar: "" });
-
-  // ✅ États pour les favoris (A ajouter )
   const [isFavorite, setIsFavorite] = useState(false);
   const [loadingFavorite, setLoadingFavorite] = useState(false);
+
+  // Fonction pour récupérer l'ID utilisateur
+  const getUserId = (user) => user?._id || user?.id || user?.userId;
 
   // Synchroniser le statut de blocage
   useEffect(() => {
     setLocalIsBlocked(isBlocked);
   }, [isBlocked]);
 
-  // Fonction pour récupérer l'ID utilisateur de manière flexible
-const getUserId = (user) => user?._id || user?.id || user?.userId;
+  // Vérifier si la conversation est en favoris
+  useEffect(() => {
+    const checkIfFavorite = async () => {
+      const userId = getUserId(user);
+      if (!userId || !chat?._id) {
+        console.log('❌ IDs manquants pour favoris : userId=', userId, 'chatId=', chat?._id);
+        return;
+      }
 
-// favoris des conversation (A ajouter )
-useEffect(() => {
-  const checkIfFavorite = async () => {
+      try {
+        const response = await getFavorites(userId);
+        console.log('📡 Réponse getFavorites:', response.data);
+        const favorites = response.data;
+        const isFav = favorites.some(fav => String(fav._id) === String(chat._id));
+        setIsFavorite(isFav);
+      } catch (error) {
+        console.error("Erreur lors du chargement des favoris :", error);
+      }
+    };
+
+    checkIfFavorite();
+  }, [chat?._id, user]);
+
+  // Toggle favoris
+  const toggleFavorite = async () => {
     const userId = getUserId(user);
-    if (!userId || !chat?._id) {
-      console.log('❌ IDs manquants pour favoris : userId=', userId, 'chatId=', chat?._id);
-      return;
-    }
+    console.log('⭐ Clic sur toggleFavorite | isFavorite=', isFavorite, 'userId=', userId, 'chatId=', chat?._id);
+    
+    if (!userId || !chat?._id || loadingFavorite) return;
+
+    setLoadingFavorite(true);
 
     try {
-      const response = await getFavorites(userId);
-      console.log('📡 Réponse getFavorites:', response.data);
-      const favorites = response.data;
-      const isFav = favorites.some(fav => String(fav._id) === String(chat._id));
-      setIsFavorite(isFav);
+      if (isFavorite) {
+        await removeFavorite(userId, chat._id);
+        console.log('✅ Favori supprimé');
+      } else {
+        await addFavorite(userId, chat._id);
+        console.log('✅ Favori ajouté');
+      }
+      setIsFavorite(!isFavorite);
     } catch (error) {
-      console.error("Erreur lors du chargement des favoris :", error);
+      console.error("Erreur favoris :", error);
+      alert("Erreur lors de la mise à jour des favoris");
+    } finally {
+      setLoadingFavorite(false);
     }
   };
 
-  checkIfFavorite();
-}, [chat?._id, user]);
-
-// ajouter pour Favoris 
-
-const toggleFavorite = async () => {
-  const userId = getUserId(user);
-  console.log('clic toggleFavorite déclenché', { userId, chatId: chat?._id, loadingFavorite });
-  console.log('⭐ Clic sur toggleFavorite | isFavorite=', isFavorite, 'userId=', userId, 'chatId=', chat?._id);
-  
-  if (!userId || !chat?._id || loadingFavorite) return;
-
-  setLoadingFavorite(true);
-
-  try {
-    if (isFavorite) {
-      await removeFavorite(userId, chat._id);
-      console.log('✅ Favori supprimé');
-    } else {
-      await addFavorite(userId, chat._id);
-      console.log('✅ Favori ajouté');
-    }
-    setIsFavorite(!isFavorite);
-  } catch (error) {
-    console.error("Erreur favoris :", error);
-    alert("Erreur lors de la mise à jour des favoris");
-  } finally {
-    setLoadingFavorite(false);
-  }
-};
- // Fin de Fonction
-
-  // Gestion du blocage (inchangé, mais assure-toi que ça marche)
+  // Ouvrir le modal de confirmation de blocage
   const handleBlockClick = () => {
     setActionType(localIsBlocked ? "unblock" : "block");
     setModalUserInfo({
-      name: chat.name,
-      avatar: chat.avatar
+      name: displayName,
+      avatar: displayAvatar
     });
     setIsConfirmModalOpen(true);
   };
 
+  // Confirmer le blocage/déblocage
   const handleConfirmBlock = async () => {
     setIsConfirmModalOpen(false);
     setIsBlocking(true);
@@ -146,8 +145,13 @@ const toggleFavorite = async () => {
           className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]"
           onClick={() => setIsImageOpen(false)}
         >
-          <div className="w-[380px] h-[380px] rounded-full overflow-hidden shadow-2xl" style={{ maxWidth: "90vw", maxHeight: "90vh" }}>
-            <img src={chat.avatar} className="w-full h-full object-cover" alt="Avatar agrandi" />
+          <div className="w-[380px] h-[380px] rounded-full overflow-hidden shadow-2xl"
+               style={{ maxWidth: "90vw", maxHeight: "90vh" }}>
+            <img 
+              src={displayAvatar}
+              className="w-full h-full object-cover"
+              alt="Avatar"
+            />
           </div>
         </div>
       )}
@@ -159,10 +163,10 @@ const toggleFavorite = async () => {
         )}
 
         {activeSection === "media" && (
-         <MediaDocument
-  onBack={() => setActiveSection("info")}
-  conversationId={chat?._id}
-/>
+          <MediaDocument
+            onBack={() => setActiveSection("info")}
+            conversationId={chat?._id}
+          />
         )}
 
         {activeSection === "info" && (
@@ -170,12 +174,12 @@ const toggleFavorite = async () => {
             {/* Avatar + Nom */}
             <div className="flex flex-col items-center">
               <img
-                src={chat.avatar}
+                src={displayAvatar}
                 className="w-24 h-24 rounded-full object-cover mb-2 cursor-pointer hover:scale-105 transition"
                 onClick={() => setIsImageOpen(true)}
                 alt="Avatar"
               />
-              <h2 className="text-lg font-semibold">{chat.name}</h2>
+              <h2 className="text-lg font-semibold">{displayName}</h2>
               <p className="text-sm text-gray-500">email@emailemai.com</p>
             </div>
 
@@ -206,8 +210,8 @@ const toggleFavorite = async () => {
               </div>
 
               <hr className="border-gray-300" />
-              {/*Modifier le button de favoris }
-              {/* ⭐ Bouton Favoris */} 
+
+              {/* Bouton Favoris */}
               {!chat.isGroup && (
                 <div
                   className={`cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 ${
@@ -225,7 +229,7 @@ const toggleFavorite = async () => {
                   </span>
                 </div>
               )}
-              {/*Fin*/}
+
               {/* Archiver */}
               <div
                 className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -250,13 +254,13 @@ const toggleFavorite = async () => {
                 </span>
               </div>
 
-              {/* Verrouiller (placeholder) */}
+              {/* Verrouiller */}
               <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
                 <Lock size={15} />
                 <span>{t("infoContactModal.lockConversation")}</span>
               </div>
 
-              {/* Bloquer (seulement pour conversations privées) */}
+              {/* Bloquer */}
               {!chat.isGroup && (
                 <div
                   className={`cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md ${

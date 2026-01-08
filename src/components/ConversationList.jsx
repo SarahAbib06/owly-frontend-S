@@ -23,6 +23,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [filterMode, setFilterMode] = useState("all"); // "all", "archived", "favorites"
+  const [filterType, setFilterType] = useState('all'); // 'all' ou 'group'
   
   const [favoritesList, setFavoritesList] = useState([]);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
@@ -39,7 +40,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
     markAsRead 
   } = useConversations();
 
-  // Déterminer quelle liste afficher
+  // Déterminer quelle liste afficher selon filterMode
   let listToDisplay = conversations;
   if (filterMode === "archived") {
     listToDisplay = archivedList;
@@ -47,12 +48,22 @@ export default function ConversationList({ onSelect, onNewChat }) {
     listToDisplay = favoritesList;
   }
 
+  // Debug pour les conversations
+  useEffect(() => {
+    console.log("📊 Conversations:", conversations);
+  }, [conversations]);
+
+  // Filtrage par type (all = tout, group = uniquement groupes)
+  const filteredByType = filterType === 'group'
+    ? listToDisplay.filter(conv => conv.type === 'group' || conv.isGroup)
+    : listToDisplay;
+
   // Charger les derniers messages
   useEffect(() => {
     const fetchLastMessages = async () => {
       const messages = {};
       
-      for (const conv of listToDisplay) {
+      for (const conv of filteredByType) {
         try {
           const token = localStorage.getItem('token');
           const response = await fetch(
@@ -95,20 +106,19 @@ export default function ConversationList({ onSelect, onNewChat }) {
       setLastMessages(messages);
     };
 
-    if (listToDisplay.length > 0) {
+    if (filteredByType.length > 0) {
       fetchLastMessages();
     }
-  }, [listToDisplay]);
+  }, [filteredByType]);
 
   // Filtrer les conversations selon la recherche
-  const filteredList = listToDisplay.filter((conv) => {
-    const otherParticipant = conv.participants?.find(
-      p => p._id !== currentUserId
-    );
-    
-    const conversationName = conv.isGroup
-      ? conv.groupName
-      : otherParticipant?.username || "Utilisateur";
+  const filteredList = filteredByType.filter((conv) => {
+    const isGroup = conv.isGroup || conv.type === 'group';
+    const otherParticipant = conv.participants?.find(p => p._id !== currentUserId);
+
+    const conversationName = isGroup
+      ? (conv.groupName || conv.name || "Groupe")
+      : (otherParticipant?.username || conv.name || "Utilisateur");
    
     return conversationName.toLowerCase().includes(search.toLowerCase());
   });
@@ -180,14 +190,20 @@ export default function ConversationList({ onSelect, onNewChat }) {
       try {
         const userId = localStorage.getItem('userId');
         if (userId) {
+          console.log("🔍 Chargement des favoris pour userId:", userId);
+          
           const response = await getFavorites(userId);
+          console.log("📊 Réponse getFavorites:", response);
           
           let favoriteIds = [];
+          
           if (response.data && Array.isArray(response.data)) {
             favoriteIds = response.data.map(item => item._id || item.conversationId || item);
           } else if (Array.isArray(response)) {
             favoriteIds = response.map(item => item._id || item.conversationId || item);
           }
+          
+          console.log("📋 IDs des conversations favorites:", favoriteIds);
           
           const enrichedFavorites = conversations.filter(conv => {
             return favoriteIds.some(favId => 
@@ -196,6 +212,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
             );
           });
           
+          console.log("✅ Conversations favorites enrichies:", enrichedFavorites);
           setFavoritesList(enrichedFavorites);
         }
       } catch (err) {
@@ -241,6 +258,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
           Owly
         </h2>
 
+        {/* Bouton nouvelle discussion */}
         <button
           onClick={onNewChat}
           className="
@@ -264,14 +282,18 @@ export default function ConversationList({ onSelect, onNewChat }) {
             <Search size={18} className="text-gray-400 shrink-0" />
             <input
               type="text"
-              placeholder={t("messages.searchFriends") || "Rechercher..."}
+              placeholder={
+                filterType === 'group' 
+                  ? (t("messages.searchGroupe") || "Rechercher un groupe...")
+                  : (t("messages.searchFriends") || "Rechercher...")
+              }
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 min-w-0 bg-transparent outline-none text-xs placeholder-gray-500 dark:placeholder-gray-400 text-myBlack dark:text-white"
             />
           </div>
 
-          {/* SHADCN SELECT */}
+          {/* SHADCN SELECT POUR FILTRES */}
           <Select value={filterMode} onValueChange={handleFilterChange}>
             <SelectTrigger className="w-[70px] h-9 md:h-10 rounded-xl bg-[#f0f0f0] dark:bg-[#2E2F2F] border-0 hover:bg-gray-200 dark:hover:bg-neutral-700 transition">
               <SelectValue>
@@ -314,6 +336,34 @@ export default function ConversationList({ onSelect, onNewChat }) {
             </SelectContent>
           </Select>
         </div>
+
+        {/* ONGLETS MESSAGES / GROUPES */}
+        <div className="flex gap-2 mt-3 md:mt-3">
+          <button
+            onClick={() => setFilterType('all')}
+            className={`
+              flex-1 py-2 px-4 rounded-lg text-sm font-medium transition
+              ${filterType === 'all'
+                ? 'bg-myYellow text-myBlack'
+                : 'bg-[#f0f0f0] dark:bg-[#2E2F2F] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-700'
+              }
+            `}
+          >
+            {t("messages.all") || "Messages"}
+          </button>
+          <button
+            onClick={() => setFilterType('group')}
+            className={`
+              flex-1 py-2 px-4 rounded-lg text-sm font-medium transition
+              ${filterType === 'group'
+                ? 'bg-myYellow text-myBlack'
+                : 'bg-[#f0f0f0] dark:bg-[#2E2F2F] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-700'
+              }
+            `}
+          >
+            {t("messages.groups") || "Groupes"}
+          </button>
+        </div>
       </div>
 
       {/* BADGE DE FILTRE ACTIF */}
@@ -350,23 +400,24 @@ export default function ConversationList({ onSelect, onNewChat }) {
                 ? (loadingArchived ? "Chargement..." : "Aucune conversation archivée")
                 : filterMode === "favorites"
                 ? (loadingFavorites ? "Chargement..." : "Aucune conversation favorite")
-                : t("messages.noConversations") || "Aucune conversation"}
+                : filterType === 'group'
+                  ? (t("messages.noGroupe") || "Aucun groupe")
+                  : (t("messages.noConversations") || "Aucune conversation")
+              }
             </p>
           </div>
         ) : (
           filteredList.map((conv) => {
             const isGroup = conv.isGroup || conv.type === 'group';
-            const otherParticipant = conv.participants?.find(
-              p => p._id !== currentUserId
-            );
+            const otherParticipant = conv.participants?.find(p => p._id !== currentUserId);
             
             const conversationName = isGroup
-              ? conv.groupName
-              : otherParticipant?.username || "Utilisateur";
+              ? (conv.groupName || conv.name || "Groupe")
+              : (otherParticipant?.username || conv.name || "Utilisateur");
            
             const avatar = isGroup
-              ? "/group-avatar.png"
-              : otherParticipant?.profilePicture || "/default-avatar.png";
+              ? (conv.groupAvatar || "/group-avatar.png")
+              : (otherParticipant?.profilePicture || "/default-avatar.png");
            
             const lastMsg = lastMessages[conv._id];
             let lastMessage = t("messages.noMessages") || "Aucun message";
@@ -396,6 +447,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
                   time={time}
                   unread={conv.unreadCount || 0}
                   selected={selectedId === conv._id}
+                  isGroup={isGroup}
                 />
               </div>
             );

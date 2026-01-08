@@ -1,7 +1,7 @@
 // src/components/ParametresConfidentialite.jsx
 import { useTranslation } from "react-i18next";
 import { FaArrowLeft } from "react-icons/fa";
-import { ChevronRight, Clock, Eye, UserX, Lock } from "lucide-react";
+import { ChevronRight, Clock, Eye, UserX, Lock, Delete } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function ParametresConfidentialite({
@@ -80,6 +80,14 @@ export default function ParametresConfidentialite({
       description: t("parametresConfidentialite.ChangePasswordDesc"),
       iconColor: "text-orange-500",
       iconBg: "bg-orange-500/10"
+    },
+        {
+      id: "SupprimerCompte",
+      icon: Delete,
+      title: t("parametresConfidentialite.DeleteAccount"),
+      description: t("parametresConfidentialite.DeleteAccountDesc"),
+      iconColor: "text-red-500",
+      iconBg: "bg-red-500/10"
     }
   ];
 

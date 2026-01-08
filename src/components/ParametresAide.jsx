@@ -115,8 +115,7 @@ export default function ParametresAide({ setSelectedMenu }) {
         shadow-md 
         border border-myGray4 dark:border-gray-700
         p-6
-            h-[100vh]
-    max-h-[100vh]
+            h-auto
         overflow-auto
       "
     >
