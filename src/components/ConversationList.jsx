@@ -1,29 +1,33 @@
-
-
 // frontend/src/components/ConversationList.jsx
 import { useState, useEffect } from "react";
 import ConversationItem from "./ConversationItem";
 import { SlidersHorizontal, Search, Loader2, Plus } from "lucide-react";
-
-import { Star } from "lucide-react"; // Ajoutez pour favoris 
+import { Star, Archive, MessageSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useConversations } from "../hooks/useConversations";
 import socketService from "../services/socketService";
 import { conversationService } from "../services/conversationService";
+import { getFavorites } from "../services/favoritesService";
 
-import { getFavorites } from "../services/favoritesService"; //Ajoutez pour favoris 
+// Shadcn Select Components
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+
 export default function ConversationList({ onSelect, onNewChat }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
-  const [showArchivedOnly, setShowArchivedOnly] = useState(false);
-   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false); // Ajoutez pour favoris 
-  const [favoritesList, setFavoritesList] = useState([]); //Ajoutez pour favoris 
-  const [loadingFavorites, setLoadingFavorites] = useState(false); // Ajoutez pour favoris 
+  const [filterMode, setFilterMode] = useState("all"); // "all", "archived", "favorites"
+  
+  const [favoritesList, setFavoritesList] = useState([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(false);
   const [archivedList, setArchivedList] = useState([]);
   const [loadingArchived, setLoadingArchived] = useState(false);
-  
-  // 🔥 NOUVEAU : État pour stocker les derniers messages
   const [lastMessages, setLastMessages] = useState({});
 
   const currentUserId = localStorage.getItem('userId');
@@ -34,20 +38,16 @@ export default function ConversationList({ onSelect, onNewChat }) {
     error, 
     markAsRead 
   } = useConversations();
-// Modifier pour favoris 
-//Avant 
-//const listToDisplay = showArchivedOnly ? archivedList : conversations;
-//Apres
+
+  // Déterminer quelle liste afficher
   let listToDisplay = conversations;
-if (showArchivedOnly) {
-  listToDisplay = archivedList;
-} else if (showFavoritesOnly) {
-  listToDisplay = favoritesList;
-}
-// Fin de modification
+  if (filterMode === "archived") {
+    listToDisplay = archivedList;
+  } else if (filterMode === "favorites") {
+    listToDisplay = favoritesList;
+  }
 
-
-  // 🔥 CHARGER LE DERNIER MESSAGE POUR CHAQUE CONVERSATION
+  // Charger les derniers messages
   useEffect(() => {
     const fetchLastMessages = async () => {
       const messages = {};
@@ -67,7 +67,6 @@ if (showArchivedOnly) {
             if (data.messages && data.messages.length > 0) {
               const lastMsg = data.messages[0];
               
-              // Formatter le message selon son type
               let preview = '';
               if (lastMsg.typeMessage === 'text') {
                 preview = lastMsg.content;
@@ -114,12 +113,9 @@ if (showArchivedOnly) {
     return conversationName.toLowerCase().includes(search.toLowerCase());
   });
 
-  // Écouter les nouveaux messages pour mettre à jour la liste
+  // Écouter les nouveaux messages
   useEffect(() => {
     const handleNewMessage = (data) => {
-      console.log("📨 Nouveau message reçu dans la liste:", data);
-      
-      // Mettre à jour le dernier message pour cette conversation
       if (data.conversationId) {
         let preview = '';
         if (data.typeMessage === 'text') {
@@ -146,7 +142,6 @@ if (showArchivedOnly) {
     };
 
     socketService.onNewMessage(handleNewMessage);
-
     return () => {
       socketService.off('new_message', handleNewMessage);
     };
@@ -154,25 +149,16 @@ if (showArchivedOnly) {
 
   const handleSelectConversation = async (conv) => {
     setSelectedId(conv._id);
-    //avant 
-    // onSelect(conv, showArchivedOnly);
-    // Apres 
-    onSelect(conv, showArchivedOnly || showFavoritesOnly);// ajouter pour favoris 
-    
+    onSelect(conv, filterMode !== "all");
 
-
-    // Marquer comme lu
     if (conv.unreadCount > 0) {
       await markAsRead(conv._id);
     }
   };
 
-  const toggleArchived = async () => {
-     setShowFavoritesOnly(false); // ajouter pour favoris dans la fonction
-  const newShow = !showArchivedOnly;
-  setShowArchivedOnly(newShow);
-
-    if (newShow && archivedList.length === 0) {
+  // Fonction pour charger les conversations archivées
+  const loadArchived = async () => {
+    if (archivedList.length === 0) {
       setLoadingArchived(true);
       try {
         const userId = localStorage.getItem('userId');
@@ -185,58 +171,51 @@ if (showArchivedOnly) {
       }
       setLoadingArchived(false);
     }
-    setLoadingArchived(false);
-  }
-};
-// ajouter la fonction pour favoris
-const toggleFavorites = async () => {
-  setShowArchivedOnly(false);
-  const newShow = !showFavoritesOnly;
-  setShowFavoritesOnly(newShow);
+  };
 
-  if (newShow && favoritesList.length === 0) {
-    setLoadingFavorites(true);
-    try {
-      const userId = localStorage.getItem('userId');
-      if (userId) {
-        console.log("🔍 Chargement des favoris pour userId:", userId);
-        
-        // 1. Récupérer les IDs des conversations favorites
-        const response = await getFavorites(userId);
-        console.log("📊 Réponse getFavorites:", response);
-        
-        let favoriteIds = [];
-        
-        // Extraire les IDs selon le format de réponse
-        if (response.data && Array.isArray(response.data)) {
-          // Cas 1: response.data contient les favoris
-          favoriteIds = response.data.map(item => item._id || item.conversationId || item);
-        } else if (Array.isArray(response)) {
-          // Cas 2: response est directement un tableau
-          favoriteIds = response.map(item => item._id || item.conversationId || item);
+  // Fonction pour charger les favoris
+  const loadFavorites = async () => {
+    if (favoritesList.length === 0) {
+      setLoadingFavorites(true);
+      try {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          const response = await getFavorites(userId);
+          
+          let favoriteIds = [];
+          if (response.data && Array.isArray(response.data)) {
+            favoriteIds = response.data.map(item => item._id || item.conversationId || item);
+          } else if (Array.isArray(response)) {
+            favoriteIds = response.map(item => item._id || item.conversationId || item);
+          }
+          
+          const enrichedFavorites = conversations.filter(conv => {
+            return favoriteIds.some(favId => 
+              String(favId) === String(conv._id) ||
+              (favId._id && String(favId._id) === String(conv._id))
+            );
+          });
+          
+          setFavoritesList(enrichedFavorites);
         }
-        
-        console.log("📋 IDs des conversations favorites:", favoriteIds);
-        
-        // 2. Filtrer les conversations complètes à partir des IDs
-        const enrichedFavorites = conversations.filter(conv => {
-          return favoriteIds.some(favId => 
-            String(favId) === String(conv._id) ||
-            (favId._id && String(favId._id) === String(conv._id))
-          );
-        });
-        
-        console.log("✅ Conversations favorites enrichies:", enrichedFavorites);
-        setFavoritesList(enrichedFavorites);
+      } catch (err) {
+        console.error("❌ Erreur chargement favoris:", err);
       }
-    } catch (err) {
-      console.error("❌ Erreur chargement favoris:", err);
+      setLoadingFavorites(false);
     }
-    setLoadingFavorites(false);
-  }
-};
+  };
 
-// Fin de Fonction 
+  // Gérer le changement de filtre
+  const handleFilterChange = async (mode) => {
+    setFilterMode(mode);
+
+    if (mode === "archived") {
+      await loadArchived();
+    } else if (mode === "favorites") {
+      await loadFavorites();
+    }
+  };
+
   if (loading) {
     return (
       <aside className="h-screen bg-myWhite dark:bg-neutral-900 flex items-center justify-center">
@@ -292,79 +271,91 @@ const toggleFavorites = async () => {
             />
           </div>
 
-  
-           <button // ajouter un button pour favoris 
-    onClick={toggleFavorites}
-    className="rounded-xl shrink-0 bg-[#f0f0f0] dark:bg-[#2E2F2F] hover:bg-gray-200 dark:hover:bg-neutral-700 p-2.5 md:p-3"
-    title={showFavoritesOnly ? "Voir toutes les conversations" : "Voir les favoris"}
-  >
-    <Star 
-      size={18} 
-      className={`${showFavoritesOnly ? "text-yellow-500 fill-yellow-500" : "text-gray-600 dark:text-gray-300"}`}
-    />
-  </button>
-          
-          <button 
-            onClick={toggleArchived}
-            className="rounded-xl shrink-0 bg-[#f0f0f0] dark:bg-[#2E2F2F] hover:bg-gray-200 dark:hover:bg-neutral-700 p-2.5 md:p-3"
-          >
-            <SlidersHorizontal 
-              size={18} 
-              className={`${showArchivedOnly ? "text-myYellow" : "text-gray-600 dark:text-gray-300"}`}
-            />
-          </button>
+          {/* SHADCN SELECT */}
+          <Select value={filterMode} onValueChange={handleFilterChange}>
+            <SelectTrigger className="w-[70px] h-9 md:h-10 rounded-xl bg-[#f0f0f0] dark:bg-[#2E2F2F] border-0 hover:bg-gray-200 dark:hover:bg-neutral-700 transition">
+              <SelectValue>
+                {filterMode === "all" && (
+                  <div className="flex items-center gap-2">
+                    <MessageSquare size={16} className="text-gray-600 dark:text-gray-300" />
+                  </div>
+                )}
+                {filterMode === "favorites" && (
+                  <div className="flex items-center gap-2">
+                    <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                  </div>
+                )}
+                {filterMode === "archived" && (
+                  <div className="flex items-center gap-2">
+                    <Archive size={16} className="text-gray-600 dark:text-gray-300" />
+                  </div>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
+              <SelectItem value="all" className="cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <MessageSquare size={16} />
+                  <span>Toutes les conversations</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="favorites" className="cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <Star size={16} className="text-yellow-500" />
+                  <span>Favoris</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="archived" className="cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <Archive size={16} />
+                  <span>Archivées</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/*ajouter pour favoris */}
-      {/* Ajoutez ceci après la barre de recherche et avant la liste */}
-{(showArchivedOnly || showFavoritesOnly) && (
-  <div className="px-4 sm:px-6 pb-2">
-    <div className="text-sm px-3 py-1 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 inline-flex items-center gap-2">
-      {showFavoritesOnly ? (
-        <>
-          <Star size={14} className="fill-yellow-500" />
-          <span>Conversations favorites</span>
-        </>
-      ) : (
-        <>
-          <SlidersHorizontal size={14} />
-          <span>Conversations archivées</span>
-        </>
+      {/* BADGE DE FILTRE ACTIF */}
+      {filterMode !== "all" && (
+        <div className="px-4 sm:px-6 pb-2">
+          <div className="text-sm px-3 py-1 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 inline-flex items-center gap-2">
+            {filterMode === "favorites" ? (
+              <>
+                <Star size={14} className="fill-yellow-500" />
+                <span>Conversations favorites</span>
+              </>
+            ) : (
+              <>
+                <Archive size={14} />
+                <span>Conversations archivées</span>
+              </>
+            )}
+            <button 
+              onClick={() => setFilterMode("all")}
+              className="ml-2 text-xs hover:underline"
+            >
+              Tout voir
+            </button>
+          </div>
+        </div>
       )}
-      <button 
-        onClick={() => {
-          setShowArchivedOnly(false);
-          setShowFavoritesOnly(false);
-        }}
-        className="ml-2 text-xs hover:underline"
-      >
-        Tout voir
-      </button>
-    </div>
-  </div>
-)}
-    {/*fin de l'ajout*/}
-
 
       {/* LISTE SCROLLABLE */}
       <div className="px-2 pb-28 md:pb-6 overflow-y-auto space-y-2 md:space-y-2.5 conv-scroll z-0">
         {filteredList.length === 0 ? (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <p>
-            {showArchivedOnly 
-      ? (loadingArchived ? "Chargement..." : "Aucune conversation archivée")
-      : showFavoritesOnly // ajouter pour favoris 
-      ? (loadingFavorites ? "Chargement..." : "Aucune conversation favorite")// ajouter pour favoris 
-      : t("messages.noConversations") || "Aucune conversation"}
-              
-          </p>
+              {filterMode === "archived" 
+                ? (loadingArchived ? "Chargement..." : "Aucune conversation archivée")
+                : filterMode === "favorites"
+                ? (loadingFavorites ? "Chargement..." : "Aucune conversation favorite")
+                : t("messages.noConversations") || "Aucune conversation"}
+            </p>
           </div>
         ) : (
           filteredList.map((conv) => {
             const isGroup = conv.isGroup || conv.type === 'group';
-            
-            // Trouver l'autre participant
             const otherParticipant = conv.participants?.find(
               p => p._id !== currentUserId
             );
@@ -377,7 +368,6 @@ const toggleFavorites = async () => {
               ? "/group-avatar.png"
               : otherParticipant?.profilePicture || "/default-avatar.png";
            
-            // 🔥 UTILISER LE DERNIER MESSAGE DEPUIS L'ÉTAT
             const lastMsg = lastMessages[conv._id];
             let lastMessage = t("messages.noMessages") || "Aucun message";
             
@@ -414,3 +404,4 @@ const toggleFavorites = async () => {
       </div>
     </aside>
   );
+}
