@@ -5,6 +5,11 @@ import { useState,useEffect } from "react";
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
 import { useChat } from "../context/ChatContext";
+import { useAuth } from "../hooks/useAuth";
+
+// ✅ Import des fonctions favoris (A ajouter )
+import { addFavorite, removeFavorite, getFavorites } from "../services/favoritesService";
+
 
 
 export default function ChatOptionsMenu({ selectedChat, onClose, onOpenSearch, onBlockStatusChange }) {
@@ -16,6 +21,64 @@ const [localIsBlocked, setLocalIsBlocked] = useState(isBlocked);
 const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 const [actionType, setActionType] = useState("block"); // block | unblock
 const [modalUserInfo, setModalUserInfo] = useState({ name: "", avatar: "" });
+const { user } = useAuth();
+// Fonction pour récupérer l'ID utilisateur de manière flexible
+const getUserId = (user) => user?._id || user?.id || user?.userId;
+
+
+ // ✅ États pour les favoris (A ajouter )
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [loadingFavorite, setLoadingFavorite] = useState(false);
+
+
+  useEffect(() => {
+  const checkIfFavorite = async () => {
+    const userId = getUserId(user);
+    if (!userId || !selectedChat?._id) {
+      console.log('❌ IDs manquants pour favoris : userId=', userId, 'chatId=', selectedChat?._id);
+      return;
+    }
+
+    try {
+      const response = await getFavorites(userId);
+      console.log('📡 Réponse getFavorites:', response.data);
+      const favorites = response.data;
+      const isFav = favorites.some(fav => String(fav._id) === String(selectedChat._id));
+      setIsFavorite(isFav);
+    } catch (error) {
+      console.error("Erreur chargement favoris :", error);
+    }
+  };
+
+  checkIfFavorite();
+}, [selectedChat?._id, user]);
+
+
+const toggleFavorite = async () => {
+  const userId = getUserId(user);
+  console.log('clic toggleFavorite déclenché', { userId, chatId: selectedChat?._id, loadingFavorite });
+  console.log('⭐ Clic sur toggleFavorite | isFavorite=', isFavorite, 'userId=', userId, 'chatId=', selectedChat?._id);
+
+  if (!userId || !selectedChat?._id || loadingFavorite) return;
+
+  setLoadingFavorite(true);
+
+  try {
+    if (isFavorite) {
+      await removeFavorite(userId, selectedChat._id);
+      console.log('✅ Favori supprimé');
+    } else {
+      await addFavorite(userId, selectedChat._id);
+      console.log('✅ Favori ajouté');
+    }
+    setIsFavorite(!isFavorite);
+  } catch (error) {
+    console.error("Erreur favoris :", error);
+    alert("Erreur lors de la mise à jour des favoris");
+  } finally {
+    setLoadingFavorite(false);
+  }
+};
 
 
 useEffect(() => {
@@ -79,10 +142,27 @@ const handleConfirmBlock = async () => {
           <span>{t("chatOptions.infoOn")} {selectedChat.name}</span>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-200 cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
-          <Star size={15} />
-          <span>{t("chatOptions.addToFavorites")}</span>
-        </div>
+       <div
+  onClick={toggleFavorite}
+  className={`flex items-center gap-2 text-xs cursor-pointer py-2 px-2 rounded-md transition-colors duration-150
+    ${isFavorite
+      ? "text-yellow-500 hover:bg-yellow-100 dark:hover:bg-yellow-700"
+      : "text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+    }
+  `}
+>
+ <Star size={15} fill={isFavorite ? "currentColor" : "none"} />
+<span>
+  {isFavorite
+    ? "Retirer des favoris"
+    : "Ajouter aux favoris"
+  }
+</span>
+</div>
+
+
+
+
 
                 <div
           className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-200 cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
