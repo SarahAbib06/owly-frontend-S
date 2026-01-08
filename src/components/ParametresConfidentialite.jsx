@@ -21,7 +21,7 @@ export default function ParametresConfidentialite({
         shadow-md 
         border border-myGray4 dark:border-gray-700
         p-6
-        h-[400px]
+        h-auto
         overflow-auto
       "
     >
@@ -119,7 +119,24 @@ export default function ParametresConfidentialite({
           <p className="text-xs text-gray-600 dark:text-gray-400 ml-3 -mt-3">
             {t("parametresConfidentialite.ChangePasswordDesc")}
           </p>
+          <div className="border-t border-gray-300 dark:border-gray-700 mt-3"></div>
         </div>
+         {/* Supprimer le compte - NOUVEAU */}
+        <div className="flex flex-col -mt-4">
+          <div
+            className="flex items-center justify-between p-3 cursor-pointer"
+            onClick={() => setPrivacySubPage("SupprimerCompte")}
+          >
+            <span className="text-myBlack dark:text-gray-300 transition text-left">
+              {t("parametresConfidentialite.DeleteAccount") || "Supprimer le compte"}
+            </span>
+            <FaChevronRight className="text-gray-400" />
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 ml-3 -mt-3">
+            {t("parametresConfidentialite.DeleteAccountDesc") || "Supprimer définitivement votre compte"}
+          </p>
+        </div>
+        
 
       </div>
     </div>

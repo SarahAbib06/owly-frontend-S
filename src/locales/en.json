@@ -31,7 +31,22 @@
   "title": "Verify your OTP code",
   "description": "We sent a 6-digit verification code to your registered email.",
   "code": "OTP Code",
-  "verify": "Verify and continue"
+  "verify": "Verify and continue",
+   "sentTo": "Code sent to",
+   "verifying": "Verifying...",
+    "resend": "Resend code",
+
+    "success": "Account created successfully!",
+    "successLogin": "Login successful!",
+    "resent": "Code resent successfully!",
+
+    "errors": {
+      "incomplete": "Incomplete OTP code",
+      "invalid": "Invalid OTP code",
+      "resendFailed": "Error while resending code"
+    }
+
+
 
 },
  "chat": {
@@ -53,9 +68,23 @@
   },
   
   "messages": {
-    "searchFriends": "Search among your friends..."
+    "searchFriends": "Search among your friends...",
+    "noConversations": "No conversations",
+    "noMessages": "No messages",
+    "loading": "Loading...",
+    "noArchivedConversations": "No archived conversations",
+    "noGroupe": "No groups",
+    "all": "All",
+    "groups": "Groups",
+    "searchGroupe": "Search a Groupe..."
+    
   },
-  
+   "buttons": {
+    "newChat": "New conversation"
+  },
+  "common": {
+    "user": "User"
+  },
   "sidebar": {
     "Owly": "Owly",
     "Message": "Message",
@@ -118,7 +147,9 @@
     "BlockedUsers": "Blocked users",
     "BlockedUsersCount": "user(s) blocked",
     "ChangePassword": "Change password",
-    "ChangePasswordDesc": "Change your current password"
+    "ChangePasswordDesc": "Change your current password",
+     "DeleteAccount": "Delete account",
+    "DeleteAccountDesc": "Permanently delete your account"
   },
   
   "derniereConnexion": {
@@ -295,7 +326,28 @@
     "passwordPlaceholder": "Your password",
     "cancel": "Cancel",
     "confirm": "Delete"
+  },
+  
+  "confirmArchiveModal": {
+    "archiveTitle": "Archive {{name}}?",
+    "unarchiveTitle": "Unarchive {{name}}?",
+    "archiveDescription": "This conversation will be moved to archives. You can restore it at any time.",
+    "unarchiveDescription": "This conversation will be restored to your active conversations.",
+    "cancel": "Cancel",
+    "archive": "Archive",
+    "unarchive": "Unarchive"
+  },
+   "supprimerCompte": {
+    "titre": "Delete Account",
+    "attention": "Warning: This action is irreversible",
+    "avertissement": "Deleting your account will result in the permanent loss of all your data, conversations, and settings.",
+    "sousTitre": "To confirm deletion, please enter your password",
+    "motDePasse": "Enter your password",
+    "annuler": "Cancel",
+    "confirmer": "Delete permanently",
+    "enCours": "Deleting..."
   }
+
 
  
 

@@ -32,7 +32,21 @@
   "title": "Vérifier votre code OTP",
   "description": "Nous avons envoyé un code de vérification à 6 chiffres à votre adresse e-mail.",
   "code": "Code OTP",
-  "verify": "Vérifier et continuer"
+  "verify": "Vérifier et continuer",
+  "sentTo": "Code envoyé à",
+   "verifying": "Vérification...",
+    "resend": "Renvoyer le code",
+
+    "success": "Compte créé avec succès !",
+    "successLogin": "Connexion réussie !",
+    "resent": "Code renvoyé avec succès !",
+
+    "errors": {
+      "incomplete": "Code OTP incomplet",
+      "invalid": "Code OTP invalide",
+      "resendFailed": "Erreur lors du renvoi"
+    }
+
 },
 "chat": {
     "today": "Aujourd’hui",
@@ -50,10 +64,7 @@
     "blockedByOther": "Vous ne pouvez pas envoyer de message à cette personne"
 
   },
-   "messages": {
-    "searchFriends": "Rechercher dans vos amis..."
-  },
-  
+   
   "sidebar": {
     "Owly": "Owly",
     "Message": "Message",
@@ -148,7 +159,9 @@
     "BlockedUsers": "Utilisateurs bloqués",
     "BlockedUsersCount": "utilisateur(s) bloqué(s)",
     "ChangePassword": "Modifier le mot de passe",
-    "ChangePasswordDesc": "Changer votre mot de passe actuel"
+    "ChangePasswordDesc": "Changer votre mot de passe actuel",
+     "DeleteAccount": "Supprimer le compte",
+    "DeleteAccountDesc": "Supprimer définitivement votre compte"
   },
   "derniereConnexion": {
     "Title": "Dernière connexion",
@@ -309,8 +322,46 @@
     "cancel": "Annuler",
     "confirm": "Supprimer"
 
-  }
+  },
+  
+  "confirmArchiveModal": {
+    "archiveTitle": "Archiver {{name}} ?",
+    "unarchiveTitle": "Désarchiver {{name}} ?",
+    "archiveDescription": "Cette conversation sera déplacée dans les archives. Vous pourrez la restaurer à tout moment.",
+    "unarchiveDescription": "Cette conversation sera restaurée dans vos conversations actives.",
+    "cancel": "Annuler",
+    "archive": "Archiver",
+    "unarchive": "Désarchiver"
+  },
+  "supprimerCompte": {
+    "titre": "Supprimer le compte",
+    "attention": "Attention : Cette action est irréversible",
+    "avertissement": "La suppression de votre compte entraînera la perte définitive de toutes vos données, conversations et paramètres.",
+    "sousTitre": "Pour confirmer la suppression, veuillez entrer votre mot de passe",
+    "motDePasse": "Entrez votre mot de passe",
+    "annuler": "Annuler",
+    "confirmer": "Supprimer ",
+    "enCours": "Suppression..."
 
+  },
+    "messages": {
+    "searchFriends": "Rechercher des amis",
+    "noConversations": "Aucune conversation",
+    "noMessages": "Aucun message",
+    "loading": "Chargement...",
+    "noArchivedConversations": "Aucune conversation archivée",
+    "noGroupe": "Aucun groupe",
+    "all": "Tout",
+    "groups": "Groupes",
+    "searchGroupe": "Rechercher un groupe"
+
+  },
+  "buttons": {
+    "newChat": "Nouvelle discussion"
+  },
+  "common": {
+    "user": "Utilisateur"
+  }
 
  
   

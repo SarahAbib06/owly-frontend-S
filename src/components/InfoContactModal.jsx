@@ -12,14 +12,24 @@ export default function InfoContactModal({ chat, onClose,onBlockStatusChange }) 
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState("info");
   const { user } = useAuth();
-  const otherUserId = chat?.isGroup ? null : chat?.participants?.find(
-  participant => {
-    const participantId = participant._id || participant.id;
-    const currentUserId = user?._id || user?.id || user?.userId;
-    return String(participantId) !== String(currentUserId);
-  }
-)?._id;
-
+    // 👇 Définir otherUser (pas seulement otherUserId)
+  const otherUser = chat?.isGroup ? null : chat?.participants?.find(
+    participant => {
+      const participantId = participant._id || participant.id;
+      const currentUserId = user?._id || user?.id || user?.userId;
+      return String(participantId) !== String(currentUserId);
+    }
+  );
+  
+  // 👇 Ensuite récupérer l'ID
+  const otherUserId = otherUser?._id;
+  const displayAvatar = chat?.isGroup 
+    ? chat.avatar 
+    : (otherUser?.avatar || otherUser?.profilePicture || chat.avatar || "/default-avatar.png");
+  
+  const displayName = chat?.isGroup 
+    ? chat.name 
+    : (otherUser?.name || chat.name);
 const { isBlocked, unblock, refresh } = useBlockStatus(otherUserId);
   //  état pour le zoom image
   const [isImageOpen, setIsImageOpen] = useState(false);
@@ -40,8 +50,8 @@ useEffect(() => {
 const handleBlockClick = () => {
   setActionType(localIsBlocked ? "unblock" : "block");
    setModalUserInfo({
-    name: chat.name,
-    avatar: chat.avatar
+    name: displayName,
+    avatar: displayAvatar
   });
   setIsConfirmModalOpen(true);
 };
@@ -94,7 +104,7 @@ const handleConfirmBlock = async () => {
          style={{ maxWidth: "90vw", maxHeight: "90vh" }}>
       
       <img 
-        src={chat.avatar}
+        src={displayAvatar}
         className="w-full h-full object-cover"
       />
     </div>
@@ -122,12 +132,12 @@ const handleConfirmBlock = async () => {
               
               {/* 👉 Clique pour agrandir */}
               <img
-                src={chat.avatar}
+                src={displayAvatar}
                 className="w-24 h-24 rounded-full object-cover mb-2 cursor-pointer hover:scale-105 transition"
                 onClick={() => setIsImageOpen(true)}
               />
 
-              <h2 className="text-lg font-semibold">{chat.name}</h2>
+              <h2 className="text-lg font-semibold">{displayName}</h2>
               <p className="text-sm text-gray-500">email@emailemai.com</p>
             </div>
 

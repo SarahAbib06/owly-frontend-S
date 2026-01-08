@@ -17,12 +17,13 @@ export default function Profile({ setSelectedMenu }) {
   const [editMode, setEditMode] = useState(false);
   const { t } = useTranslation();
   const navigate = useNavigate();
+const DEFAULT_PROFILE_PICTURE = "https://res.cloudinary.com/dv9oqjulh/image/upload/v1764324539/photo_de_profil_par_defaut_j3qm1p.png";
 
     const [isImageOpen, setIsImageOpen] = useState(false);
 const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
 const [errorMessage, setErrorMessage] = useState("");
 
-
+ // États originaux (données du serveur)
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [profilePicture, setProfilePicture] = useState("");
@@ -35,44 +36,81 @@ const [errorMessage, setErrorMessage] = useState("");
   const [_searchUrl, setSearchUrl] = useState("");
   const [showQRModal, setShowQRModal] = useState(false);
   const [loadingQR, setLoadingQR] = useState(false);
+  
 
+// États temporaires (pendant l'édition)
+const [tempName, setTempName] = useState("");
+const [tempFile, setTempFile] = useState(null);
+const [preview, setPreview] = useState(null);
+// Activer le mode édition
+  const handleEditMode = () => {
+    setEditMode(true);
+    setTempName(name);
+    setPreview(null);
+    setTempFile(null);
+    setErrorMessage("");
+  };
   //  Charger le profil à l'ouverture de la page
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const user = await profileService.getProfile();
-        setName(user.username);
-        setEmail(user.email);
-        setProfilePicture(user.profilePicture);
-        
-        // Générer automatiquement le QR code
-        await generateQRCode();
-      } catch (err) {
-        console.error("Erreur chargement profil :", err);
-      }
-    };
-
-    loadProfile();
-  }, []);
-
-  const [preview, setPreview] = useState(null);
-
-  const handlePhotoChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setPreview(URL.createObjectURL(file));
-
+ // Au chargement du profil
+useEffect(() => {
+  const loadProfile = async () => {
     try {
-      const user = await profileService.uploadProfilePicture(file);
-      console.log("UPLOAD RESULT ===>", user);
+      const user = await profileService.getProfile();
+      setName(user.username);
       setProfilePicture(user.profilePicture);
-    } catch (error) {
-      console.error(error);
-      alert("Erreur lors de l'enregistrement de la photo");
+      setTempName(user.username); // Initialiser les états temporaires
+      setEmail(user.email)
+      // ...
+    } catch (err) {
+      console.error("Erreur chargement profil :", err);
     }
   };
+  loadProfile();
+}, []);
 
+  // Gérer le changement de photo (SANS upload immédiat)
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setTempFile(file);
+    setPreview(URL.createObjectURL(file));
+  };
+  // Bouton ANNULER
+  const handleCancel = () => {
+    setEditMode(false);
+    setTempName(name);
+    setPreview(null);
+    setTempFile(null);
+    setErrorMessage("");
+  };
+
+  // Bouton ENREGISTRER
+  const handleUpdate = async () => {
+    setErrorMessage("");
+    
+    try {
+      // 1. Uploader la photo si elle a changé
+      if (tempFile) {
+        const user = await profileService.uploadProfilePicture(tempFile);
+        setProfilePicture(user.profilePicture);
+      }
+      
+      // 2. Mettre à jour le username si changé
+      if (tempName !== name) {
+        const updated = await profileService.updateUsername(tempName);
+        setName(updated.username);
+      }
+      
+      // 3. Réinitialiser
+      setEditMode(false);
+      setPreview(null);
+      setTempFile(null);
+      
+    } catch (error) {
+      setErrorMessage(error.message || "Une erreur est survenue lors de la mise à jour.");
+    }
+  };
 
   
 // supression du compte
@@ -96,7 +134,7 @@ const handleDeletePhoto = async () => {
     // Appel au backend pour supprimer la photo
 
     // Supprimer la photo côté front
-    setProfilePicture("");
+    setProfilePicture( DEFAULT_PROFILE_PICTURE);
     setPreview(null);
 
    
@@ -179,17 +217,7 @@ useEffect(() => {
 
 //message derreur 
   
-const handleUpdate = async () => {
-  setErrorMessage(""); // reset avant chaque update
-  try {
-    const updated = await profileService.updateUsername(name);
-    setName(updated.username);
-    setEditMode(false);
-  } catch (error) {
-    // si tu as throw { message: ... } côté service
-    setErrorMessage(error.message || "Une erreur est survenue lors de la mise à jour du username.");
-  }
-};
+
 
 return (
   <div className="bg-myGray4 dark:bg-neutral-900 p-6 rounded-2xl shadow-md lg:h-auto h-auto">
@@ -261,13 +289,27 @@ return (
           <div>
             <div className="flex items-center gap-3">
             <p className="text-md">{name}</p>
-               <button
-                  onClick={() => setShowQRModal(true)}
-                  className="flex items-center justify-center bg-black hover:bg-gray-800 text-white px-3 py-2 rounded-md"
-                >
-                  <QrCode size={18} />
-                 
-                </button>
+            <button
+  onClick={async () => {
+    // Générer le QR code si pas encore fait
+    if (!qrCodeData && !loadingQR) {
+      await generateQRCode();
+    }
+    // Ouvrir la modal
+    if (qrCodeData) {
+      setShowQRModal(true);
+    }
+  }}
+  disabled={loadingQR}
+  className="flex items-center justify-center bg-black hover:bg-gray-800 text-white px-3 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+>
+  {loadingQR ? (
+    <div className="animate-spin rounded-full h-[18px] w-[18px] border-b-2 border-white"></div>
+  ) : (
+    <QrCode size={18} />
+  )}
+</button>
+               
             </div>
             <p className="text-gray-500 text-xs sm:text-sm pt-1.5">{email}</p>
           </div>
@@ -316,7 +358,7 @@ return (
 
           {!editMode ? (
             <button
-              onClick={() => setEditMode(true)}
+              onClick={handleEditMode}
               className="bg-black text-white text-xs font-semibold px-6 py-2.5 rounded-lg w-full md:w-auto h-9"
             >
               {t("profile.edit")}
@@ -324,7 +366,7 @@ return (
           ) : (
             <div className="flex gap-3 flex-col md:flex-row w-full md:w-auto">
               <button
-                onClick={() => setEditMode(false)}
+                onClick={handleCancel}
                 className="border border-myBlack text-xs font-semibold dark:bg-neutral-700 px-6 py-2.5 rounded-lg h-9 w-full md:w-auto"
               >
                 {t("profile.cancel")}
@@ -351,8 +393,8 @@ return (
                 <FaUser className="text-gray-500 text-sm mr-2" />
                 <input
                   className="w-full py-2 text-xs bg-transparent focus:outline-none"
-                  value={name}
-                  onChange={(e) => {setName(e.target.value)
+                  value={tempName}
+                  onChange={(e) => {setTempName(e.target.value)
                     setErrorMessage("")
                   }}
                   
@@ -398,104 +440,17 @@ return (
       </div>
 
 
-      {/* ▬▬▬ CARD 3 : QR CODE (MAINTENANT À L’INTÉRIEUR DU CONTAINER !) ▬▬▬ */}
-      <div
-        className="
-        bg-myGray4 dark:bg-neutral-800 
-        rounded-xl border-[1.2px] border-myBlack 
-        p-6 w-full mb-4
-      "
-      >
-        <div className="mb-6">
-          <h3 className="font-semibold text-lg flex items-center gap-2 mb-2">
-            <QrCode size={20} />
-            Votre QR Code Personnel
-          </h3>
-        </div>
-
-        {loadingQR ? (
-          <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-[#F9EE34]"></div>
-            <p className="text-gray-600 mt-3">Génération du QR code...</p>
-          </div>
-        ) : qrCodeData ? (
-          <div className="flex flex-col lg:flex-row items-center gap-8">
-
-            <div className="relative">
-              <div className="w-64 h-64 rounded-xl border-4 border-white shadow-xl bg-white p-4">
-                <img 
-                  src={qrCodeData} 
-                  alt="QR Code"
-                  className="w-full h-full"
-                />
-              </div>
-              <div className="absolute -top-3 -right-3 bg-[#F9EE34] text-black text-sm font-bold px-3 py-1 rounded-full shadow">
-                Owly
-              </div>
-            </div>
-
-            <div className="flex-1">
-              <div className="mb-6 text-center lg:text-left">
-                <p className="font-bold text-xl text-[#008C23] mb-2">{name}</p>
-                <p className="text-sm text-gray-600">
-                  Partagez ce QR code pour que vos contacts vous trouvent facilement
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={() => setShowQRModal(true)}
-                  className="flex items-center justify-center gap-3 bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-lg flex-1"
-                >
-                  <QrCode size={20} />
-                  Agrandir
-                </button>
-
-                <button
-                  onClick={downloadQRCode}
-                  className="flex items-center justify-center gap-3 bg-[#F9EE34] hover:bg-yellow-500 text-black px-6 py-3 rounded-lg flex-1"
-                >
-                  <Download size={20} />
-                  Télécharger
-                </button>
-              </div>
-
-              <button
-                onClick={generateQRCode}
-                className="mt-4 text-sm text-blue-600 hover:text-blue-800 w-full text-center"
-              >
-                Regénérer le QR code
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-neutral-700">
-              <QrCode size={40} className="text-gray-400" />
-            </div>
-            <p className="text-gray-600 mb-6">
-              Créez votre QR code personnel pour partager votre profil
-            </p>
-            <button
-              onClick={generateQRCode}
-              className="bg-[#F9EE34] hover:bg-yellow-500 text-black px-8 py-3 rounded-lg font-medium text-lg"
-            >
-              Générer mon QR Code
-            </button>
-          </div>
-        )}
-      </div>
-
+      
       {/* ==================== */}
       {/* MODAL QR CODE AGRANDI */}
       {/* ==================== */}
-      {showQRModal && qrCodeData && (
+      {showQRModal &&  (
         <div 
           className="fixed inset-0 bg-black/90 flex items-center justify-center z-[70] p-4"
           onClick={() => setShowQRModal(false)}
         >
           <div 
-            className="bg-white dark:bg-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl"
+            className="bg-white dark:bg-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl "
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-xl sm:text-2xl font-bold mb-14 sm:mb-16">Votre QR Code</h3>
@@ -545,9 +500,10 @@ return (
               >
                 Fermer
               </button>
-        
+                 
             </div>
-            
+           
+
           </div>
         </div>
       )}

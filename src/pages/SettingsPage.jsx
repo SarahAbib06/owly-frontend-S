@@ -9,7 +9,7 @@ import UtilisateursBloques from "../components/UtilisateursBloques";
 import ModifierMotDePasse from "../components/ModefierMotDePasse";
 import ParametresNotification from "../components/ParametresNotification";
 import BanniereNotification from "../components/BanniereNotification";
-
+import SupprimerCompte from "../components/SupprimerCompte";
 
 
 
@@ -109,6 +109,11 @@ const [bannerSelection, setBannerSelection] = useState("always");
                 setPrivacySubPage={setPrivacySubPage}
               />
             )}
+            {privacySubPage === "SupprimerCompte" && (
+  <SupprimerCompte 
+    setPrivacySubPage={setPrivacySubPage}
+  />
+)}
           </>
         )}
 

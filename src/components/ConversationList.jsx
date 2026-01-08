@@ -14,6 +14,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
   const [showArchivedOnly, setShowArchivedOnly] = useState(false);
   const [archivedList, setArchivedList] = useState([]);
   const [loadingArchived, setLoadingArchived] = useState(false);
+   const [filterType, setFilterType] = useState('all'); // 🔥 NOUVEAU : state local
   
   const { 
     conversations, 
@@ -22,17 +23,30 @@ export default function ConversationList({ onSelect, onNewChat }) {
     markAsRead 
   } = useConversations();
 
+//  je teste pour le filtre
+useEffect(() => {
+  console.log("📊 Conversations:", conversations);
+}, [conversations]);
+ // 🔥 FILTRAGE PAR TYPE (all = tout, group = uniquement groupes)
+  const filteredByType = filterType === 'group'
+    ? conversations.filter(conv => conv.type === 'group')
+    : conversations; // 'all' = pas de filtre
 
-  const listToDisplay = showArchivedOnly ? archivedList : conversations;
+  const archivedFilteredByType = filterType === 'group'
+    ? archivedList.filter(conv => conv.type === 'group')
+    : archivedList;
+
+  const listToDisplay = showArchivedOnly ? archivedFilteredByType : filteredByType;
 
   // Filtrer les conversations selon la recherche
   const filteredList = listToDisplay.filter((conv) => {
-    const conversationName = conv.isGroup 
-      ? conv.groupName 
-      : conv.participants?.[0]?.username || "Utilisateur";
+    const conversationName = conv.type === 'group'
+      ? conv.groupName || conv.name
+      : conv.participants?.[0]?.username || conv.name || "Utilisateur";
     
     return conversationName.toLowerCase().includes(search.toLowerCase());
   });
+
 
   // Écouter les nouveaux messages pour mettre à jour la liste
   useEffect(() => {
@@ -128,7 +142,11 @@ export default function ConversationList({ onSelect, onNewChat }) {
             <Search size={18} className="text-gray-400 shrink-0" />
             <input
               type="text"
-              placeholder={t("messages.searchFriends") || "Rechercher..."}
+              placeholder={
+                filterType === 'group' 
+                  ? (t("messages.searchGroupe") )
+                  : (t("messages.searchFriends") || "Rechercher...")
+              }
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 min-w-0 bg-transparent outline-none text-sm placeholder-gray-500 dark:placeholder-gray-400 text-myBlack dark:text-white"
@@ -145,28 +163,59 @@ export default function ConversationList({ onSelect, onNewChat }) {
             />
           </button>
         </div>
+         {/* 🔥 ONGLETS MESSAGES / GROUPES */}
+        <div className="flex gap-2 mt-3 md:mt-3">
+          <button
+            onClick={() => setFilterType('all')}
+            className={`
+              flex-1 py-2 px-4 rounded-lg text-sm font-medium transition
+              ${filterType === 'all'
+                ? 'bg-myYellow text-myBlack'
+                : 'bg-[#f0f0f0] dark:bg-[#2E2F2F] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-700'
+              }
+            `}
+          >
+             {t("messages.all")} 
+          </button>
+          <button
+            onClick={() => setFilterType('group')}
+            className={`
+              flex-1 py-2 px-4 rounded-lg text-sm font-medium transition
+              ${filterType === 'group'
+                ? 'bg-myYellow text-myBlack'
+                : 'bg-[#f0f0f0] dark:bg-[#2E2F2F] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-700'
+              }
+            `}
+          >
+           {t("messages.groups")}
+          </button>
+        </div>
       </div>
+     
+      
 
       {/* LISTE SCROLLABLE */}
       <div className="px-2 pb-28 md:pb-6 overflow-y-auto space-y-2 md:space-y-2.5 conv-scroll z-0">
         {filteredList.length === 0 ? (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <p>
-            {showArchivedOnly 
-              ? (loadingArchived ? "Chargement..." : "Aucune conversation archivée")
-              : t("messages.noConversations") || "Aucune conversation"}
-          </p>
+              {showArchivedOnly 
+                ? (loadingArchived ? "Chargement..." : "Aucune conversation archivée")
+                : filterType === 'group'
+                  ? (t("messages.noGroupe") || "Aucune conversation")
+                  : (t("messages.noConversations") || "Aucune conversation")
+              }
+            </p>
           </div>
         ) : (
           filteredList.map((conv) => {
-            // Extraire les infos de la conversation
-            const isGroup = conv.isGroup || conv.type === 'group';
+            const isGroup = conv.type === 'group';
             const conversationName = isGroup 
-              ? conv.groupName 
-              : conv.participants?.[0]?.username || "Utilisateur";
+              ? conv.groupName || conv.name
+              : conv.participants?.[0]?.username || conv.name || "Utilisateur";
             
             const avatar = isGroup
-              ? "/group-avatar.png"
+              ? conv.groupAvatar || "/group-avatar.png"
               : conv.participants?.[0]?.profilePicture || "/default-avatar.png";
             
             const lastMessage = conv.lastMessage?.content || t("messages.noMessages") || "Aucun message";
@@ -190,6 +239,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
                   time={time}
                   unread={conv.unreadCount || 0}
                   selected={selectedId === conv._id}
+                  isGroup={isGroup} // Passe l'info au ConversationItem pour afficher un badge
                 />
               </div>
             );
