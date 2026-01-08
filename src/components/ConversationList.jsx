@@ -1,17 +1,25 @@
+
+
 // frontend/src/components/ConversationList.jsx
 import { useState, useEffect } from "react";
 import ConversationItem from "./ConversationItem";
 import { SlidersHorizontal, Search, Loader2, Plus } from "lucide-react";
+
+import { Star } from "lucide-react"; // Ajoutez pour favoris 
 import { useTranslation } from "react-i18next";
 import { useConversations } from "../hooks/useConversations";
 import socketService from "../services/socketService";
 import { conversationService } from "../services/conversationService";
 
+import { getFavorites } from "../services/favoritesService"; //Ajoutez pour favoris 
 export default function ConversationList({ onSelect, onNewChat }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [showArchivedOnly, setShowArchivedOnly] = useState(false);
+   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false); // Ajoutez pour favoris 
+  const [favoritesList, setFavoritesList] = useState([]); //Ajoutez pour favoris 
+  const [loadingFavorites, setLoadingFavorites] = useState(false); // Ajoutez pour favoris 
   const [archivedList, setArchivedList] = useState([]);
   const [loadingArchived, setLoadingArchived] = useState(false);
   
@@ -21,9 +29,18 @@ export default function ConversationList({ onSelect, onNewChat }) {
     error, 
     markAsRead 
   } = useConversations();
+// Modifier pour favoris 
+//Avant 
+//const listToDisplay = showArchivedOnly ? archivedList : conversations;
+//Apres
+  let listToDisplay = conversations;
+if (showArchivedOnly) {
+  listToDisplay = archivedList;
+} else if (showFavoritesOnly) {
+  listToDisplay = favoritesList;
+}
+// Fin de modification
 
-
-  const listToDisplay = showArchivedOnly ? archivedList : conversations;
 
   // Filtrer les conversations selon la recherche
   const filteredList = listToDisplay.filter((conv) => {
@@ -50,8 +67,13 @@ export default function ConversationList({ onSelect, onNewChat }) {
 
   const handleSelectConversation = async (conv) => {
     setSelectedId(conv._id);
-    onSelect(conv, showArchivedOnly);
+    //avant 
+    // onSelect(conv, showArchivedOnly);
+    // Apres 
+    onSelect(conv, showArchivedOnly || showFavoritesOnly);// ajouter pour favoris 
     
+
+
     // Marquer comme lu
     if (conv.unreadCount > 0) {
       await markAsRead(conv._id);
@@ -59,6 +81,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
   };
 
   const toggleArchived = async () => {
+     setShowFavoritesOnly(false); // ajouter pour favoris dans la fonction
   const newShow = !showArchivedOnly;
   setShowArchivedOnly(newShow);
 
@@ -77,7 +100,55 @@ export default function ConversationList({ onSelect, onNewChat }) {
     setLoadingArchived(false);
   }
 };
+// ajouter la fonction pour favoris
+const toggleFavorites = async () => {
+  setShowArchivedOnly(false);
+  const newShow = !showFavoritesOnly;
+  setShowFavoritesOnly(newShow);
 
+  if (newShow && favoritesList.length === 0) {
+    setLoadingFavorites(true);
+    try {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        console.log("🔍 Chargement des favoris pour userId:", userId);
+        
+        // 1. Récupérer les IDs des conversations favorites
+        const response = await getFavorites(userId);
+        console.log("📊 Réponse getFavorites:", response);
+        
+        let favoriteIds = [];
+        
+        // Extraire les IDs selon le format de réponse
+        if (response.data && Array.isArray(response.data)) {
+          // Cas 1: response.data contient les favoris
+          favoriteIds = response.data.map(item => item._id || item.conversationId || item);
+        } else if (Array.isArray(response)) {
+          // Cas 2: response est directement un tableau
+          favoriteIds = response.map(item => item._id || item.conversationId || item);
+        }
+        
+        console.log("📋 IDs des conversations favorites:", favoriteIds);
+        
+        // 2. Filtrer les conversations complètes à partir des IDs
+        const enrichedFavorites = conversations.filter(conv => {
+          return favoriteIds.some(favId => 
+            String(favId) === String(conv._id) ||
+            (favId._id && String(favId._id) === String(conv._id))
+          );
+        });
+        
+        console.log("✅ Conversations favorites enrichies:", enrichedFavorites);
+        setFavoritesList(enrichedFavorites);
+      }
+    } catch (err) {
+      console.error("❌ Erreur chargement favoris:", err);
+    }
+    setLoadingFavorites(false);
+  }
+};
+
+// Fin de Fonction 
   if (loading) {
     return (
       <aside className="h-screen bg-myWhite dark:bg-neutral-900 flex items-center justify-center">
@@ -134,6 +205,18 @@ export default function ConversationList({ onSelect, onNewChat }) {
               className="flex-1 min-w-0 bg-transparent outline-none text-sm placeholder-gray-500 dark:placeholder-gray-400 text-myBlack dark:text-white"
             />
           </div>
+
+  
+           <button // ajouter un button pour favoris 
+    onClick={toggleFavorites}
+    className="rounded-xl shrink-0 bg-[#f0f0f0] dark:bg-[#2E2F2F] hover:bg-gray-200 dark:hover:bg-neutral-700 p-2.5 md:p-3"
+    title={showFavoritesOnly ? "Voir toutes les conversations" : "Voir les favoris"}
+  >
+    <Star 
+      size={18} 
+      className={`${showFavoritesOnly ? "text-yellow-500 fill-yellow-500" : "text-gray-600 dark:text-gray-300"}`}
+    />
+  </button>
           
           <button 
             onClick={toggleArchived}
@@ -147,14 +230,48 @@ export default function ConversationList({ onSelect, onNewChat }) {
         </div>
       </div>
 
+      {/*ajouter pour favoris */}
+      {/* Ajoutez ceci après la barre de recherche et avant la liste */}
+{(showArchivedOnly || showFavoritesOnly) && (
+  <div className="px-4 sm:px-6 pb-2">
+    <div className="text-sm px-3 py-1 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 inline-flex items-center gap-2">
+      {showFavoritesOnly ? (
+        <>
+          <Star size={14} className="fill-yellow-500" />
+          <span>Conversations favorites</span>
+        </>
+      ) : (
+        <>
+          <SlidersHorizontal size={14} />
+          <span>Conversations archivées</span>
+        </>
+      )}
+      <button 
+        onClick={() => {
+          setShowArchivedOnly(false);
+          setShowFavoritesOnly(false);
+        }}
+        className="ml-2 text-xs hover:underline"
+      >
+        Tout voir
+      </button>
+    </div>
+  </div>
+)}
+    {/*fin de l'ajout*/}
+
+
       {/* LISTE SCROLLABLE */}
       <div className="px-2 pb-28 md:pb-6 overflow-y-auto space-y-2 md:space-y-2.5 conv-scroll z-0">
         {filteredList.length === 0 ? (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <p>
             {showArchivedOnly 
-              ? (loadingArchived ? "Chargement..." : "Aucune conversation archivée")
-              : t("messages.noConversations") || "Aucune conversation"}
+      ? (loadingArchived ? "Chargement..." : "Aucune conversation archivée")
+      : showFavoritesOnly // ajouter pour favoris 
+      ? (loadingFavorites ? "Chargement..." : "Aucune conversation favorite")// ajouter pour favoris 
+      : t("messages.noConversations") || "Aucune conversation"}
+              
           </p>
           </div>
         ) : (
