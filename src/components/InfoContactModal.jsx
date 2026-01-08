@@ -7,7 +7,8 @@ import { relationService } from "../services/relationService";
 import { useAuth } from "../hooks/useAuth"; 
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
-import { userService } from "../services/userService"; // Utilise userService au lieu de profileService
+import { userService } from "../services/userService";
+import { addFavorite, removeFavorite, getFavorites } from "../services/favoritesService";
 
 export default function InfoContactModal({ chat, onClose, onBlockStatusChange }) {
   const { t } = useTranslation();
@@ -16,32 +17,37 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
   const [contactData, setContactData] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
-  const otherUserId = chat?.isGroup ? null : chat?.participants?.find(
+  // Trouver l'autre utilisateur
+  const otherUser = chat?.isGroup ? null : chat?.participants?.find(
     participant => {
       const participantId = participant._id || participant.id;
       const currentUserId = user?._id || user?.id || user?.userId;
       return String(participantId) !== String(currentUserId);
     }
-  )?._id;
-
+  );
+  
+  const otherUserId = otherUser?._id;
+  
   const { isBlocked, unblock, refresh } = useBlockStatus(otherUserId);
   
-  // état pour le zoom image
   const [isImageOpen, setIsImageOpen] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [localIsBlocked, setLocalIsBlocked] = useState(isBlocked);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [actionType, setActionType] = useState("block"); // "block" ou "unblock"
+  const [actionType, setActionType] = useState("block");
   const [modalUserInfo, setModalUserInfo] = useState({ name: "", avatar: "" });
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [loadingFavorite, setLoadingFavorite] = useState(false);
 
-  // Récupérer les données du contact
+  // Fonction pour récupérer l'ID utilisateur
+  const getUserId = (user) => user?._id || user?.id || user?.userId;
+
+  // Récupérer les données du contact avec plusieurs méthodes
   useEffect(() => {
     const loadContactData = async () => {
       if (otherUserId && !chat.isGroup) {
         setLoadingProfile(true);
         try {
-          // ESSAIE PLUSIEURS MÉTHODES pour récupérer la photo
-          
           // Méthode 1: Vérifie si le chat a déjà des données utilisateur
           if (chat.userData || chat.contactInfo) {
             const userData = chat.userData || chat.contactInfo;
@@ -92,26 +98,55 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
         } finally {
           setLoadingProfile(false);
         }
+      } else if (chat.isGroup) {
+        // Pour les groupes, utiliser directement les données du chat
+        setContactData({
+          avatar: chat.avatar || chat.groupAvatar,
+          name: chat.name || chat.groupName,
+          username: null
+        });
       }
     };
 
     loadContactData();
   }, [otherUserId, chat]);
 
+  // Synchroniser le statut de blocage
   useEffect(() => {
     setLocalIsBlocked(isBlocked);
   }, [isBlocked]);
+
+  // Vérifier si la conversation est en favoris
+  useEffect(() => {
+    const checkIfFavorite = async () => {
+      const userId = getUserId(user);
+      if (!userId || !chat?._id) {
+        console.log('❌ IDs manquants pour favoris : userId=', userId, 'chatId=', chat?._id);
+        return;
+      }
+
+      try {
+        const response = await getFavorites(userId);
+        console.log('📡 Réponse getFavorites:', response.data);
+        const favorites = response.data;
+        const isFav = favorites.some(fav => String(fav._id) === String(chat._id));
+        setIsFavorite(isFav);
+      } catch (error) {
+        console.error("Erreur lors du chargement des favoris :", error);
+      }
+    };
+
+    checkIfFavorite();
+  }, [chat?._id, user]);
 
   // Fonction pour obtenir l'avatar avec fallback
   const getAvatarUrl = () => {
     if (contactData?.avatar) {
       return contactData.avatar;
     }
-    // Fallback à l'avatar du chat
     if (chat.avatar) {
       return chat.avatar;
     }
-    // Avatar généré à partir du nom
     const name = getName();
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F9EE34&color=000&bold=true&size=256`;
   };
@@ -121,11 +156,14 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
     if (contactData?.name) {
       return contactData.name;
     }
-    return chat.name || "Utilisateur";
+    return chat.name || chat.groupName || "Utilisateur";
   };
 
   // Fonction pour obtenir le username
   const getUsername = () => {
+    if (chat.isGroup) {
+      return null;
+    }
     if (contactData?.username) {
       return `@${contactData.username}`;
     }
@@ -133,7 +171,33 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
     return `@${name.replace(/\s+/g, '').toLowerCase()}`;
   };
 
-  // Ouvrir le modal de confirmation
+  // Toggle favoris
+  const toggleFavorite = async () => {
+    const userId = getUserId(user);
+    console.log('⭐ Clic sur toggleFavorite | isFavorite=', isFavorite, 'userId=', userId, 'chatId=', chat?._id);
+    
+    if (!userId || !chat?._id || loadingFavorite) return;
+
+    setLoadingFavorite(true);
+
+    try {
+      if (isFavorite) {
+        await removeFavorite(userId, chat._id);
+        console.log('✅ Favori supprimé');
+      } else {
+        await addFavorite(userId, chat._id);
+        console.log('✅ Favori ajouté');
+      }
+      setIsFavorite(!isFavorite);
+    } catch (error) {
+      console.error("Erreur favoris :", error);
+      alert("Erreur lors de la mise à jour des favoris");
+    } finally {
+      setLoadingFavorite(false);
+    }
+  };
+
+  // Ouvrir le modal de confirmation de blocage
   const handleBlockClick = () => {
     setActionType(localIsBlocked ? "unblock" : "block");
     setModalUserInfo({
@@ -143,7 +207,7 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
     setIsConfirmModalOpen(true);
   };
 
-  // Confirmer l'action de blocage/déblocage
+  // Confirmer le blocage/déblocage
   const handleConfirmBlock = async () => {
     setIsConfirmModalOpen(false);
     setIsBlocking(true);
@@ -162,7 +226,7 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
         onBlockStatusChange();
       }
     } catch (error) {
-      console.error("Erreur:", error);
+      console.error("Erreur blocage :", error);
     } finally {
       setIsBlocking(false);
     }
@@ -170,13 +234,10 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
 
   return (
     <>
-      {/* OVERLAY */}
-      <div
-        className="fixed inset-0 bg-black/30 z-40"
-        onClick={onClose}
-      ></div>
+      {/* Overlay */}
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose}></div>
 
-      {/* IMAGE FULLSCREEN MODAL */}
+      {/* Zoom image */}
       {isImageOpen && (
         <div 
           className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]"
@@ -195,23 +256,23 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
         </div>
       )}
 
-      {/* RIGHT PANEL */}
+      {/* Panel principal */}
       <div className="absolute inset-0 bg-myGray4 dark:bg-neutral-800 shadow-xl z-50 p-6 overflow-y-auto">
-
         {activeSection !== "media" && (
           <button className="text-2xl mb-4" onClick={onClose}>✕</button>
         )}
 
         {activeSection === "media" && (
-          <MediaDocument onBack={() => setActiveSection("info")} />
+          <MediaDocument
+            onBack={() => setActiveSection("info")}
+            conversationId={chat?._id}
+          />
         )}
 
-        {/* SECTION INFO */}
         {activeSection === "info" && (
           <div>
-            {/* Avatar + Name */}
+            {/* Avatar + Nom */}
             <div className="flex flex-col items-center">
-              {/* Avatar cliquable */}
               <div className="relative">
                 {loadingProfile ? (
                   <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse mb-2"></div>
@@ -241,18 +302,21 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
                 )}
               </h2>
               
-              {/* Username */}
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {loadingProfile ? (
-                  <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mt-1"></div>
-                ) : (
-                  getUsername()
-                )}
-              </p>
+              {/* Username (seulement pour conversations individuelles) */}
+              {!chat.isGroup && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {loadingProfile ? (
+                    <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mt-1"></div>
+                  ) : (
+                    getUsername()
+                  )}
+                </p>
+              )}
             </div>
 
-            {/* MENU */}
+            {/* Menu */}
             <div className="text-sm space-y-1 mt-4">
+              {/* Médias et Documents */}
               <div
                 className="cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => setActiveSection("media")}
@@ -262,8 +326,10 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
                   <FaChevronRight className="text-gray-400" />
                 </div>
               </div>
+
               <hr className="border-gray-300" />
 
+              {/* Thèmes */}
               <div
                 className="cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => {
@@ -279,11 +345,26 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
 
               <hr className="border-gray-300" />
 
-              <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
-                <Star size={15} />
-                <span>{t("infoContactModal.addToFavorites")}</span>
-              </div>
+              {/* Favoris */}
+              {!chat.isGroup && (
+                <div
+                  className={`cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 ${
+                    isFavorite ? "text-yellow-500" : ""
+                  }`}
+                  onClick={toggleFavorite}
+                >
+                  <Star size={15} fill={isFavorite ? "currentColor" : "none"} />
+                  <span>
+                    {loadingFavorite
+                      ? "Chargement..."
+                      : isFavorite
+                      ? "Retirer des favoris"
+                      : "Ajouter aux favoris"}
+                  </span>
+                </div>
+              )}
 
+              {/* Archiver */}
               <div
                 className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={async () => {
@@ -296,26 +377,27 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
                       await chat.onArchive?.();
                       onClose();
                     } catch (err) {
-                      alert("Erreur lors de l'opération");
+                      alert("Erreur lors de l'archivage");
                     }
                   }
                 }}
               >
                 <Archive size={15} />
                 <span>
-                  {chat.isArchived ? "Désarchiver la conversation" : "Archiver la conversation"}
+                  {chat.isArchived ? "Désarchiver" : "Archiver"} la conversation
                 </span>
               </div>
 
+              {/* Verrouiller */}
               <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
                 <Lock size={15} />
                 <span>{t("infoContactModal.lockConversation")}</span>
               </div>
 
-              {/* BOUTON BLOQUER */}
+              {/* Bloquer (uniquement pour conversations individuelles) */}
               {!chat.isGroup && (
                 <div
-                  className={`cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md ${
+                  className={`cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md transition-colors duration-150 ${
                     localIsBlocked 
                       ? "text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700"
                       : "text-red-600 hover:bg-red-100 dark:hover:bg-red-700"
@@ -338,6 +420,7 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
                 </div>
               )}
 
+              {/* Supprimer */}
               <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md text-red-600 hover:bg-red-100 dark:hover:bg-red-700">
                 <Trash2 size={15} />
                 <span>{t("infoContactModal.deleteConversation")}</span>
@@ -346,6 +429,7 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
           </div>
         )}
 
+        {/* Modal de confirmation blocage */}
         <ConfirmBlockModal
           isOpen={isConfirmModalOpen}
           onClose={() => setIsConfirmModalOpen(false)}

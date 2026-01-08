@@ -52,7 +52,7 @@ const ProfilPic = () => {
   };
 
   return (
-    <div className="min-h-screen bg-myGray3 relative px-4">
+    <div className="min-h-screen bg-myGray3 dark:bg-black relative px-4">
       <div className="flex justify-center items-center min-h-screen">
         <FormCard
           title={t("profilPic.title")}

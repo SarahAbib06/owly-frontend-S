@@ -63,26 +63,26 @@ export default function ParametresMenu({ selected, setSelected }) {
     }
   };
 
-  return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
-      className="
-        w-full md:w-[320px] 
-        bg-myGray4 dark:bg-mydarkGray3
-        rounded-2xl 
-        shadow-xl shadow-black/5 dark:shadow-black/20
-        border border-gray-200/50 dark:border-gray-700/50
-        backdrop-blur-sm
-        p-6
-        flex flex-col
-        gap-6
-        h-[500px]
-        relative
-        overflow-hidden
-      "
-    >
+return (
+  <motion.div
+    initial="hidden"
+    animate="visible"
+    variants={containerVariants}
+    className="
+      w-full md:w-[320px] 
+      bg-myGray4 dark:bg-mydarkGray3
+      rounded-2xl 
+      shadow-xl shadow-black/5 dark:shadow-black/20
+      border border-gray-200/50 dark:border-gray-700/50
+      backdrop-blur-sm
+      p-6
+      flex flex-col
+      gap-6
+      h-[500px]
+      sticky top-6
+      overflow-hidden
+    "
+  >
       {/* Gradient d'arrière-plan subtil */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#F9EE34]/5 via-transparent to-transparent opacity-50 pointer-events-none" />
       

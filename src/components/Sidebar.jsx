@@ -115,8 +115,8 @@ export default function Sidebar() {
             )}
           </NavLink>
 
-          {/* GROUPES */}
-          <NavLink to="/groupes">
+                    {/* JEUX */}
+          <NavLink to="/games">
             {({ isActive }) => (
               <motion.div 
                 whileHover="hover"
@@ -126,17 +126,21 @@ export default function Sidebar() {
               >
                 <div className={`p-2 mb-2 rounded-md transition-all duration-300 ${
                   isActive 
-                    ? "bg-black mb-3 dark:bg-[#F9EE34] shadow-lg" 
-                    : "hover:bg-gray-300 dark:hover:bg-gray-700"
+                    ? "bg-gradient-to-br from-green-600 to-teal-600 mb-3 shadow-lg shadow-green-500/50" 
+                    : "hover:bg-green-50 dark:hover:bg-green-900/30"
                 }`}>
-                  <Users className={`w-5 h-5 transition ${
+                  <Gamepad2 className={`w-5 h-5 transition ${
                     isActive 
-                      ? "text-white dark:text-black" 
-                      : "text-myBlack dark:text-white"
+                      ? "text-white" 
+                      : "text-myBlack dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400"
                   }`} />
                 </div>
-                <span className="text-[10px] -mt-3 text-myBlack dark:text-white">
-                  {t("sidebar.Groupe")}
+                <span className={`text-[10px] -mt-3 transition-all duration-300 ${
+                  isActive 
+                    ? "text-green-600 dark:text-green-400" 
+                    : "text-myBlack dark:text-white"
+                }`}>
+                  {t("sidebar.Jeux")}
                 </span>
               </motion.div>
             )}
@@ -189,36 +193,7 @@ export default function Sidebar() {
             )}
           </NavLink>
 
-          {/* JEUX */}
-          <NavLink to="/games">
-            {({ isActive }) => (
-              <motion.div 
-                whileHover="hover"
-                whileTap="tap"
-                variants={iconHoverVariants}
-                className="flex flex-col items-center gap-0.5 group"
-              >
-                <div className={`p-2 mb-2 rounded-md transition-all duration-300 ${
-                  isActive 
-                    ? "bg-gradient-to-br from-green-600 to-teal-600 mb-3 shadow-lg shadow-green-500/50" 
-                    : "hover:bg-green-50 dark:hover:bg-green-900/30"
-                }`}>
-                  <Gamepad2 className={`w-5 h-5 transition ${
-                    isActive 
-                      ? "text-white" 
-                      : "text-myBlack dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400"
-                  }`} />
-                </div>
-                <span className={`text-[10px] -mt-3 transition-all duration-300 ${
-                  isActive 
-                    ? "text-green-600 dark:text-green-400" 
-                    : "text-myBlack dark:text-white"
-                }`}>
-                  {t("sidebar.Jeux")}
-                </span>
-              </motion.div>
-            )}
-          </NavLink>
+
         </div>
 
         {/* BOTTOM */}
@@ -317,35 +292,6 @@ export default function Sidebar() {
                   : "text-gray-600 dark:text-gray-400"
               }`}>
                 {t("sidebar.Message")}
-              </span>
-            </motion.div>
-          )}
-        </NavLink>
-
-        {/* GROUPES */}
-        <NavLink to="/groupes">
-          {({ isActive }) => (
-            <motion.div 
-              whileTap={{ scale: 0.9 }}
-              className="flex flex-col items-center gap-1"
-            >
-              <div className={`p-2.5 rounded-xl transition-all duration-300 ${
-                isActive 
-                  ? "bg-gradient-to-br from-black to-gray-800 dark:from-[#F9EE34] dark:to-yellow-400" 
-                  : "bg-transparent"
-              }`}>
-                <Users className={`w-6 h-6 transition-all duration-300 ${
-                  isActive 
-                    ? "text-white dark:text-black" 
-                    : "text-gray-600 dark:text-gray-400"
-                }`} />
-              </div>
-              <span className={`text-[10px] font-medium transition-all duration-300 ${
-                isActive 
-                  ? "text-black dark:text-[#F9EE34]" 
-                  : "text-gray-600 dark:text-gray-400"
-              }`}>
-                {t("sidebar.Groupe")}
               </span>
             </motion.div>
           )}

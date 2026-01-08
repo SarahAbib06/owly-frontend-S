@@ -11,6 +11,11 @@ import UtilisateursBloques from "../components/UtilisateursBloques";
 import ModifierMotDePasse from "../components/ModefierMotDePasse";
 import ParametresNotification from "../components/ParametresNotification";
 import BanniereNotification from "../components/BanniereNotification";
+import SupprimerCompte from "../components/SupprimerCompte";
+
+
+
+
 
 export default function SettingsPage() {
   const [searchParams] = useSearchParams();
@@ -111,6 +116,11 @@ export default function SettingsPage() {
                 setPrivacySubPage={setPrivacySubPage}
               />
             )}
+            {privacySubPage === "SupprimerCompte" && (
+  <SupprimerCompte 
+    setPrivacySubPage={setPrivacySubPage}
+  />
+)}
           </>
         )}
 

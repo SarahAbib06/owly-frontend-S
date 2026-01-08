@@ -64,7 +64,7 @@ const Login = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-myGray3 px-4 relative py-6">
+    <div className="flex justify-center items-center min-h-screen bg-myGray3 dark:bg-black px-4 relative py-6">
       <FormCard 
         title={t("login.welcome")} 
         subtitle={t("login.subtitle")} 

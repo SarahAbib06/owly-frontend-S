@@ -42,7 +42,21 @@
   "title": "Vérifier votre code OTP",
   "description": "Nous avons envoyé un code de vérification à 6 chiffres à votre adresse e-mail.",
   "code": "Code OTP",
-  "verify": "Vérifier et continuer"
+  "verify": "Vérifier et continuer",
+  "sentTo": "Code envoyé à",
+   "verifying": "Vérification...",
+    "resend": "Renvoyer le code",
+
+    "success": "Compte créé avec succès !",
+    "successLogin": "Connexion réussie !",
+    "resent": "Code renvoyé avec succès !",
+
+    "errors": {
+      "incomplete": "Code OTP incomplet",
+      "invalid": "Code OTP invalide",
+      "resendFailed": "Erreur lors du renvoi"
+    }
+
 },
 "chat": {
     "today": "Aujourd’hui",
@@ -60,10 +74,7 @@
     "blockedByOther": "Vous ne pouvez pas envoyer de message à cette personne"
 
   },
-   "messages": {
-    "searchFriends": "Rechercher dans vos amis..."
-  },
-  
+   
   "sidebar": {
     "Owly": "Owly",
     "Message": "Message",
@@ -158,7 +169,9 @@
     "BlockedUsers": "Utilisateurs bloqués",
     "BlockedUsersCount": "utilisateur(s) bloqué(s)",
     "ChangePassword": "Modifier le mot de passe",
-    "ChangePasswordDesc": "Changer votre mot de passe actuel"
+    "ChangePasswordDesc": "Changer votre mot de passe actuel",
+     "DeleteAccount": "Supprimer le compte",
+    "DeleteAccountDesc": "Supprimer définitivement votre compte"
   },
   "derniereConnexion": {
     "Title": "Dernière connexion",
@@ -319,11 +332,160 @@
     "cancel": "Annuler",
     "confirm": "Supprimer"
 
-  }
-
-
- 
+  },
   
+  "confirmArchiveModal": {
+    "archiveTitle": "Archiver {{name}} ?",
+    "unarchiveTitle": "Désarchiver {{name}} ?",
+    "archiveDescription": "Cette conversation sera déplacée dans les archives. Vous pourrez la restaurer à tout moment.",
+    "unarchiveDescription": "Cette conversation sera restaurée dans vos conversations actives.",
+    "cancel": "Annuler",
+    "archive": "Archiver",
+    "unarchive": "Désarchiver"
+  },
+  "supprimerCompte": {
+    "titre": "Supprimer le compte",
+    "attention": "Attention : Cette action est irréversible",
+    "avertissement": "La suppression de votre compte entraînera la perte définitive de toutes vos données, conversations et paramètres.",
+    "sousTitre": "Pour confirmer la suppression, veuillez entrer votre mot de passe",
+    "motDePasse": "Entrez votre mot de passe",
+    "annuler": "Annuler",
+    "confirmer": "Supprimer ",
+    "enCours": "Suppression..."
+
+  },
+    "messages": {
+    "searchFriends": "Rechercher des amis",
+    "noConversations": "Aucune conversation",
+    "noMessages": "Aucun message",
+    "loading": "Chargement...",
+    "noArchivedConversations": "Aucune conversation archivée",
+    "noGroupe": "Aucun groupe",
+    "all": "Tout",
+    "groups": "Groupes",
+    "searchGroupe": "Rechercher un groupe"
+
+  },
+  "buttons": {
+    "newChat": "Nouvelle discussion"
+  },
+  "common": {
+    "user": "Utilisateur"
+  },
+  "rockPaper": {
+    "title": "Pierre Papier Ciseaux",
+    "player": "Joueur",
+    "bot": "Bot",
+    "result": {
+      "win": "Victoire !",
+      "lose": "Défaite...",
+      "draw": "Égalité !"
+    },
+    "back": "Retour"
+  },
+   "memoryGame": {
+    "timeLeft": "⏳ Temps restant",
+    "level": "Niveau",
+   "start": "Démarrer",
+    "pause": "Pause",
+    "reset": "Réinitialiser",
+    "next": "➡ Continuer",
+    "replay": "🔄 Rejouer",
+    "levelCompleted": "🎉 Niveau terminé !",
+    "timeOver": "⏱ Temps écoulé ! Recommence depuis le niveau 1 !",
+    "back": "Retour"
+  },
+  "guessNumber": {
+    "title": "Devine le Nombre",
+    "startMessage": "🎯 Devine le nombre entre 1 et {{max}} !",
+    "invalid": "❌ Entre un nombre entre 1 et {{max}} !",
+    "win": "🎉 BRAVO ! Tu as trouvé en {{count}} tentative !",
+    "win_plural": "🎉 BRAVO ! Tu as trouvé en {{count}} tentatives !",
+
+    "attempts": "Tentatives",
+    "placeholder": "Ton nombre...",
+    "go": "GO !",
+    "replay": "Rejouer",
+
+    "history": "Tes tentatives",
+
+    "easy": "Facile",
+    "medium": "Moyen",
+    "hard": "Difficile",
+
+    "hot": "🔥 BRÛLANT !",
+    "warm": "🌡️ Chaud !",
+    "cool": "😐 Tiède",
+    "cold": "❄️ Froid",
+
+    "higher": "📈 C'est plus HAUT !",
+    "lower": "📉 C'est plus BAS !"
+  },
+  "higher": "C'est plus HAUT !",
+    "lower": "C'est plus BAS !",
+
+"owlyQuiz": {
+    "title": "Owly Quiz",
+    "intro": "Ce jeu raconte l'histoire d'Owly. Pour la découvrir, réussis chaque défi.",
+
+    "btn": {
+      "start": "Commencer",
+      "nextChallenge": "Prochain défi",
+      "retry": "🔁 Réessayer ce défi",
+      "restart": "Recommencer le jeu",
+      "replay": "Rejouer"
+    },
+
+    "puzzle": {
+      "title": "Puzzle — reconstitue l'image",
+      "timer": "Temps"
+    },
+
+    "memory": {
+      "title": "Défi mémoire"
+    },
+
+    "cups": {
+      "title": "Défi rapidité & logique — Trouve la boule !"
+    },
+
+    "observation": {
+      "title": "Défi d'observation visuelle",
+      "question": "Quel symbole était à la position {{pos}} ?"
+    },
+
+    "final": {
+   
+     "title": "Question finale",
+      "question": "Que symbolise Owly dans l’histoire ?",
+      "options": ["Pouvoir", "Connexion", "Richesse", "Secret"]
+  
+    },
+
+    "stages": {
+      "gameOver": "💥 Game Over",
+      "lostText": "Tu as échoué. Réessaye pour continuer l'histoire d'Owly."
+    },
+
+    "story": [
+  "Rayane avance dans la ville, observant les gens autour de lui. La rue est animée, remplie de mouvements, de rires et de passants pressés.",
+  "Il remarque une chouette lumineuse perchée sur un lampadaire, et un frisson de curiosité parcourt son dos.",
+  "Intrigué, il suit la chouette à travers les ruelles, découvrant des symboles mystérieux peints sur les murs et les vitrines.",
+  "La ville semble s’illuminer peu à peu, comme si chaque pas de Rayane révélait un secret caché depuis longtemps.",
+  "Finalement, la chouette se pose sur une place tranquille. Rayane s’approche et comprend le message qu’Owly veut lui transmettre."
+],
+
+"storySummary": [
+  "Rayane traverse la ville et remarque une chouette lumineuse qui attire son attention.",
+  "Sa curiosité grandit et il décide de suivre le symbole mystérieux.",
+  "Les rues s’illuminent et révèlent des indices sur l’histoire d’Owly.",
+  "Finalement, Owly lui transmet son message, concluant ainsi l’aventure."
+],
+  "finished": {
+      "title": "Histoire complète d'Owly"
+    }
+  
+}
 }
 
 
