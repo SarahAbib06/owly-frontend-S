@@ -4,16 +4,15 @@ import { useNavigate } from "react-router-dom";
 import clickSound from "../assets/sounds/click.wav";
 import winSound from "../assets/sounds/win.wav";
 import loseSound from "../assets/sounds/lose.wav";
+import { IoArrowBackOutline } from "react-icons/io5";
+
+import { useTranslation } from "react-i18next";
 
 const OWLY_IMAGE = "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=600&q=60";
 const MEMORY_ICONS = ["🌿", "🌸", "⭐", "🐦"];
-const STORY_PARAGRAPHS = [
-  "Owly est né au cœur de la forêt d'Early, sous les étoiles. Dès son plus jeune âge, il montra une curiosité insatiable pour les mystères de la nature et les secrets des anciens arbres majestueux qui peuplaient la forêt. Son premier objectif fut d'apprendre à connaître les sons de la forêt et à identifier chaque créature par ses chants.",
-  "Après le premier triomphe, Owly comprit que la forêt avait une logique et un ordre subtil. Il réalisa que chaque chemin, chaque rivière et chaque arbre avait un rôle précis dans l'écosystème. Ses nouvelles aventures lui apprirent l'importance de l'observation attentive et de la patience.",
-  "Les épreuves suivantes apprirent à Owly la patience et la mémoire. Il devait se souvenir des séquences des fleurs, des chants des oiseaux, et des couleurs des feuilles à travers les saisons. Chaque succès renforçait sa confiance et sa compréhension de l'environnement qui l'entourait.",
-  "Avant le dernier défi, Owly rencontra des créatures fantastiques. Chacune lui enseigna une leçon unique sur le courage, la logique et la créativité. Il devait utiliser toutes ces compétences combinées pour résoudre des énigmes complexes et naviguer à travers les labyrinthes de la forêt.",
-  "Enfin, Owly découvrit la clairière des sages, un lieu mystique où la lumière filtrait à travers un dôme de feuilles scintillantes. Ici, il comprit la valeur de la sagesse, du partage et de la curiosité. Son parcours le transforma profondément et il était désormais prêt à transmettre ses connaissances."
-];
+
+
+
 
 const PUZZLE_PIECES = [
   { id: 0, order: 0 },
@@ -25,6 +24,8 @@ const PUZZLE_PIECES = [
 ];
 
 function playSound(sound) {
+    
+
   try { const a = new Audio(sound); a.volume = 0.75; a.play().catch(()=>{}); } catch(e){}
 }
 
@@ -49,6 +50,9 @@ function pieceBgPos(idx){
 }
 
 export default function OwlyQuiz(){
+  const { t } = useTranslation();
+   const STORY_PARAGRAPHS = t("owlyQuiz.story", { returnObjects: true });
+const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
   const navigate = useNavigate();
   const [stage,setStage]=useState("intro");
   const [storyIndex,setStoryIndex]=useState(0);
@@ -72,7 +76,7 @@ export default function OwlyQuiz(){
   const [obsOptions,setObsOptions] = useState([]);
   const [showGrid,setShowGrid] = useState(true);
 
-  const [finalQues,setFinalQues]=useState({question:"Quel est le message final ?",options:["Gagner","Apprendre","Protéger","Dormir"],correct:2});
+  const [finalQues,setFinalQues]=useState({question:"Que symbolise Owly dans l’histoire ?",options:["Pouvoir", "Connexion", "Richesse", "Secret"],correct:2});
 
   const [windowWidth,setWindowWidth] = useState(window.innerWidth);
 
@@ -162,7 +166,11 @@ export default function OwlyQuiz(){
     }
 
     if(type==="finalPuzzle"){
-      setFinalQues({question:"Quel est le message final ?",options:shuffleArray(["Gagner","Apprendre","Protéger","Dormir"]),correct:2});
+       setFinalQues({
+    question: t("owlyQuiz.final.question"),
+    options: shuffleArray(t("owlyQuiz.final.options", { returnObjects: true })),
+    correct: 2
+  });
     }
 
     setStage("challenge");
@@ -198,13 +206,18 @@ export default function OwlyQuiz(){
     if(i===finalQues.correct) onWin(); else onFail();
   };
 
-  const onWin=()=>{
-    playSound(winSound);
-    if(timerRef.current) clearInterval(timerRef.current);
-    setStage("story");
-    setStoryIndex(prev=>prev+1);
-  };
+ const onWin = () => {
+  playSound(winSound);
+  if (timerRef.current) clearInterval(timerRef.current);
 
+  // Si c’est le dernier paragraphe
+  if (storyIndex + 1 >= STORY_PARAGRAPHS.length) {
+    setStage("finished");
+  } else {
+    setStage("story");
+    setStoryIndex(prev => prev + 1);
+  }
+};
   const onFail=()=>{
     playSound(loseSound);
     if(timerRef.current) clearInterval(timerRef.current);

@@ -309,11 +309,120 @@
     "cancel": "Annuler",
     "confirm": "Supprimer"
 
-  }
+  },"rockPaper": {
+    "title": "Pierre Papier Ciseaux",
+    "player": "Joueur",
+    "bot": "Bot",
+    "result": {
+      "win": "Victoire !",
+      "lose": "Défaite...",
+      "draw": "Égalité !"
+    },
+    "back": "Retour"
+  },
+   "memoryGame": {
+    "timeLeft": "⏳ Temps restant",
+    "level": "Niveau",
+   "start": "Démarrer",
+    "pause": "Pause",
+    "reset": "Réinitialiser",
+    "next": "➡ Continuer",
+    "replay": "🔄 Rejouer",
+    "levelCompleted": "🎉 Niveau terminé !",
+    "timeOver": "⏱ Temps écoulé ! Recommence depuis le niveau 1 !",
+    "back": "Retour"
+  },
+  "guessNumber": {
+    "title": "Devine le Nombre",
+    "startMessage": "🎯 Devine le nombre entre 1 et {{max}} !",
+    "invalid": "❌ Entre un nombre entre 1 et {{max}} !",
+    "win": "🎉 BRAVO ! Tu as trouvé en {{count}} tentative !",
+    "win_plural": "🎉 BRAVO ! Tu as trouvé en {{count}} tentatives !",
 
+    "attempts": "Tentatives",
+    "placeholder": "Ton nombre...",
+    "go": "GO !",
+    "replay": "Rejouer",
 
- 
+    "history": "Tes tentatives",
+
+    "easy": "Facile",
+    "medium": "Moyen",
+    "hard": "Difficile",
+
+    "hot": "🔥 BRÛLANT !",
+    "warm": "🌡️ Chaud !",
+    "cool": "😐 Tiède",
+    "cold": "❄️ Froid",
+
+    "higher": "📈 C'est plus HAUT !",
+    "lower": "📉 C'est plus BAS !"
+  },
+  "higher": "C'est plus HAUT !",
+    "lower": "C'est plus BAS !",
+
+"owlyQuiz": {
+    "title": "Owly Quiz",
+    "intro": "Ce jeu raconte l'histoire d'Owly. Pour la découvrir, réussis chaque défi.",
+
+    "btn": {
+      "start": "Commencer",
+      "nextChallenge": "Prochain défi",
+      "retry": "🔁 Réessayer ce défi",
+      "restart": "Recommencer le jeu",
+      "replay": "Rejouer"
+    },
+
+    "puzzle": {
+      "title": "Puzzle — reconstitue l'image",
+      "timer": "Temps"
+    },
+
+    "memory": {
+      "title": "Défi mémoire"
+    },
+
+    "cups": {
+      "title": "Défi rapidité & logique — Trouve la boule !"
+    },
+
+    "observation": {
+      "title": "Défi d'observation visuelle",
+      "question": "Quel symbole était à la position {{pos}} ?"
+    },
+
+    "final": {
+   
+     "title": "Question finale",
+      "question": "Que symbolise Owly dans l’histoire ?",
+      "options": ["Pouvoir", "Connexion", "Richesse", "Secret"]
   
+    },
+
+    "stages": {
+      "gameOver": "💥 Game Over",
+      "lostText": "Tu as échoué. Réessaye pour continuer l'histoire d'Owly."
+    },
+
+    "story": [
+  "Rayane avance dans la ville, observant les gens autour de lui. La rue est animée, remplie de mouvements, de rires et de passants pressés.",
+  "Il remarque une chouette lumineuse perchée sur un lampadaire, et un frisson de curiosité parcourt son dos.",
+  "Intrigué, il suit la chouette à travers les ruelles, découvrant des symboles mystérieux peints sur les murs et les vitrines.",
+  "La ville semble s’illuminer peu à peu, comme si chaque pas de Rayane révélait un secret caché depuis longtemps.",
+  "Finalement, la chouette se pose sur une place tranquille. Rayane s’approche et comprend le message qu’Owly veut lui transmettre."
+],
+
+"storySummary": [
+  "Rayane traverse la ville et remarque une chouette lumineuse qui attire son attention.",
+  "Sa curiosité grandit et il décide de suivre le symbole mystérieux.",
+  "Les rues s’illuminent et révèlent des indices sur l’histoire d’Owly.",
+  "Finalement, Owly lui transmet son message, concluant ainsi l’aventure."
+],
+  "finished": {
+      "title": "Histoire complète d'Owly"
+    }
+  
+}
 }
 
 

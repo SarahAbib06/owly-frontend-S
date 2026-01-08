@@ -299,6 +299,24 @@ const handleOnline = ({ userId }) => {
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
+  // 🔹 Écoute les thèmes envoyés par l'autre participant
+useEffect(() => {
+  if (!socketService.socket || !selectedChat) return;
+
+  const handleThemeChange = ({ conversationId, theme }) => {
+    if (conversationId === selectedChat._id) {
+      console.log("Thème reçu via socket:", theme);
+      applyTheme(theme, false); // applique le thème reçu mais ne sauvegarde pas localStorage
+    }
+  };
+
+  socketService.socket.on("themeChanged", handleThemeChange);
+
+  return () => {
+    socketService.socket.off("themeChanged", handleThemeChange);
+  };
+}, [selectedChat]);
+
   const [bubbleBg, setBubbleBg] = useState("");
   const [sendBtnColor, setSendBtnColor] = useState("");
   const [themeEmojis, setThemeEmojis] = useState([]);
@@ -418,7 +436,6 @@ socketService.socket.on('call:accepted', (data) => {
 
    
 
-
     return () => {
       // Nettoyage
       if (socketService.socket) {
@@ -519,6 +536,7 @@ file.type.startsWith("video/")) {
 
   // Gestion du thème
   const applyTheme = async (theme, save = true) => {
+     console.log("Thème sélectionné :", theme); // <-- AJOUTE ÇA
     let style = {};
     setThemeEmojis([]);
 
@@ -683,13 +701,15 @@ const handleAcceptCall = () => {
       : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:!text-white rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-4 text-xs";
 
   // Nom de la conversation
-const conversationName = selectedChat?.isGroup
+  const conversationName = selectedChat?.isGroup
   ? selectedChat.groupName
-  : otherParticipant?.username || "Utilisateur";
+  : otherUserName || "Utilisateur";
 
 const conversationAvatar = selectedChat?.isGroup
   ? "/group-avatar.png"
-  : otherParticipant?.profilePicture || "/default-avatar.png";
+  : selectedChat?.participants?.find(
+      participant => String(participant._id) === String(otherUserId)
+    )?.profilePicture || "/default-avatar.png";
 
   // 🔥 Composant Message CORRIGÉ
   const MessageBubble = ({ msg }) => {
