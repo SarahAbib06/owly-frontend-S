@@ -38,6 +38,9 @@ import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
 import MessageRequestBanner from "./MessageRequestBanner";
 
+
+
+
     
 
 
@@ -122,6 +125,8 @@ export default function ChatWindow({ selectedChat, onBack }) {
 const [selectedTargetConversation, setSelectedTargetConversation] = useState(null);
 const [showForwardModal, setShowForwardModal] = useState(false);
 const [messageToForward, setMessageToForward] = useState(null);
+const [deletedMessages, setDeletedMessages] = useState([]); // ajouter pour supprimer le message
+
 
 const { conversations: myConversations, loading: convLoading } = useConversations();
 
@@ -225,6 +230,9 @@ useEffect(() => {
 }, [contactStatus.lastSeen, contactStatus.isOnline]);
 
 
+
+
+
 console.log("selectedChat:", selectedChat, "user:", user);
 const contactId = React.useMemo(() => {
   if (!selectedChat || selectedChat.isGroup || !user) return null;
@@ -253,6 +261,37 @@ useEffect(() => {
     })
     .catch(err => console.error("Erreur statut:", err));
 }, [contactId]);
+
+
+// Après les autres useEffect (vers la fin du composant, avant les returns), ajoute :
+// ajouter pour supprimer 
+// Sauvegarder les messages supprimés
+useEffect(() => {
+  if (selectedChat?._id && deletedMessages.length > 0) {
+    localStorage.setItem(
+      `deleted_${selectedChat._id}`,
+      JSON.stringify(deletedMessages)
+    );
+  }
+}, [deletedMessages, selectedChat?._id]);
+
+
+// ajouter pour supprimer 
+// Charger les messages supprimés au démarrage
+useEffect(() => {
+  if (selectedChat?._id) {
+    const saved = localStorage.getItem(`deleted_${selectedChat._id}`);
+    if (saved) {
+      try {
+        setDeletedMessages(JSON.parse(saved));
+      } catch (e) {
+        console.error("Erreur chargement messages supprimés:", e);
+      }
+    }
+  }
+}, [selectedChat?._id]);
+
+// Fin de l'ajout 
 
 // --- useEffect pour écouter les changements en temps réel via socket ---
 useEffect(() => {
@@ -705,14 +744,20 @@ const handleAcceptCall = () => {
   ? selectedChat.groupName
   : otherUserName || "Utilisateur";
 
+
 const conversationAvatar = selectedChat?.isGroup
   ? "/group-avatar.png"
   : selectedChat?.participants?.find(
       participant => String(participant._id) === String(otherUserId)
     )?.profilePicture || "/default-avatar.png";
 
+
+  // Modifier pour supprimer message 
+  // avant 
+  // const MessageBubble = ({ msg }) => {
+  // Apres
   // 🔥 Composant Message CORRIGÉ
-  const MessageBubble = ({ msg }) => {
+ const MessageBubble = ({ msg, deletedMessages, setDeletedMessages }) => {
     const longPressTimer = useRef(null);
 
     const startLongPress = () => {
@@ -720,6 +765,8 @@ const conversationAvatar = selectedChat?.isGroup
         setShowMessageMenu(msg._id);
       }, 500);
     };
+
+   
 
     const cancelLongPress = () => {
       if (longPressTimer.current) {
@@ -787,17 +834,16 @@ const conversationAvatar = selectedChat?.isGroup
         console.error("Erreur épinglage:", error);
       }
     };
+    
+    // Modifier pour supprimer 
+   const handleDeleteMessage = (msgId) => {
+  if (window.confirm("Supprimer ce message pour moi ?")) {
+    // Ajouter à la liste des messages supprimés
+    setDeletedMessages(prev => [...prev, msgId]);
+    setShowMessageMenu(null);
+  }
+};
 
-    const handleDeleteMessage = async () => {
-      if (window.confirm("Supprimer ce message ?")) {
-        try {
-          await deleteMessage(msg._id);
-          setShowMessageMenu(null);
-        } catch (error) {
-          console.error("Erreur suppression:", error);
-        }
-      }
-    };
     
 
 
@@ -957,7 +1003,7 @@ useEffect(() => {
                 </button>
                 {fromMe && (
                   <button
-                    onClick={handleDeleteMessage}
+                    onClick={() => handleDeleteMessage(msg._id)}
                     className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-500"
                   >
                     <Trash2 size={16} /> Supprimer
@@ -1003,14 +1049,18 @@ useEffect(() => {
             </div>
           )}
 
+          
           <div
-            className={`text-[8px] mt-1 flex items-center gap-1 ${
-              fromMe ? "justify-end" : "justify-start"
-            } text-gray-700 dark:text-gray-300`}
-          >
-            <span>{messageTime}</span>
-            {fromMe && msg.seen && <SeenIconGray />}
-          </div>
+  className={`text-[8px] mt-1 flex items-center gap-1 ${
+    fromMe ? "justify-end" : "justify-start"
+  } text-gray-700 dark:text-gray-300`}
+>
+  <span>{messageTime}</span>
+  {fromMe && msg.seen && <SeenIconGray />}
+</div>
+
+
+         
         </div>
       </div>
     );
@@ -1342,25 +1392,34 @@ useEffect(() => {
           setShowReactionPicker(null);
         }}
       >
-        {messages.map((msg, i) => {
-          const showDate =
-            i === 0 ||
-            messages[i - 1].createdAt?.split("T")[0] !==
-              msg.createdAt?.split("T")[0];
 
-          return (
-            <div key={msg._id}>
-{showDate && (
-  <div className="flex justify-center my-3">
-    <span className="bg-myYellow2 dark:bg-mydarkYellow text-gray-900 text-[10px] px-5 py-2 rounded-lg">
-      {formatDateLabel(msg.createdAt, t)}
-    </span>
-  </div>
-)}
-              <MessageBubble msg={msg} index={i} />
-            </div>
-          );
-        })}
+        {/*Modifier pour supprimer  */}
+        {messages
+  .filter(msg => !deletedMessages.includes(msg._id))
+  .map((msg, i) => {
+    const showDate =
+      i === 0 ||
+      messages[i - 1].createdAt?.split("T")[0] !==
+        msg.createdAt?.split("T")[0];
+
+    return (
+      <div key={msg._id}>
+        {showDate && (
+          <div className="text-center text-[10px] text-gray-700 dark:text-gray-300 my-2">
+            {formatDateLabel(msg.createdAt, t)}
+          </div>
+        )}
+        <MessageBubble 
+          msg={msg} 
+          index={i}
+          deletedMessages={deletedMessages}
+          setDeletedMessages={setDeletedMessages}
+        />
+      </div>
+    );
+  })}
+
+  {/*fin de modification*/}
         <div ref={messagesEndRef} />
       </main>
 
