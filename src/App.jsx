@@ -17,7 +17,7 @@ import MainLayout from "./components/MainLayout";
 import SettingsPage from "./pages/SettingsPage";
 import ForgotPassword from "./pages/ForgotPassword";
 
-import VideoCall from "./components/VideoCall";
+
 import ProtectedRoute from "./components/ProtectedRoute";
 import MemoryGame from "./components/MemoryGame";
 
@@ -91,14 +91,7 @@ export default function App() {
                 }
               />
 
-              <Route
-                path="/video-call"
-                element={
-                  <ProtectedRoute>
-                    <VideoCall roomId="room123" />
-                  </ProtectedRoute>
-                }
-              />
+              
 
               <Route
                 path="/tic-tac-toe2"
