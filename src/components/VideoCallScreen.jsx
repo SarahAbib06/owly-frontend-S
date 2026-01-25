@@ -447,30 +447,45 @@ socket.on('call-ended', (data) => {
     }
   };
 
-  const endCall = async () => {
-    console.log("📞 Fin de l'appel demandée");
+ const endCall = async () => {
+  console.log("📞 Fin de l'appel demandée");
 
-    clearInterval(callTimerRef.current);
-    setDebugInfo("Fin de l'appel...");
+  clearInterval(callTimerRef.current);
+  setDebugInfo("Fin de l'appel...");
 
-    // ✅ CORRECTION 1: NE PAS mettre agoraStartedRef.current = false ici
-    // Laisser le leaveChannel() gérer cela
-    // agoraStartedRef.current = false; // ❌ SUPPRIMÉ
+  // ✅ Vérifier si l'appel était en cours de sonnerie (non accepté)
+  const wasRinging = callStatus === 'calling' || !isCallActive;
 
-    // ✅ ENVOYER chatId POUR CRÉER LE MESSAGE D'APPEL
+  // ✅ ENVOYER L'ÉVÉNEMENT APPROPRIÉ
+  if (wasRinging) {
+    // 🚫 L'appel n'a jamais été accepté → ANNULER
+    console.log('🚫 Annulation appel en cours de sonnerie');
+    
+    socketService.socket?.emit("cancel-call", {
+      chatId: callChat?._id,
+      channelName: channelNameRef.current,
+      callType: currentCallType,
+      callId: null, // Si vous stockez le callId, mettez-le ici
+      recipientId: callChat?.participants?.find(
+        p => (p._id || p.id) !== (user._id || user.id)
+      )?._id
+    });
+  } else {
+    // 📞 L'appel était actif → TERMINER NORMALEMENT
+    console.log('📞 Fin appel actif');
+    
     socketService.socket?.emit("end-call", {
-  chatId: callChat?._id,
-  channelName: channelNameRef.current
-});
+      chatId: callChat?._id,
+      channelName: channelNameRef.current
+    });
+  }
 
+  // 🔌 Quitter Agora localement
+  await agoraService.leaveChannel();
 
-    // 🔌 Quitter Agora localement
-    await agoraService.leaveChannel();
-
-    // 🧹 Nettoyage UI
-    handleEndCall();
-  };
-
+  // 🧹 Nettoyage UI
+  handleEndCall();
+};
   const handleEndCall = () => {
     setIsCallActive(false);
     setIsCalling(false);
