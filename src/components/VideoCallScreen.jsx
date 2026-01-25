@@ -391,61 +391,52 @@ socket.on('call-ended', (data) => {
     }
   };
 
-  const startAgoraCall = async (token, channel, uid) => {
-    console.log("🧪 START AGORA CALL", {
+ const startAgoraCall = async (token, channel, uid) => {
+  console.log("🧪 START AGORA CALL", { channel, uid, isAudioCall });
+
+  if (isCallActive) {
+    console.warn("⚠️ Agora déjà actif, abort startAgoraCall");
+    return;
+  }
+  
+  try {
+    console.log('🚀 Démarrage appel Agora:', { channel, uid, isAudioCall });
+    setDebugInfo('Connexion à Agora...');
+    
+    const result = await agoraService.joinChannel(
       channel,
+      token,
       uid,
       isAudioCall
-    });
-
-    if (isCallActive) {
-      console.warn("⚠️ Agora déjà actif, abort startAgoraCall");
-      return;
-    }
+    );
     
-    try {
-      console.log('🚀 Démarrage appel Agora:', { channel, uid, isAudioCall });
-      setDebugInfo('Connexion à Agora...');
+    if (result.success) {
+      setIsCallActive(true);
+      setCallStatus('in-call');
+      setIsCalling(false);
+      setDebugInfo(`Connecté au canal: ${channel}`);
       
-      const result = await agoraService.joinChannel(
-        channel,
-        token,
-        uid,
-        isAudioCall
-      );
+      // 🔥 CORRECTION 2 : Rejoindre la room Socket.IO
+      socketService.socket.emit('join-call-room', channel);
+      console.log("✅ Room Socket.IO rejointe:", channel);
       
-      if (result.success) {
-        setIsCallActive(true);
-        setCallStatus('in-call');
-        setIsCalling(false);
-        setDebugInfo(`Connecté au canal: ${channel}`);
-        
-        console.log('📊 État Agora après connexion:', {
-          channel: channel,
-          localVideo: !!agoraService.localVideoTrack,
-          localAudio: !!agoraService.localAudioTrack,
-          isAudioCall: isAudioCall
-        });
-        
-        socketService.socket.emit('join-call-room', channel);
-        
-        callTimerRef.current = setInterval(() => {
-          setCallDuration(prev => prev + 1);
-        }, 1000);
-        
-        console.log('✅ Appel Agora démarré avec succès sur channel:', channel);
-        
-      } else {
-        throw new Error(result.error?.message || 'Échec de connexion Agora');
-      }
-    } catch (error) {
-      console.error('Erreur démarrage Agora:', error);
-      setDebugInfo(`Erreur Agora: ${error.message}`);
-      setCallStatus('idle');
-      agoraStartedRef.current = false;
-      handleEndCall();
+      callTimerRef.current = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+      
+      console.log('✅ Appel Agora démarré avec succès sur channel:', channel);
+      
+    } else {
+      throw new Error(result.error?.message || 'Échec de connexion Agora');
     }
-  };
+  } catch (error) {
+    console.error('Erreur démarrage Agora:', error);
+    setDebugInfo(`Erreur Agora: ${error.message}`);
+    setCallStatus('idle');
+    agoraStartedRef.current = false;
+    handleEndCall();
+  }
+};
 
  const endCall = async () => {
   console.log("📞 Fin de l'appel demandée");

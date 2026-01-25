@@ -14,7 +14,7 @@ const CallContext = createContext();
 export const CallProvider = ({ children }) => {
   const [incomingCall, setIncomingCall] = useState(null);
   const [showIncomingCallModal, setShowIncomingCallModal] = useState(false);
-  const [acceptedCall, setAcceptedCall] = useState(null); // ✅ 1️⃣ État ajouté
+  const [acceptedCall, setAcceptedCall] = useState(null);
 
   const ringtoneRef = useRef(null);
   const navigate = useNavigate();
@@ -43,24 +43,33 @@ export const CallProvider = ({ children }) => {
     playRingtone();
   }, []);
 
-  /* ✅ Accepter - MODIFIÉ selon l'instruction 2️⃣ */
+  /* ✅ Accepter - CORRIGÉ */
   const acceptCall = useCallback(() => {
     if (!incomingCall) return;
 
     stopRingtone();
     setShowIncomingCallModal(false);
 
-    // ✅ ÉTAPE 2 — Émission unifiée avec callType
-    socketService.socket?.emit("accept-call", {
+    // 🔥 CORRECTION 1 : Utiliser le BON nom d'événement
+    socketService.socket?.emit("call-accepted", {
       channelName: incomingCall.channelName,
       callerSocketId: incomingCall.callerSocketId,
-      callType: incomingCall.callType, // 🔥 CLÉ - détermine audio ou vidéo
+      callType: incomingCall.callType,
+      chatId: incomingCall.chatId, // ✅ Ajouté
     });
 
-    // 🔥 CLÉ : déclenche l'affichage de VideoCallScreen
-    setAcceptedCall(incomingCall);
+    console.log("✅ Appel accepté - Événement 'call-accepted' émis");
 
-    // 🔥 NETTOYAGE ABSOLU (manquant chez toi)
+    // 🔥 Déclencher l'affichage de VideoCallScreen
+    setAcceptedCall({
+      ...incomingCall,
+      // ✅ GARANTIR que ces props existent
+      channelName: incomingCall.channelName,
+      callType: incomingCall.callType,
+      chatId: incomingCall.chatId,
+    });
+
+    // 🔥 Nettoyage
     setIncomingCall(null);
 
     localStorage.setItem(
@@ -75,11 +84,15 @@ export const CallProvider = ({ children }) => {
 
     stopRingtone();
     setShowIncomingCallModal(false);
-    setAcceptedCall(null); // ✅ Réinitialise l'appel accepté
+    setAcceptedCall(null);
 
     socketService.socket?.emit("reject-call", {
+      channelName: incomingCall.channelName,
+      callerSocketId: incomingCall.callerSocketId,
+      callType: incomingCall.callType,
+      reason: "busy",
+      chatId: incomingCall.chatId,
       callId: incomingCall.callId,
-      receiverId: localStorage.getItem("userId"),
     });
 
     setIncomingCall(null);
@@ -90,11 +103,9 @@ export const CallProvider = ({ children }) => {
     const socket = socketService.socket;
     if (!socket) return;
 
-    // ✅ ÉTAPE 1 — Un seul event unifié
     socket.on("incoming-call", handleIncomingCall);
 
     return () => {
-      // ✅ ÉTAPE 1 — Cleanup unifié
       socket.off("incoming-call", handleIncomingCall);
     };
   }, [handleIncomingCall]);
@@ -107,6 +118,7 @@ export const CallProvider = ({ children }) => {
 
   const clearActiveCall = () => {
     localStorage.removeItem("activeCall");
+    setAcceptedCall(null);
   };
 
   return (
@@ -116,7 +128,7 @@ export const CallProvider = ({ children }) => {
         showIncomingCallModal,
         acceptCall,
         rejectCall,
-        acceptedCall,          // ✅ Exposé
+        acceptedCall,
         getActiveCall,
         clearActiveCall,
       }}
