@@ -34,6 +34,7 @@ import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
 import MessageRequestBanner from "./MessageRequestBanner";
 
+
 const SeenIconGray = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 48 48">
     <path
@@ -191,15 +192,34 @@ export default function ChatWindow({ selectedChat, onBack }) {
         }
       );
 
-  const otherUserName = selectedChat?.isGroup
-    ? null
-    : selectedChat?.participants?.find(
-        participant => {
-          const participantId = participant._id || participant.id;
-          const currentUserId = user?._id || user?.id || user?.userId;
-          return String(participantId) !== String(currentUserId);
-        }
-      )?.username;
+ const otherUserName = React.useMemo(() => {
+  if (selectedChat?.isGroup) return null;
+  
+  // Essayer de trouver dans participants
+  const otherParticipant = selectedChat?.participants?.find(
+    participant => {
+      const participantId = participant._id || participant.id || participant.userId;
+      const currentUserId = user?._id || user?.id || user?.userId;
+      return participantId && currentUserId && String(participantId) !== String(currentUserId);
+    }
+  );
+  
+  if (otherParticipant?.username) {
+    return otherParticipant.username;
+  }
+  
+  // Sinon, utiliser le nom de la conversation
+  if (selectedChat?.name) {
+    return selectedChat.name;
+  }
+  
+  // Sinon, utiliser targetUser s'il existe
+  if (selectedChat?.targetUser?.username) {
+    return selectedChat.targetUser.username;
+  }
+  
+  return null;
+}, [selectedChat, user]);
 
   const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
@@ -616,15 +636,42 @@ export default function ChatWindow({ selectedChat, onBack }) {
       : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:!text-white rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-4 text-xs";
 
   // Nom de la conversation
-  const conversationName = selectedChat?.isGroup
+ const conversationName = selectedChat?.isGroup
     ? selectedChat.groupName
-    : otherUserName || "Utilisateur";
+    : otherUserName || selectedChat?.name || "Utilisateur";
 
-  const conversationAvatar = selectedChat?.isGroup
-    ? "/group-avatar.png"
-    : selectedChat?.participants?.find(
-        participant => String(participant._id) === String(otherUserId)
-      )?.profilePicture || "/default-avatar.png";
+// Dans ChatWindow.jsx, remplacez la ligne 151 par :
+const conversationAvatar = React.useMemo(() => {
+  console.log("🖼️ DEBUG - Recherche photo de profil:");
+  console.log("1. selectedChat:", selectedChat);
+  console.log("2. targetUser:", selectedChat?.targetUser);
+  console.log("3. targetUser.profilePicture:", selectedChat?.targetUser?.profilePicture);
+  
+  if (selectedChat?.isGroup) return "/group-avatar.png";
+  
+  // 1. Chercher dans targetUser (vient de SearchModal)
+  if (selectedChat?.targetUser?.profilePicture) {
+    console.log("✅ Photo trouvée dans targetUser:", selectedChat.targetUser.profilePicture);
+    return selectedChat.targetUser.profilePicture;
+  }
+  
+  // 2. Chercher dans participants
+  const fromParticipants = selectedChat?.participants?.find(
+    p => {
+      const pid = p._id || p.id;
+      const uid = otherUserId;
+      return pid && uid && String(pid) === String(uid);
+    }
+  )?.profilePicture;
+  
+  if (fromParticipants) {
+    console.log("✅ Photo trouvée dans participants:", fromParticipants);
+    return fromParticipants;
+  }
+  
+  console.log("❌ Aucune photo trouvée, utilisation par défaut");
+  return "/default-avatar.png";
+}, [selectedChat, otherUserId]);
 
   // Avatar de l'autre utilisateur pour l'indicateur
   const otherUserAvatar = selectedChat?.isGroup

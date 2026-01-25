@@ -8,6 +8,7 @@ const InputField = ({
   icon, 
   value, 
   onChange,
+  onFocus, 
   disabled = false 
 }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +37,7 @@ const InputField = ({
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          onFocus={onFocus} // <-- AJOUTEZ CETTE LIGNE
           disabled={disabled}
           className="text-[11px] bg-transparent focus:outline-none flex-1 text-myBlack dark:text-myWhite placeholder:text-myGray2 dark:placeholder:text-myGray2 disabled:opacity-50"
         />
