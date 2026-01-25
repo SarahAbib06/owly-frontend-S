@@ -87,42 +87,17 @@ export default function Messages() {
         )}
       </div>
 
-      {/* MODAL DE RECHERCHE */}
+          {/* MODAL DE RECHERCHE */}
       {showSearchModal && (
         <SearchModal 
           onClose={() => setShowSearchModal(false)}
-          onUserSelect={async (user) => {
+          onUserSelect={(conversationObj) => {
+            console.log("🎯 Conversation reçue de SearchModal:", conversationObj);
+            console.log("📛 Nom de la conversation:", conversationObj.name);
+            
             setShowSearchModal(false);
-            const token = localStorage.getItem('token');
-
-            try {
-              const res = await fetch('http://localhost:5000/api/conversations/private', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ receiverId: user._id })
-              });
-
-              if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Erreur serveur');
-              }
-
-              const data = await res.json();
-
-              if (data.success && data.conversation) {
-                openChat({
-                  _id: data.conversation._id,
-                  type: 'private',
-                  participants: [user]
-                });
-              }
-            } catch (err) {
-              console.error(err);
-              alert("Impossible d'ouvrir la conversation");
-            }
+            // Utilisez directement l'objet conversation
+            openChat(conversationObj);
           }}
         />
       )}

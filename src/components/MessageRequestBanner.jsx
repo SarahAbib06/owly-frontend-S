@@ -1,4 +1,4 @@
-import React from 'react';
+ import React from 'react';
 
 const MessageRequestBanner = ({ conversationName, conversationAvatar, onAccept, onDelete }) => (
   <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-2xl shadow-2xl z-50 max-w-sm w-full mx-4">
