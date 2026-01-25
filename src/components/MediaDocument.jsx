@@ -45,7 +45,7 @@ export default function MediaDocument({ onBack, conversationId }) {
   };
 
   return (
-    <div className="w-full bg-myGray4 p-4">
+    <div className="w-full bg-myGray4 dark:bg-neutral-800 p-4">
       {/* Bouton retour */}
       <div className="flex items-center gap-2 mb-4">
         <FaArrowLeft

@@ -239,22 +239,23 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
 
       {/* Zoom image */}
       {isImageOpen && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]"
-          onClick={() => setIsImageOpen(false)}
-        >
-          <div 
-            className="w-[380px] h-[380px] rounded-full overflow-hidden shadow-2xl"
-            style={{ maxWidth: "90vw", maxHeight: "90vh" }}
-          >
-            <img 
-              src={getAvatarUrl()}
-              className="w-full h-full object-cover"
-              alt={getName()}
-            />
-          </div>
-        </div>
-      )}
+  <div 
+    className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4"
+    onClick={() => setIsImageOpen(false)}
+  >
+    <div 
+      className="w-{full} max-w-[300px] aspect-square rounded-full overflow-hidden shadow-2xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <img 
+        src={getAvatarUrl()}
+        className="w-full h-full object-cover"
+        alt={getName()}
+      />
+    </div>
+  </div>
+)}
+      
 
       {/* Panel principal */}
       <div className="absolute inset-0 bg-myGray4 dark:bg-neutral-800 shadow-xl z-50 p-6 overflow-y-auto">
@@ -289,7 +290,7 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
                         e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F9EE34&color=000&bold=true&size=256`;
                       }}
                     />
-                    <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/10 transition-all duration-300"></div>
+                    <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/10 transition-all duration-300 pointer-events-none"></div>
                   </div>
                 )}
               </div>

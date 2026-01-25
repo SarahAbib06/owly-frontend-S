@@ -318,19 +318,19 @@ export default function ConversationList({ onSelect, onNewChat }) {
               <SelectItem value="all" className="cursor-pointer">
                 <div className="flex items-center gap-2">
                   <MessageSquare size={16} />
-                  <span>Toutes les conversations</span>
+                  <span> {t("messages.showAll")}</span>
                 </div>
               </SelectItem>
               <SelectItem value="favorites" className="cursor-pointer">
                 <div className="flex items-center gap-2">
                   <Star size={16} className="text-yellow-500" />
-                  <span>Favoris</span>
+                  <span>{t("messages.favorites")}</span>
                 </div>
               </SelectItem>
               <SelectItem value="archived" className="cursor-pointer">
                 <div className="flex items-center gap-2">
                   <Archive size={16} />
-                  <span>Archivées</span>
+                  <span>{t("messages.archived")}</span>
                 </div>
               </SelectItem>
             </SelectContent>
@@ -373,19 +373,19 @@ export default function ConversationList({ onSelect, onNewChat }) {
             {filterMode === "favorites" ? (
               <>
                 <Star size={14} className="fill-yellow-500" />
-                <span>Conversations favorites</span>
+                <span>{t("messages.favorites")}</span>
               </>
             ) : (
               <>
                 <Archive size={14} />
-                <span>Conversations archivées</span>
+                <span>{t("messages.archived")}</span>
               </>
             )}
             <button 
               onClick={() => setFilterMode("all")}
               className="ml-2 text-xs hover:underline"
             >
-              Tout voir
+              {t("messages.showAll")}
             </button>
           </div>
         </div>
