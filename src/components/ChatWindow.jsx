@@ -226,6 +226,12 @@ const CallMessage = ({ callType, callResult, duration, fromMe }) => {
 
 export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
+   // 🎥 ÉTAT POUR LA FONCTIONNALITÉ AGORA
+  const {
+    incomingCall,
+    getActiveCall,
+    clearActiveCall
+  } = useCall();
   const isFromArchived = selectedChat?.isFromArchived === true;
   const { conversations, archivedConversations } = useChat();
   const isArchived = isFromArchived || archivedConversations.some(c => c._id === selectedChat?._id);
@@ -233,12 +239,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const { archiveConversation, unarchiveConversation } = useChat();
   const { user, socketConnected } = useAuth();
   
-  // 🎥 ÉTAT POUR LA FONCTIONNALITÉ AGORA
-  const {
-    incomingCall,
-    getActiveCall,
-    clearActiveCall
-  } = useCall();
+ 
   const [selectedTargetConversation, setSelectedTargetConversation] = useState(null);
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [messageToForward, setMessageToForward] = useState(null);
