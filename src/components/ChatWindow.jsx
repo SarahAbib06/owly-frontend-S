@@ -37,6 +37,7 @@ import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
 import MessageRequestBanner from "./MessageRequestBanner";
+import Modal from "./Modal";
 
 
 
@@ -126,6 +127,10 @@ const [selectedTargetConversation, setSelectedTargetConversation] = useState(nul
 const [showForwardModal, setShowForwardModal] = useState(false);
 const [messageToForward, setMessageToForward] = useState(null);
 const [deletedMessages, setDeletedMessages] = useState([]); // ajouter pour supprimer le message
+// Ajoute ces deux lignes
+const [showDeleteModal, setShowDeleteModal] = useState(false);
+const [messageToDelete, setMessageToDelete] = useState(null);
+const [deletedForEveryone, setDeletedForEveryone] = useState([]);
 
 
 const { conversations: myConversations, loading: convLoading } = useConversations();
@@ -228,6 +233,26 @@ useEffect(() => {
 
   return () => clearInterval(interval);
 }, [contactStatus.lastSeen, contactStatus.isOnline]);
+
+
+useEffect(() => {
+  if (!socketService.socket || !selectedChat?._id) return;
+
+  const handleMessageDeleted = (data) => {
+    const { messageId, conversationId: convId } = data;
+
+    if (convId !== selectedChat._id) return;
+
+    // On marque ce message comme supprimé pour tout le monde
+    setDeletedForEveryone(prev => [...new Set([...prev, messageId])]);
+  };
+
+  socketService.socket.on("message:deleted", handleMessageDeleted);
+
+  return () => {
+    socketService.socket.off("message:deleted", handleMessageDeleted);
+  };
+}, [selectedChat?._id]);
 
 
 
@@ -378,6 +403,101 @@ useEffect(() => {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
+
+  // ────────────────────────────────────────────────
+// Gestion suppression message (AJOUTER ÇA ICI)
+const handleDeleteForMe = (messageId) => {
+  setDeletedMessages((prev) => {
+    if (prev.includes(messageId)) return prev;
+    return [...prev, messageId];
+  });
+  setShowMessageMenu(null);
+  setShowDeleteModal(false); // ferme le modal directement
+};
+
+const handleDeleteForEveryone = async (messageId) => {
+  try {
+    // Optimistic : affiche déjà le placeholder chez toi immédiatement
+    setDeletedForEveryone((prev) => [...new Set([...prev, messageId])]);
+
+    const token = localStorage.getItem("token");
+    const res = await fetch(`http://localhost:5000/api/messages/${messageId}/delete`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      // Erreur → on retire le placeholder chez toi
+      setDeletedForEveryone((prev) => prev.filter((id) => id !== messageId));
+      throw new Error(data.error || "Erreur lors de la suppression");
+    }
+
+    console.log("Message supprimé pour tous :", data);
+    setShowDeleteModal(false);
+
+  } catch (err) {
+    console.error("Échec suppression pour tous :", err);
+    // Optionnel : petite notification toast ici si tu veux
+  }
+};
+// ────────────────────────────────────────────────
+
+useEffect(() => {
+  if (!socketService.socket || !selectedChat?._id) return;
+
+  const handleMessageDeleted = (data) => {
+    const { messageId, conversationId: convId } = data;
+
+    if (convId !== selectedChat._id) return;
+
+    // IMPORTANT : on ajoute le message à la liste des supprimés pour tout le monde
+    // → ça va déclencher le placeholder chez TOUT LE MONDE (toi + destinataire)
+    setDeletedForEveryone((prev) => [...new Set([...prev, messageId])]);
+
+    // Petit scroll pour que le placeholder soit visible
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
+
+  socketService.socket.on("message:deleted", handleMessageDeleted);
+
+  return () => {
+    socketService.socket.off("message:deleted", handleMessageDeleted);
+  };
+}, [selectedChat?._id]);
+
+// Sauvegarde permanente des suppressions "pour tout le monde"
+useEffect(() => {
+  if (selectedChat?._id && deletedForEveryone.length > 0) {
+    localStorage.setItem(
+      `deletedEveryone_${selectedChat._id}`,
+      JSON.stringify(deletedForEveryone)
+    );
+  }
+}, [deletedForEveryone, selectedChat?._id]);
+
+// Charge les suppressions "pour tout le monde" au démarrage
+useEffect(() => {
+  if (selectedChat?._id) {
+    const saved = localStorage.getItem(`deletedEveryone_${selectedChat._id}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setDeletedForEveryone(parsed);
+        }
+      } catch (e) {
+        console.error("Erreur chargement deletedEveryone :", e);
+      }
+    }
+  }
+}, [selectedChat?._id]);
 
     // 🔥 AJOUT : Détection si c'est une demande de message
     // const otherUserId = selectedChat?.participants?.[0]?._id?.replace('direct_', '') || selectedChat?.participants?.[0]?._id || null;
@@ -1003,8 +1123,12 @@ useEffect(() => {
                 </button>
                 {fromMe && (
                   <button
-                    onClick={() => handleDeleteMessage(msg._id)}
-                    className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-500"
+                    onClick={() => {
+                      setMessageToDelete(msg._id);           // On garde l'ID du message
+                      setShowDeleteModal(true);              // Ouvre le modal
+                      setShowMessageMenu(null);              // Ferme le menu contextuel
+                    }}
+                    className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
                   >
                     <Trash2 size={16} /> Supprimer
                   </button>
@@ -1402,32 +1526,67 @@ useEffect(() => {
       >
 
         {/*Modifier pour supprimer  */}
-        {messages
-  .filter(msg => !deletedMessages.includes(msg._id))
-  .map((msg, i) => {
-    const showDate =
-      i === 0 ||
-      messages[i - 1].createdAt?.split("T")[0] !==
-        msg.createdAt?.split("T")[0];
+        {messages.map((msg, i) => {
+  const showDate =
+    i === 0 ||
+    messages[i - 1]?.createdAt?.split("T")[0] !== msg.createdAt?.split("T")[0];
 
+  const isDeletedByMe = deletedMessages.includes(msg._id);
+  const isDeletedForEveryone = deletedForEveryone.includes(msg._id);
+
+  // Déterminer si le message était "de moi" avant suppression
+  // (on utilise la logique déjà existante dans MessageBubble)
+  const currentUserId = user?._id || user?.id || user?.userId;
+  const rawSender = msg.senderId || msg.sender || msg.Id_sender || msg.Id_User || msg.userId;
+  const messageSenderId = typeof rawSender === "object" && rawSender?._id ? rawSender._id : rawSender;
+  const wasFromMe = currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
+
+  // Si supprimé → placeholder avec alignement correct
+  if (isDeletedByMe || isDeletedForEveryone) {
     return (
       <div key={msg._id}>
         {showDate && (
-          <div className="text-center text-[10px] text-gray-700 dark:text-myBlack my-2">
+          <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
             <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
-            {formatDateLabel(msg.createdAt, t)}
+              {formatDateLabel(msg.createdAt, t)}
             </span>
           </div>
         )}
-        <MessageBubble 
-          msg={msg} 
-          index={i}
-          deletedMessages={deletedMessages}
-          setDeletedMessages={setDeletedMessages}
-        />
+        <div className={`flex ${wasFromMe ? "justify-end" : "justify-start"}`}>
+          <div
+            className={`
+              max-w-[85%] px-4 py-3 rounded-lg text-sm italic text-gray-500 dark:text-gray-400
+              ${wasFromMe 
+                ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none" 
+                : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"}
+            `}
+          >
+            Vous avez supprimé un message
+          </div>
+        </div>
       </div>
     );
-  })}
+  }
+
+  // Message normal (non supprimé)
+  return (
+    <div key={msg._id}>
+      {showDate && (
+        <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
+          <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
+            {formatDateLabel(msg.createdAt, t)}
+          </span>
+        </div>
+      )}
+      <MessageBubble
+        msg={msg}
+        index={i}
+        deletedMessages={deletedMessages}
+        setDeletedMessages={setDeletedMessages}
+      />
+    </div>
+  );
+})}
 
   {/*fin de modification*/}
         <div ref={messagesEndRef} />
@@ -1777,6 +1936,65 @@ useEffect(() => {
           forwardMessage(messageToForward?._id, targetConversationId);
         }}
       />
+      {showDeleteModal && (
+  <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+    <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-gray-200 dark:border-neutral-700">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Supprimer le message
+        </h3>
+      </div>
+
+      {/* Corps */}
+      <div className="px-6 py-6 space-y-6">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          Que voulez-vous faire ?
+        </p>
+
+        <div className="space-y-3">
+          {/* Supprimer pour moi */}
+          <button
+            onClick={() => {
+              handleDeleteForMe(messageToDelete);
+              setShowDeleteModal(false);
+            }}
+            className="w-full px-4 py-3 text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+          >
+            <div className="font-medium">Supprimer pour moi</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Vous ne verrez plus ce message, mais les autres le verront toujours.
+            </div>
+          </button>
+
+          {/* Supprimer pour tout le monde */}
+          <button
+            onClick={async () => {
+              await handleDeleteForEveryone(messageToDelete);
+              setShowDeleteModal(false);
+            }}
+            className="w-full px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+          >
+            <div className="font-medium">Supprimer pour tout le monde</div>
+            <div className="text-xs text-red-500/80 dark:text-red-400/80">
+              Ce message sera supprimé pour vous et les autres participants.
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 py-4 bg-gray-50 dark:bg-neutral-900 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-3">
+        <button
+          onClick={() => setShowDeleteModal(false)}
+          className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+        >
+          Annuler
+        </button>
+      </div>
+    </div>
+  </Modal>
+)}
     </div>
   );
 }

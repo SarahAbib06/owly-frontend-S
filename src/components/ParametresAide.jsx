@@ -3,10 +3,14 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, HelpCircle, Mail, FileText, MessageCircle, Shield, Zap } from "lucide-react";
 import { useState } from "react";
+import ContactModal from "./ContactModal";
+import DocumentationModal from "./DocumentationModal";
 
 export default function ParametresAide({ setSelectedMenu }) {
   const { t } = useTranslation();
   const [expandedFaq, setExpandedFaq] = useState(null);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
 
   const containerVariants = {
     hidden: { opacity: 0, y: 100 },
@@ -90,7 +94,7 @@ export default function ParametresAide({ setSelectedMenu }) {
       iconBg: "bg-blue-500/10",
       title: "Nous contacter",
       description: "Besoin d'aide ? Envoyez-nous un e-mail",
-      action: "support@owly.app"
+      action: "owly.app.team@gmail.com"
     },
     {
       icon: FileText,
@@ -249,6 +253,14 @@ export default function ParametresAide({ setSelectedMenu }) {
                 whileHover={{ scale: 1.02, x: 5 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                onClick={() => {
+                  if (card.title === "Nous contacter") {
+                    setIsContactModalOpen(true);
+                  }
+                  if (card.title === "Documentation") {
+                    setIsDocModalOpen(true);
+                  }
+                }}
                 className="
                   p-4 rounded-xl cursor-pointer
                   bg-white dark:bg-[#2E2F2F]
@@ -280,6 +292,14 @@ export default function ParametresAide({ setSelectedMenu }) {
           })}
         </div>
       </motion.div>
+      <ContactModal 
+        isOpen={isContactModalOpen} 
+        onClose={() => setIsContactModalOpen(false)} 
+      />
+      <DocumentationModal
+        isOpen={isDocModalOpen}
+        onClose={() => setIsDocModalOpen(false)}
+      />
     </motion.div>
   );
 }
