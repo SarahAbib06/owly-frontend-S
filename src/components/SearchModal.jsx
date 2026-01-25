@@ -94,57 +94,66 @@ const fetchContacts = async () => {
   };
 
   // 🔥 OUVRIR/CRÉER UNE CONVERSATION AVEC UN UTILISATEUR
-  const handleOpenConversation = async (targetUser) => {
-    console.log("💬 Ouverture conversation avec:", targetUser);
+// Dans SearchModal.jsx, modifiez handleOpenConversation :
+// Dans SearchModal.jsx, modifiez handleOpenConversation :
+const handleOpenConversation = async (targetUser) => {
+  console.log("💬 Ouverture conversation avec:", targetUser);
 
-    const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token');
 
-    try {
-      // 1️⃣ Créer ou récupérer la conversation
-      const res = await fetch('http://localhost:5000/api/conversations/private', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ receiverId: targetUser._id })
-      });
+  try {
+    // 1️⃣ Créer ou récupérer la conversation
+    const res = await fetch('http://localhost:5000/api/conversations/private', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ receiverId: targetUser._id })
+    });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Erreur serveur');
-      }
-
-      const data = await res.json();
-      console.log("✅ Conversation créée/récupérée:", data);
-
-      if (data.success && data.conversation) {
-        // 2️⃣ Passer l'objet complet à onUserSelect
-
-        console.log('🔥 Conversation API Response:', data.conversation); 
-onUserSelect({
-  _id: data.conversation._id,
-  id: data.conversation.id,
-  type: "private",
-  participants: [targetUser],
-  name: targetUser.username,
-  unreadCount: 0,
-  lastMessageAt: new Date(),
-  isFromArchived: false,
-  
-  // 🔥 RÉCUPÉRER LES VRAIES VALEURS DE L'API
-  isMessageRequest: data.conversation.isMessageRequest ?? true, // fallback si undefined
-  messageRequestFor: data.conversation.messageRequestFor,
-  messageRequestFrom: data.conversation.messageRequestFrom,
-});
-
-onClose();
-      }
-    } catch (err) {
-      console.error("❌ Erreur ouverture conversation:", err);
-      alert("Impossible d'ouvrir la conversation : " + err.message);
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Erreur serveur');
     }
-  };
+
+    const data = await res.json();
+    console.log("✅ Conversation créée/récupérée:", data);
+
+    if (data.success && data.conversation) {
+      // Créer l'objet conversation COMPLET
+      const conversationObj = {
+        _id: data.conversation._id || data.conversation.id,
+        id: data.conversation.id || data.conversation._id,
+        type: "private",
+        name: targetUser.username,
+        participants: data.conversation.participants || [targetUser],
+        unreadCount: data.conversation.unreadCount || 0,
+        lastMessageAt: data.conversation.lastMessageAt || new Date(),
+        isMessageRequest: data.conversation.isMessageRequest ?? true,
+        messageRequestFor: data.conversation.messageRequestFor,
+        messageRequestFrom: data.conversation.messageRequestFrom,
+        
+        // 🔥 AJOUTEZ CE CHAMP CRUCIAL !
+        targetUser: {
+          _id: targetUser._id,
+          username: targetUser.username,
+          profilePicture: targetUser.profilePicture // <-- IMPORTANT !
+        }
+      };
+      
+      console.log("📦 Conversation à envoyer:", conversationObj);
+      console.log("🖼️ Profile picture envoyée:", targetUser.profilePicture);
+      
+      // 2️⃣ Passer à onUserSelect
+      onUserSelect(conversationObj);
+      onClose();
+    }
+  } catch (err) {
+    console.error("❌ Erreur ouverture conversation:", err);
+    alert("Impossible d'ouvrir la conversation : " + err.message);
+  }
+};
 
   // QR CODE (inchangé)
   const startQRScanner = async () => {
@@ -350,64 +359,7 @@ onClose();
                   </button>
                 </div>
               </div>
-
-              {/* Contacts suggérés */}
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3 px-1">Contacts</h3>
-                {loadingContacts ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-2 text-sm text-gray-600">Chargement...</p>
-                  </div>
-                ) : contacts.length > 0 ? (
-                  <div className="space-y-2">
-                    {contacts.map((contact) => (
-                      <div
-                        key={contact._id}
-                        className="flex items-center justify-between p-3 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-xl"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            contact.profilePicture 
-                              ? '' 
-                              : 'bg-gradient-to-br from-blue-400 to-purple-500'
-                          }`}>
-                            {contact.profilePicture ? (
-                              <img
-                                src={contact.profilePicture}
-                                alt={contact.username}
-                                className="w-full h-full rounded-full object-cover"
-                              />
-                            ) : (
-                              <User size={20} className="text-white" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium">{contact.username}</p>
-                            <div className="flex items-center gap-2">
-                              <UserCheck size={12} className="text-blue-500" />
-                              <span className="text-xs text-gray-500">Contact</span>
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleOpenConversation(contact)}
-                          className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
-                          title="Envoyer un message"
-                        >
-                          <MessageCircle size={18} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-4 text-gray-500 text-sm">
-                    Aucun contact pour le moment
-                  </div>
-                )}
-              </div>
-
-              {/* Résultats de recherche */}
+ {/* Résultats de recherche */}
               {error && (
                 <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-3 rounded-xl mb-4">
                   {error}
@@ -472,6 +424,63 @@ onClose();
                   Aucun résultat pour "{searchQuery}"
                 </div>
               )}
+              {/* Contacts suggérés */}
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3 px-1">Contacts</h3>
+                {loadingContacts ? (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+                    <p className="mt-2 text-sm text-gray-600">Chargement...</p>
+                  </div>
+                ) : contacts.length > 0 ? (
+                  <div className="space-y-2">
+                    {contacts.map((contact) => (
+                      <div
+                        key={contact._id}
+                        className="flex items-center justify-between p-3 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-xl"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            contact.profilePicture 
+                              ? '' 
+                              : 'bg-gradient-to-br from-blue-400 to-purple-500'
+                          }`}>
+                            {contact.profilePicture ? (
+                              <img
+                                src={contact.profilePicture}
+                                alt={contact.username}
+                                className="w-full h-full rounded-full object-cover"
+                              />
+                            ) : (
+                              <User size={20} className="text-white" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium">{contact.username}</p>
+                            <div className="flex items-center gap-2">
+                              <UserCheck size={12} className="text-blue-500" />
+                              <span className="text-xs text-gray-500">Contact</span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleOpenConversation(contact)}
+                          className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
+                          title="Envoyer un message"
+                        >
+                          <MessageCircle size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    Aucun contact pour le moment
+                  </div>
+                )}
+              </div>
+
+             
             </div>
           ) : (
             /* SCANNER QR CODE (inchangé) */

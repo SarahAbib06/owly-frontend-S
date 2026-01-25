@@ -21,28 +21,19 @@ import { useReactions } from "../hooks/useReactions";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
 import socketService from "../services/socketService";
-import VideoCallScreen from "./VideoCallScreen";
-import IncomingCallModal from './IncomingCallModal';
 import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
-import { Archive } from "lucide-react";
-import { useChat } from "../context/ChatContext"; // ← AJOUTE CET IMPORT
-
+import { useChat } from "../context/ChatContext";
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
 import MessageRequestBanner from "./MessageRequestBanner";
 import Modal from "./Modal";
-
-
-
-
-    
 
 
 const SeenIconGray = () => (
@@ -113,15 +104,65 @@ const fileToBase64 = (file) =>
 
 const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "🎉"];
 
-export default function ChatWindow({ selectedChat, onBack }) {
+// Composant Typing Indicator
+const TypingIndicator = ({ avatar, username }) => (
+  <div className="flex justify-start items-start gap-2 mb-3">
+    {/* Avatar */}
+    <div className="w-8 h-8 flex-shrink-0">
+      <img
+        src={avatar || "/default-avatar.png"}
+        alt={username || "Utilisateur"}
+        className="w-8 h-8 rounded-full object-cover"
+      />
+    </div>
+    
+    {/* Bulle de message avec animation */}
+    <div className="flex flex-col max-w-[70%]">
+      {username && !selectedChat?.isGroup && (
+        <p className="text-[10px] ml-1 mb-1 text-gray-700 dark:text-gray-300">
+          {username}
+        </p>
+      )}
+      
+      <div className="bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-3">
+        <div className="flex items-center gap-1">
+          {/* Animation des trois points */}
+          <div className="flex items-center gap-1">
+            <div 
+              className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
+              style={{ animationDelay: '0ms' }}
+            ></div>
+            <div 
+              className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
+              style={{ animationDelay: '150ms' }}
+            ></div>
+            <div 
+              className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
+              style={{ animationDelay: '300ms' }}
+            ></div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Timestamp (optionnel) */}
+      <div className="text-[10px] mt-1 text-gray-500 dark:text-gray-400">
+        {new Date().toLocaleTimeString("fr-FR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </div>
+    </div>
+  </div>
+);
 
+export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
-  // const { user } = useAuth();
   const isFromArchived = selectedChat?.isFromArchived === true;
-  const { conversations, archivedConversations } = useChat(); // ← AJOUT
+  const { conversations, archivedConversations } = useChat();
   const isArchived = isFromArchived || archivedConversations.some(c => c._id === selectedChat?._id);
   console.log("isArchived ?", isArchived, selectedChat?._id);
   const { archiveConversation, unarchiveConversation } = useChat();
+
  const { user, socketConnected } = useAuth();
 const [selectedTargetConversation, setSelectedTargetConversation] = useState(null);
 const [showForwardModal, setShowForwardModal] = useState(false);
@@ -133,10 +174,11 @@ const [messageToDelete, setMessageToDelete] = useState(null);
 const [deletedForEveryone, setDeletedForEveryone] = useState([]);
 
 
-const { conversations: myConversations, loading: convLoading } = useConversations();
+  const { conversations: myConversations, loading: convLoading } = useConversations();
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
-//  Récupérer le userId de l'autre utilisateur
+  
+  // Récupérer le userId de l'autre utilisateur
   const otherUserId = selectedChat?.isGroup 
     ? null 
     : selectedChat?.participants?.find(
@@ -147,17 +189,7 @@ const { conversations: myConversations, loading: convLoading } = useConversation
         }
       )?._id;
 
-      const otherParticipant = selectedChat?.isGroup
-  ? null
-  : selectedChat?.participants?.find(
-      participant => {
-        const participantId = participant._id || participant.id;
-        const currentUserId = user?._id || user?.id || user?.userId;
-        return String(participantId) !== String(currentUserId);
-      }
-    );
-
-  const otherUserName = selectedChat?.isGroup
+  const otherParticipant = selectedChat?.isGroup
     ? null
     : selectedChat?.participants?.find(
         participant => {
@@ -165,221 +197,202 @@ const { conversations: myConversations, loading: convLoading } = useConversation
           const currentUserId = user?._id || user?.id || user?.userId;
           return String(participantId) !== String(currentUserId);
         }
-      )?.username;
+      );
 
-  //  Hook pour vérifier le blocage
-
-const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
-
-
-
-console.log('🔍 DEBUG MESSAGE REQUEST:', {
-  isMessageRequest: selectedChat?.isMessageRequest,
-  messageRequestFor: selectedChat?.messageRequestFor,
-  messageRequestFrom: selectedChat?.messageRequestFrom,
-  currentUserId: user?.id,
-  isForMe: selectedChat?.messageRequestFor?.toString() === user?.id?.toString()
-});
-
-// ✅ CORRECTION ICI : Vérifier que JE SUIS le destinataire (messageRequestFor)
-const isIncomingMessageRequest = 
-  selectedChat?.isMessageRequest === true && 
-  selectedChat?.messageRequestFor?.toString() === user?.id?.toString();
-
-console.log('🚨 isIncomingMessageRequest =', isIncomingMessageRequest);
-
-// 🔥 NOUVEAU : Bannière Demande de message (comme Messenger)
-
-
-
-
-
-   const [contactStatus, setContactStatus] = useState({
-  isOnline: false,
-  lastSeen: null,
-});
-
-const getUserStatusText = () => {
-  // 🟢 Online
-  if (contactStatus.isOnline) {
-    return "En ligne";
-  }
-
-  // ⚪ Offline avec lastSeen
-  if (contactStatus.lastSeen) {
-    const last = new Date(contactStatus.lastSeen);
-    const now = new Date();
-    const diffMs = now - last;
-
-    const diffMin = Math.floor(diffMs / 60000);
-    const diffHour = Math.floor(diffMin / 60);
-
-    if (diffMin < 1) return "En ligne il y a quelques secondes";
-    if (diffMin < 60) return `En ligne il y a ${diffMin} min`;
-    if (diffHour < 24) return `En ligne il y a ${diffHour} h`;
-
-    return "En ligne il y a longtemps";
-  }
-
-  return "En ligne il y a un moment";
-};
-useEffect(() => {
-  if (!contactStatus.lastSeen || contactStatus.isOnline) return;
-
-  const interval = setInterval(() => {
-    // force le recalcul du texte
-    setContactStatus((prev) => ({ ...prev }));
-  }, 60000); // toutes les 1 min
-
-  return () => clearInterval(interval);
-}, [contactStatus.lastSeen, contactStatus.isOnline]);
-
-
-useEffect(() => {
-  if (!socketService.socket || !selectedChat?._id) return;
-
-  const handleMessageDeleted = (data) => {
-    const { messageId, conversationId: convId } = data;
-
-    if (convId !== selectedChat._id) return;
-
-    // On marque ce message comme supprimé pour tout le monde
-    setDeletedForEveryone(prev => [...new Set([...prev, messageId])]);
-  };
-
-  socketService.socket.on("message:deleted", handleMessageDeleted);
-
-  return () => {
-    socketService.socket.off("message:deleted", handleMessageDeleted);
-  };
-}, [selectedChat?._id]);
-
-
-
-
-
-console.log("selectedChat:", selectedChat, "user:", user);
-const contactId = React.useMemo(() => {
-  if (!selectedChat || selectedChat.isGroup || !user) return null;
-  const other = selectedChat.participants.find(
-    (p) => String(p._id) !== String(user._id)
+ const otherUserName = React.useMemo(() => {
+  if (selectedChat?.isGroup) return null;
+  
+  // Essayer de trouver dans participants
+  const otherParticipant = selectedChat?.participants?.find(
+    participant => {
+      const participantId = participant._id || participant.id || participant.userId;
+      const currentUserId = user?._id || user?.id || user?.userId;
+      return participantId && currentUserId && String(participantId) !== String(currentUserId);
+    }
   );
-  return other?._id || null;
+  
+  if (otherParticipant?.username) {
+    return otherParticipant.username;
+  }
+  
+  // Sinon, utiliser le nom de la conversation
+  if (selectedChat?.name) {
+    return selectedChat.name;
+  }
+  
+  // Sinon, utiliser targetUser s'il existe
+  if (selectedChat?.targetUser?.username) {
+    return selectedChat.targetUser.username;
+  }
+  
+  return null;
 }, [selectedChat, user]);
 
-  console.log("contactId:", contactId);
- // --- useEffect pour récupérer le statut initial ---
-useEffect(() => {
-  if (!contactId) return;
-  console.log("🧪 TEST contactId =", contactId);
+  const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
-  //fetch(`/api/users/${contactId}/status`)
-  fetch(`http://localhost:5000/api/users/${contactId}/status`)
-    .then(res => res.json())
-    .then(data => {
-  console.log("🧪 REPONSE API STATUS =", data);
+  console.log('🔍 DEBUG MESSAGE REQUEST:', {
+    isMessageRequest: selectedChat?.isMessageRequest,
+    messageRequestFor: selectedChat?.messageRequestFor,
+    messageRequestFrom: selectedChat?.messageRequestFrom,
+    currentUserId: user?.id,
+    isForMe: selectedChat?.messageRequestFor?.toString() === user?.id?.toString()
+  });
 
-      setContactStatus({
-        isOnline: data.isOnline,
-        lastSeen: data.lastSeen,
-      });
-    })
-    .catch(err => console.error("Erreur statut:", err));
-}, [contactId]);
+  const isIncomingMessageRequest = 
+    selectedChat?.isMessageRequest === true && 
+    selectedChat?.messageRequestFor?.toString() === user?.id?.toString();
 
+  console.log('🚨 isIncomingMessageRequest =', isIncomingMessageRequest);
 
-// Après les autres useEffect (vers la fin du composant, avant les returns), ajoute :
-// ajouter pour supprimer 
-// Sauvegarder les messages supprimés
-useEffect(() => {
-  if (selectedChat?._id && deletedMessages.length > 0) {
-    localStorage.setItem(
-      `deleted_${selectedChat._id}`,
-      JSON.stringify(deletedMessages)
+  const [contactStatus, setContactStatus] = useState({
+    isOnline: false,
+    lastSeen: null,
+  });
+
+  const getUserStatusText = () => {
+    if (contactStatus.isOnline) {
+      return "En ligne";
+    }
+
+    if (contactStatus.lastSeen) {
+      const last = new Date(contactStatus.lastSeen);
+      const now = new Date();
+      const diffMs = now - last;
+
+      const diffMin = Math.floor(diffMs / 60000);
+      const diffHour = Math.floor(diffMin / 60);
+
+      if (diffMin < 1) return "En ligne il y a quelques secondes";
+      if (diffMin < 60) return `En ligne il y a ${diffMin} min`;
+      if (diffHour < 24) return `En ligne il y a ${diffHour} h`;
+
+      return "En ligne il y a longtemps";
+    }
+
+    return "En ligne il y a un moment";
+  };
+
+  useEffect(() => {
+    if (!contactStatus.lastSeen || contactStatus.isOnline) return;
+
+    const interval = setInterval(() => {
+      setContactStatus((prev) => ({ ...prev }));
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [contactStatus.lastSeen, contactStatus.isOnline]);
+
+  console.log("selectedChat:", selectedChat, "user:", user);
+  
+  const contactId = React.useMemo(() => {
+    if (!selectedChat || selectedChat.isGroup || !user) return null;
+    const other = selectedChat.participants.find(
+      (p) => String(p._id) !== String(user._id)
     );
-  }
-}, [deletedMessages, selectedChat?._id]);
+    return other?._id || null;
+  }, [selectedChat, user]);
 
+  console.log("contactId:", contactId);
 
-// ajouter pour supprimer 
-// Charger les messages supprimés au démarrage
-useEffect(() => {
-  if (selectedChat?._id) {
-    const saved = localStorage.getItem(`deleted_${selectedChat._id}`);
-    if (saved) {
-      try {
-        setDeletedMessages(JSON.parse(saved));
-      } catch (e) {
-        console.error("Erreur chargement messages supprimés:", e);
+  // Récupérer le statut initial
+  useEffect(() => {
+    if (!contactId) return;
+    console.log("🧪 TEST contactId =", contactId);
+
+    fetch(`http://localhost:5000/api/users/${contactId}/status`)
+      .then(res => res.json())
+      .then(data => {
+        console.log("🧪 REPONSE API STATUS =", data);
+        setContactStatus({
+          isOnline: data.isOnline,
+          lastSeen: data.lastSeen,
+        });
+      })
+      .catch(err => console.error("Erreur statut:", err));
+  }, [contactId]);
+
+  // Sauvegarder les messages supprimés
+  useEffect(() => {
+    if (selectedChat?._id && deletedMessages.length > 0) {
+      localStorage.setItem(
+        `deleted_${selectedChat._id}`,
+        JSON.stringify(deletedMessages)
+      );
+    }
+  }, [deletedMessages, selectedChat?._id]);
+
+  // Charger les messages supprimés au démarrage
+  useEffect(() => {
+    if (selectedChat?._id) {
+      const saved = localStorage.getItem(`deleted_${selectedChat._id}`);
+      if (saved) {
+        try {
+          setDeletedMessages(JSON.parse(saved));
+        } catch (e) {
+          console.error("Erreur chargement messages supprimés:", e);
+        }
       }
     }
-  }
-}, [selectedChat?._id]);
+  }, [selectedChat?._id]);
 
-// Fin de l'ajout 
+  // Écouter les changements en temps réel via socket
+  useEffect(() => {
+    if (!socketService.socket || !contactId) return;
+    
+    window.socket = socketService.socket;
+    console.log("🌐 Socket accessible via window.socket");
+    
+    const handleOnline = ({ userId }) => {
+      if (!contactId) return;
+      if (String(userId) === String(contactId)) {
+        setContactStatus({
+          isOnline: true,
+          lastSeen: null,
+        });
+      }
+    };
 
-// --- useEffect pour écouter les changements en temps réel via socket ---
-useEffect(() => {
-  if (!socketService.socket || !contactId) return;
-  // 🔹 Rendre le socket accessible dans la console
-  window.socket = socketService.socket;
-  console.log("🌐 Socket accessible via window.socket");
-const handleOnline = ({ userId }) => {
-  if (!contactId) return;
-  if (String(userId) === String(contactId)) {
-    setContactStatus({
-      isOnline: true,
-      lastSeen: null,
-    });
-  }
-};
+    const handleOffline = ({ userId, lastSeen }) => {
+      console.log("🔴 user offline reçu:", userId, lastSeen, "contactId:", contactId);
+      if (!contactId) return;
 
+      if (String(userId) === String(contactId)) {
+        setContactStatus({
+          isOnline: false,
+          lastSeen: lastSeen ? new Date(lastSeen).toISOString() : new Date().toISOString(),
+        });
+      }
+    };
 
-  const handleOffline = ({ userId, lastSeen }) => {
-  console.log("🔴 user offline reçu:", userId, lastSeen, "contactId:", contactId);
-  if (!contactId) return;
+    socketService.socket.on("user:online", handleOnline);
+    socketService.socket.on("user:offline", handleOffline);
 
-  if (String(userId) === String(contactId)) {
-    setContactStatus({
-      isOnline: false,
-      lastSeen: lastSeen ? new Date(lastSeen).toISOString() : new Date().toISOString(),
-    });
-  }
-};
+    return () => {
+      socketService.socket.off("user:online", handleOnline);
+      socketService.socket.off("user:offline", handleOffline);
+    };
+  }, [contactId]);
 
-
-  socketService.socket.on("user:online", handleOnline);
-  socketService.socket.on("user:offline", handleOffline);
-
-  return () => {
-    socketService.socket.off("user:online", handleOnline);
-    socketService.socket.off("user:offline", handleOffline);
-  };
-}, [contactId]);
-
-
-
-
-  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
-  // 🔹 Écoute les thèmes envoyés par l'autre participant
-useEffect(() => {
-  if (!socketService.socket || !selectedChat) return;
+  
+  // Écoute les thèmes envoyés par l'autre participant
+  useEffect(() => {
+    if (!socketService.socket || !selectedChat) return;
 
-  const handleThemeChange = ({ conversationId, theme }) => {
-    if (conversationId === selectedChat._id) {
-      console.log("Thème reçu via socket:", theme);
-      applyTheme(theme, false); // applique le thème reçu mais ne sauvegarde pas localStorage
-    }
-  };
+    const handleThemeChange = ({ conversationId, theme }) => {
+      if (conversationId === selectedChat._id) {
+        console.log("Thème reçu via socket:", theme);
+        applyTheme(theme, false);
+      }
+    };
 
-  socketService.socket.on("themeChanged", handleThemeChange);
+    socketService.socket.on("themeChanged", handleThemeChange);
 
-  return () => {
-    socketService.socket.off("themeChanged", handleThemeChange);
-  };
-}, [selectedChat]);
+    return () => {
+      socketService.socket.off("themeChanged", handleThemeChange);
+    };
+  }, [selectedChat]);
 
   const [bubbleBg, setBubbleBg] = useState("");
   const [sendBtnColor, setSendBtnColor] = useState("");
@@ -395,10 +408,6 @@ useEffect(() => {
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showPinnedSection, setShowPinnedSection] = useState(false);
   
-  // États pour les appels
-  const [incomingCall, setIncomingCall] = useState(null);
-  const [activeCall, setActiveCall] = useState(null);
-
   // États pour les interactions
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
@@ -513,7 +522,7 @@ useEffect(() => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesContainerRef = useRef(null);
-  //pour le modal debloquer 
+  
   const [isConfirmUnblockModalOpen, setIsConfirmUnblockModalOpen] = useState(false);
 
   // Hooks pour la messagerie
@@ -538,78 +547,7 @@ useEffect(() => {
   const { isRecording, recordingTime, startRecording, stopAndSend, cancelRecording } =
     useAudioRecorder(selectedChat?._id);
 
-  // Gérer les appels entrants
-  useEffect(() => {
-    // Vérifiez d'abord si socketService existe et est connecté
-    if (!socketService || !socketService.socket || !socketConnected) {
-      console.error('SocketService non initialisé ou non connecté');
-      return;
-    }
-
-    console.log('🔌 Configuration des écouteurs d\'appel...');
-
-    // Utilisez les méthodes standard Socket.io
-    socketService.socket.on('call:incoming', (call) => {
-      console.log('📞 Appel entrant:', call);
-      setIncomingCall(call);
-    });
-
-socketService.socket.on('call:accepted', (data) => {
-  console.log('✅ Appel accepté:', data);
-  setActiveCall({ ...data, status: 'active' });
-  
-  // ✅ FORCER l'ouverture IMMÉDIATEMENT pour CALLER ET RECEIVER
-  setIsVideoCallOpen(true);
-  
-  // Ouvrir aussi côté CALLER si pas déjà ouvert
-  if (!isVideoCallOpen) {
-    console.log('🚀 FORCAGE VideoCallScreen pour CALLER');
-  }
-});
-
-
-    socketService.socket.on('call:rejected', () => {
-      console.log('❌ Appel rejeté');
-      setIncomingCall(null);
-      setActiveCall(null);
-      setIsVideoCallOpen(false);
-      alert('Appel rejeté');
-    });
-
-    
-    socketService.socket.on('call:ended', () => {
-      console.log('📞 Appel terminé');
-      setActiveCall(null);
-      setIsVideoCallOpen(false);
-    });
-
-
-  
-
-    socketService.socket.on('call:user_offline', () => {
-      console.log('Utilisateur hors ligne');
-      setActiveCall(null);
-      setIsVideoCallOpen(false);
-      alert('Utilisateur hors ligne');
-    });
-
-   
-
-    return () => {
-      // Nettoyage
-      if (socketService.socket) {
-        socketService.socket.off('call:incoming');
-        socketService.socket.off('call:accepted');
-        socketService.socket.off('call:rejected');
-     
-        socketService.socket.off('call:ended');
-        socketService.socket.off('call:user_offline');
-        
-      }
-    };
-  }, [socketConnected]);
-
-  // 🔥 Charger les messages épinglés
+  // Charger les messages épinglés
   useEffect(() => {
     const pinned = messages.filter((msg) => msg.isPinned);
     setPinnedMessages(pinned);
@@ -619,14 +557,11 @@ socketService.socket.on('call:accepted', (data) => {
   // Scroll automatique vers le bas
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  // Force la mise à jour quand on change de conversation (surtout depuis les archivées)
-// Force la détection correcte du statut archivé quand la conversation change
-useEffect(() => {
-  // Ce useEffect vide dépend de selectedChat et archivedConversations
-  // Il force React à recalculer isArchived à chaque changement
-}, [selectedChat, archivedConversations]);
+  useEffect(() => {
+    // Ce useEffect vide dépend de selectedChat et archivedConversations
+  }, [selectedChat, archivedConversations]);
 
   // Gérer la saisie avec typing indicator
   const handleInputChange = (e) => {
@@ -638,46 +573,42 @@ useEffect(() => {
 
   // Envoyer un message
   const handleSendMessage = async () => {
-  try {
-    // 📎 envoyer fichier
-    if (selectedFile) {
-      if (selectedFile.type.startsWith("image/")) {
-        await sendImage(selectedFile);
-      } else if (selectedFile.type.startsWith("video/")) {
-        await sendVideo(selectedFile);
-      } else {
-        await sendFile(selectedFile);
+    try {
+      if (selectedFile) {
+        if (selectedFile.type.startsWith("image/")) {
+          await sendImage(selectedFile);
+        } else if (selectedFile.type.startsWith("video/")) {
+          await sendVideo(selectedFile);
+        } else {
+          await sendFile(selectedFile);
+        }
+
+        setSelectedFile(null);
+        setFilePreview(null);
+        return;
       }
 
-      setSelectedFile(null);
-      setFilePreview(null);
-      return;
+      if (!inputText.trim()) return;
+      await sendMessage(inputText);
+      setInputText("");
+    } catch (error) {
+      console.error("Erreur envoi:", error);
     }
+  };
 
-    // ✍️ envoyer texte
-    if (!inputText.trim()) return;
-    await sendMessage(inputText);
-    setInputText("");
-  } catch (error) {
-    console.error("Erreur envoi:", error);
-  }
-};
-
-    
   // Gérer l'upload de fichiers
   const handleFileSelect = (e) => { 
-  const file = e.target.files[0]; 
-  if (!file) return; 
- 
-  setSelectedFile(file); 
- 
-  if (file.type.startsWith("image/") || 
-file.type.startsWith("video/")) { 
-    setFilePreview(URL.createObjectURL(file)); 
-  } else { 
-    setFilePreview(null); 
-  } 
-};
+    const file = e.target.files[0]; 
+    if (!file) return; 
+    
+    setSelectedFile(file); 
+    
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) { 
+      setFilePreview(URL.createObjectURL(file)); 
+    } else { 
+      setFilePreview(null); 
+    } 
+  };
 
   // Enregistrement audio
   const handleMicClick = async () => {
@@ -695,7 +626,7 @@ file.type.startsWith("video/")) {
 
   // Gestion du thème
   const applyTheme = async (theme, save = true) => {
-     console.log("Thème sélectionné :", theme); // <-- AJOUTE ÇA
+    console.log("Thème sélectionné :", theme);
     let style = {};
     setThemeEmojis([]);
 
@@ -772,47 +703,6 @@ file.type.startsWith("video/")) {
     localStorage.removeItem(chatKey);
   };
 
-  // Gérer l'appel entrant
-const handleAcceptCall = () => {
-  if (!socketService.socket || !incomingCall) {
-    console.error('Socket non disponible ou appel inexistant');
-    return;
-  }
-
-  console.log('✅ Acceptation de l\'appel:', incomingCall);
-  
-  // ⚠️ NE ÉMETTRE call:accept QU'UNE SEULE FOIS
-  // Désactiver immédiatement pour éviter les doubles clics
-  const callToAccept = { ...incomingCall };
-  setIncomingCall(null); // Fermer la modal AVANT d'émettre
-  
-  socketService.socket.emit('call:accept', {
-    callId: callToAccept.callId,
-    callerId: callToAccept.callerId
-  });
-
-  // Définir activeCall
-  setActiveCall({
-    ...callToAccept,
-    status: 'accepted'
-  });
-};
-
-  const handleRejectCall = async () => {
-    if (!socketService.socket || !incomingCall) {
-      console.error('Socket non disponible ou appel inexistant');
-      return;
-    }
-
-    console.log('❌ Rejet de l\'appel:', incomingCall);
-    socketService.socket.emit('call:reject', {
-      callId: incomingCall.callId,
-      callerId: incomingCall.callerId
-    });
-
-    setIncomingCall(null);
-  };
-
   // Charger le thème sauvegardé
   useEffect(() => {
     const savedTheme = localStorage.getItem(chatKey);
@@ -824,7 +714,6 @@ const handleAcceptCall = () => {
         console.error("Erreur chargement thème:", e);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat]);
 
   // Animation des emojis flottants
@@ -860,24 +749,56 @@ const handleAcceptCall = () => {
       : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:!text-white rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-4 text-xs";
 
   // Nom de la conversation
-  const conversationName = selectedChat?.isGroup
-  ? selectedChat.groupName
-  : otherUserName || "Utilisateur";
+ const conversationName = selectedChat?.isGroup
+    ? selectedChat.groupName
+    : otherUserName || selectedChat?.name || "Utilisateur";
 
+// Dans ChatWindow.jsx, remplacez la ligne 151 par :
+const conversationAvatar = React.useMemo(() => {
+  console.log("🖼️ DEBUG - Recherche photo de profil:");
+  console.log("1. selectedChat:", selectedChat);
+  console.log("2. targetUser:", selectedChat?.targetUser);
+  console.log("3. targetUser.profilePicture:", selectedChat?.targetUser?.profilePicture);
+  
+  if (selectedChat?.isGroup) return "/group-avatar.png";
+  
+  // 1. Chercher dans targetUser (vient de SearchModal)
+  if (selectedChat?.targetUser?.profilePicture) {
+    console.log("✅ Photo trouvée dans targetUser:", selectedChat.targetUser.profilePicture);
+    return selectedChat.targetUser.profilePicture;
+  }
+  
+  // 2. Chercher dans participants
+  const fromParticipants = selectedChat?.participants?.find(
+    p => {
+      const pid = p._id || p.id;
+      const uid = otherUserId;
+      return pid && uid && String(pid) === String(uid);
+    }
+  )?.profilePicture;
+  
+  if (fromParticipants) {
+    console.log("✅ Photo trouvée dans participants:", fromParticipants);
+    return fromParticipants;
+  }
+  
+  console.log("❌ Aucune photo trouvée, utilisation par défaut");
+  return "/default-avatar.png";
+}, [selectedChat, otherUserId]);
 
-const conversationAvatar = selectedChat?.isGroup
-  ? "/group-avatar.png"
-  : selectedChat?.participants?.find(
-      participant => String(participant._id) === String(otherUserId)
-    )?.profilePicture || "/default-avatar.png";
+  // Avatar de l'autre utilisateur pour l'indicateur
+  const otherUserAvatar = selectedChat?.isGroup
+    ? "/group-avatar.png"
+    : selectedChat?.participants?.find(
+        participant => {
+          const participantId = participant._id || participant.id;
+          const currentUserId = user?._id || user?.id || user?.userId;
+          return String(participantId) !== String(currentUserId);
+        }
+      )?.profilePicture || "/default-avatar.png";
 
-
-  // Modifier pour supprimer message 
-  // avant 
-  // const MessageBubble = ({ msg }) => {
-  // Apres
-  // 🔥 Composant Message CORRIGÉ
- const MessageBubble = ({ msg, deletedMessages, setDeletedMessages }) => {
+  // Composant MessageBubble
+  const MessageBubble = ({ msg, deletedMessages, setDeletedMessages }) => {
     const longPressTimer = useRef(null);
 
     const startLongPress = () => {
@@ -885,8 +806,6 @@ const conversationAvatar = selectedChat?.isGroup
         setShowMessageMenu(msg._id);
       }, 500);
     };
-
-   
 
     const cancelLongPress = () => {
       if (longPressTimer.current) {
@@ -906,8 +825,6 @@ const conversationAvatar = selectedChat?.isGroup
 
     const fromMe =
       currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
-
-   
 
     const { reactions, addReaction, removeReaction } = useReactions(msg._id);
 
@@ -955,66 +872,12 @@ const conversationAvatar = selectedChat?.isGroup
       }
     };
     
-    // Modifier pour supprimer 
-   const handleDeleteMessage = (msgId) => {
-  if (window.confirm("Supprimer ce message pour moi ?")) {
-    // Ajouter à la liste des messages supprimés
-    setDeletedMessages(prev => [...prev, msgId]);
-    setShowMessageMenu(null);
-  }
-};
-
-    
-
-
-// À ajouter dans ChatWindow.jsx, dans la section useEffect des sockets
-
-useEffect(() => {
-  if (!socketService.socket) return;
-
-  // Écouter quand une demande est acceptée
-  const handleRequestAccepted = (data) => {
-    console.log("✅ Demande de message acceptée:", data);
-    
-    // Si c'est ma conversation, rafraîchir
-    if (data.conversationId === selectedChat?._id) {
-      // Mettre à jour l'état local ou rafraîchir
-      window.location.reload(); // solution simple
-      // OU mieux : mettre à jour l'état React
-    }
-  };
-
-  // Écouter quand une demande est supprimée
-  const handleRequestDeleted = (data) => {
-    console.log("🗑️ Demande de message supprimée:", data);
-    
-    // Si c'est ma conversation, retourner à la liste
-    if (data.conversationId === selectedChat?._id) {
-      onBack();
-    }
-  };
-
-  socketService.socket.on("message_request_accepted", handleRequestAccepted);
-  socketService.socket.on("message_request_deleted", handleRequestDeleted);
-
-  return () => {
-    socketService.socket.off("message_request_accepted", handleRequestAccepted);
-    socketService.socket.off("message_request_deleted", handleRequestDeleted);
-  };
-}, [selectedChat, onBack]);
-
-
-
-
-
-
-
-
-
-
-
-
-
+    const handleDeleteMessage = (msgId) => {
+      if (window.confirm("Supprimer ce message pour moi ?")) {
+        setDeletedMessages(prev => [...prev, msgId]);
+        setShowMessageMenu(null);
+      }
+    };
 
     return (
       <div className={`flex ${fromMe ? "justify-end" : "justify-start"} group`}>
@@ -1083,8 +946,6 @@ useEffect(() => {
                   📎 {msg.fileName || "Fichier"}
                 </a>
               )}
-
-              
             </div>
 
             {showMessageMenu === msg._id && (
@@ -1112,10 +973,10 @@ useEffect(() => {
                 </button>
                 <button
                   onClick={() => {
-                    setMessageToForward(msg);                    // On garde le message à transférer
-                    setSelectedTargetConversation(null);          // Réinitialise la sélection
-                    setShowForwardModal(true);                    // Ouvre la modale
-                    setShowMessageMenu(null);                     // Ferme le menu
+                    setMessageToForward(msg);
+                    setSelectedTargetConversation(null);
+                    setShowForwardModal(true);
+                    setShowMessageMenu(null);
                   }}
                   className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
                 >
@@ -1173,30 +1034,28 @@ useEffect(() => {
             </div>
           )}
 
-          
           <div
-  className={`text-[10px] mt-1 flex items-center gap-1.5 ${
-    fromMe ? "justify-end" : "justify-start"
-  } text-gray-500 dark:text-gray-400`}
->
-  <span>{messageTime}</span>
+            className={`text-[10px] mt-1 flex items-center gap-1.5 ${
+              fromMe ? "justify-end" : "justify-start"
+            } text-gray-500 dark:text-gray-400`}
+          >
+            <span>{messageTime}</span>
 
-  {fromMe && (
-    <span className="flex items-center gap-1">
-      {msg._id.startsWith("pending_") || msg.status === "sending" ? (
-        <span className="flex items-center gap-1 text-gray-400">
-          ✓
-        </span>
-      ) : (
-        <span className="text-gray-400">✓✓</span>
-      )}
-    </span>
-  )}
-</div>
+            {fromMe && (
+              <span className="flex items-center gap-1">
+                {msg._id.startsWith("pending_") || msg.status === "sending" ? (
+                  <span className="flex items-center gap-1 text-gray-400">
+                    ✓
+                  </span>
+                ) : (
+                  <span className="text-gray-400">✓✓</span>
+                )}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     );
-    
   };
 
   if (loading) {
@@ -1261,194 +1120,111 @@ useEffect(() => {
             <div className="text-sm font-semibold truncate">
               {conversationName}
             </div>
-           <div className="text-xs truncate text-gray-700 dark:text-gray-300 flex items-center gap-1">
-  {isTyping && typingUsers.length > 0 ? (
-    <span className="text-green-500 font-medium">
-      {t("chat.typing") || "En train d'écrire"}...
-    </span>
-  ) : selectedChat?.isGroup ? (
-    `${selectedChat?.participants?.length || 0} membres`
-  ) : (
-    <span className="flex items-center gap-1">
-      {contactStatus.isOnline && (
-        <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
-      )}
-      <span className="text-gray-500 text-xs">{getUserStatusText()}</span>
-    </span>
-  )}
-</div>
-
+            <div className="text-xs truncate text-gray-700 dark:text-gray-300 flex items-center gap-1">
+              {selectedChat?.isGroup ? (
+                `${selectedChat?.participants?.length || 0} membres`
+              ) : (
+                <span className="flex items-center gap-1">
+                  {contactStatus.isOnline && (
+                    <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+                  )}
+                  <span className="text-gray-500 text-xs">{getUserStatusText()}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Boutons statiques pour appels */}
           <Phone
             size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer"
+            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
+            onClick={() => alert("Fonctionnalité d'appel vocal bientôt disponible!")}
           />
           <Video
-    size={16}
-    className="text-gray-600 dark:text-gray-300 cursor-pointer"
-    onClick={() => {
-      // Vérification de base
-      if (!selectedChat || !selectedChat.participants || !user) {
-        console.error('Données manquantes pour initier un appel');
-        return;
-      }
-
-      const currentUserId = user._id || user.id || user.userId;
-      console.log('Mon ID:', currentUserId);
-      console.log('Participants du chat:', selectedChat.participants);
-
-      // Pour un chat individuel
-      if (!selectedChat.isGroup) {
-        // Trouver l'autre participant
-        const otherParticipant = selectedChat.participants.find(participant => {
-          const participantId = participant._id || participant.id;
-          return String(participantId) !== String(currentUserId);
-        });
-
-        console.log('Autre participant trouvé:', otherParticipant);
-
-        if (otherParticipant && otherParticipant._id) {
-          const receiverId = otherParticipant._id;
-
-          // Vérifier qu'on ne s'appelle pas soi-même
-          if (String(receiverId) === String(currentUserId)) {
-            console.error('ERREUR: ReceiverId est le même que callerId!');
-            alert('Impossible de s\'appeler soi-même');
-            return;
-          }
-
-          console.log('📞 Initiation d\'un appel vidéo vers:', receiverId);
-
-          if (socketService.socket) {
-            socketService.socket.emit('call:initiate', {
-              conversationId: selectedChat._id,
-              receiverId: receiverId,
-              callType: 'video'
-            });
-
-            // Ouvrir la fenêtre d'appel immédiatement pour l'appelant
-            setActiveCall({
-              callerId: currentUserId,
-              receiverId: receiverId,
-              conversationId: selectedChat._id,
-              callType: 'video',
-              callId: 'temp_' + Date.now(),
-              receiverName: otherParticipant.username,
-              receiverAvatar: otherParticipant.profilePicture,
-              status: 'calling'
-            });
-          } else {
-            console.error('Socket non connecté');
-          }
-        } else {
-          console.error('Impossible de trouver l\'autre participant');
-          alert('Impossible de trouver le contact');
-        }
-      } else {
-        // Pour un chat de groupe
-        alert('Les appels de groupe ne sont pas encore disponibles');
-      }
-    }}
-  />
+            size={16}
+            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
+            onClick={() => alert("Fonctionnalité d'appel vidéo bientôt disponible!")}
+          />
           
-          {/* BOUTON ARCHIVER */}
-      
-
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
               size={16}
-              className="text-gray-600 dark:text-gray-300 cursor-pointer"
+              className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
             />
           </button>
         </div>
       </header>
 
-      {/* 🔥 DEMANDE DE MESSAGE - Bannière propre et réutilisable */}
-{isIncomingMessageRequest && (
-  <MessageRequestBanner
-    conversationName={conversationName}
-    conversationAvatar={conversationAvatar}
-    onAccept={async () => {
-      const token = localStorage.getItem("token");
-      try {
-        console.log('🟢 Acceptation demande pour conversation:', selectedChat._id);
-        
-        const res = await fetch("http://localhost:5000/api/relations/accept-request", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ conversationId: selectedChat._id }),
-        });
+      {/* DEMANDE DE MESSAGE */}
+      {isIncomingMessageRequest && (
+        <MessageRequestBanner
+          conversationName={conversationName}
+          conversationAvatar={conversationAvatar}
+          onAccept={async () => {
+            const token = localStorage.getItem("token");
+            try {
+              console.log('🟢 Acceptation demande pour conversation:', selectedChat._id);
+              
+              const res = await fetch("http://localhost:5000/api/relations/accept-request", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ conversationId: selectedChat._id }),
+              });
 
-        const data = await res.json();
-        console.log('✅ Réponse accept:', data);
+              const data = await res.json();
+              console.log('✅ Réponse accept:', data);
 
-        if (res.ok) {
-          window.location.reload(); // ou une meilleure méthode plus tard
-        } else {
-          console.error('❌ Erreur accept:', data);
-          alert(data.error || "Erreur lors de l'acceptation");
-        }
-      } catch (err) {
-        console.error('❌ Erreur réseau accept:', err);
-        alert("Erreur réseau");
-      }
-    }}
-    onDelete={async () => {
-      if (!confirm("Supprimer cette demande de message ?")) return;
+              if (res.ok) {
+                window.location.reload();
+              } else {
+                console.error('❌ Erreur accept:', data);
+                alert(data.error || "Erreur lors de l'acceptation");
+              }
+            } catch (err) {
+              console.error('❌ Erreur réseau accept:', err);
+              alert("Erreur réseau");
+            }
+          }}
+          onDelete={async () => {
+            if (!confirm("Supprimer cette demande de message ?")) return;
 
-      const token = localStorage.getItem("token");
-      try {
-        console.log('🔴 Suppression demande pour conversation:', selectedChat._id);
-        console.log('📋 Données conversation:', {
-          _id: selectedChat._id,
-          isMessageRequest: selectedChat.isMessageRequest,
-          messageRequestFor: selectedChat.messageRequestFor,
-          messageRequestFrom: selectedChat.messageRequestFrom,
-          currentUserId: user?.id
-        });
-        
-        const res = await fetch("http://localhost:5000/api/relations/delete-request", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ conversationId: selectedChat._id }),
-        });
+            const token = localStorage.getItem("token");
+            try {
+              console.log('🔴 Suppression demande pour conversation:', selectedChat._id);
+              
+              const res = await fetch("http://localhost:5000/api/relations/delete-request", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ conversationId: selectedChat._id }),
+              });
 
-        const data = await res.json();
-        console.log('✅ Réponse delete:', data);
+              const data = await res.json();
+              console.log('✅ Réponse delete:', data);
 
-        if (res.ok) {
-          onBack(); // Retour à la liste
-        } else {
-          console.error('❌ Erreur delete:', data);
-          alert(data.error || "Erreur lors de la suppression");
-        }
-      } catch (err) {
-        console.error('❌ Erreur réseau delete:', err);
-        alert("Erreur réseau");
-      }
-    }}
-  />
-)}
+              if (res.ok) {
+                onBack();
+              } else {
+                console.error('❌ Erreur delete:', data);
+                alert(data.error || "Erreur lors de la suppression");
+              }
+            } catch (err) {
+              console.error('❌ Erreur réseau delete:', err);
+              alert("Erreur réseau");
+            }
+          }}
+        />
+      )}
 
       {/* SECTION MESSAGES ÉPINGLÉS */}
-
-      {/* SECTION MESSAGES ÉPINGLÉS */}
-            {/* SECTION MESSAGES ÉPINGLÉS - VERSION SCROLLABLE HORIZONTALE */}
-            {/* SECTION MESSAGES ÉPINGLÉS - UNE SEULE LIGNE SCROLLABLE */}
-            {/* SECTION MESSAGES ÉPINGLÉS - LISTE VERTICALE SCROLLABLE */}
-            {/* SECTION MESSAGES ÉPINGLÉS - VERSION COMPACTE VERTICALE */}
-            {/* SECTION MESSAGES ÉPINGLÉS - VERSION ULTRA-COMPACTE */}
       {showPinnedSection && pinnedMessages.length > 0 && (
         <div className="border-b border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/40 z-20">
-          {/* Header ultra-minimaliste */}
           <div className="flex items-center justify-between px-3 py-1.5">
             <div className="flex items-center gap-1.5">
               <Pin size={14} className="text-yellow-600 dark:text-yellow-400" />
@@ -1464,7 +1240,6 @@ useEffect(() => {
             </button>
           </div>
 
-          {/* Liste ultra-compacte avec scrollbar */}
           <div className="max-h-28 overflow-y-auto px-3 pb-2 scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-yellow-100 dark:scrollbar-thumb-yellow-300 dark:scrollbar-track-yellow-900/50">
             <div className="space-y-1.5">
               {pinnedMessages.map((msg) => (
@@ -1588,256 +1363,200 @@ useEffect(() => {
   );
 })}
 
-  {/*fin de modification*/}
+        {/* 🔥 INDICATEUR "EN TRAIN D'ÉCRIRE" */}
+        {isTyping && typingUsers.length > 0 && (
+          <TypingIndicator 
+            avatar={otherUserAvatar}
+            username={selectedChat?.isGroup ? typingUsers[0]?.username : null}
+          />
+        )}
+
         <div ref={messagesEndRef} />
       </main>
 
-
-      
-
       {/* INPUT */}
-
-
-
-
-      
-
-<footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
-  {/* ✅ SI BLOQUÉ : Afficher le message de blocage */}
-  {isBlocked && blockedBy === 'me' ? (
-    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-      <div className="text-center space-y-3">
-        <p className="text-sm text-red-800 dark:text-red-200 font-medium">
-          {t("chat.youBlocked") || "Vous avez bloqué"} {otherUserName || "cet utilisateur"}
-        </p>
-        <p className="text-xs text-red-600 dark:text-red-300">
-          {t("chat.blockMessage") || "Vous ne pouvez pas contacter cette personne ou l'appeler dans cette discussion. Vous ne recevez pas ses messages ou appels."}
-        </p>
-         <button
-        onClick={() => setIsConfirmUnblockModalOpen(true)}
-        className="px-4 py-2 bg-myYellow hover:bg-yellow-400 text-white rounded-lg text-sm font-medium transition-colors"
-      >
-        {t("chat.unblock") || "Débloquer"}
-      </button>
-      </div>
-    </div>
-  ) : isBlocked && blockedBy === 'them' ? (
-    // ✅ SI BLOQUÉ PAR L'AUTRE : Afficher un message simple
-    <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-      <p className="text-sm text-center text-gray-600 dark:text-gray-400">
-        {t("chat.blockedByOther") || "Vous ne pouvez pas envoyer de message à cette personne"}
-      </p>    
-     </div>
-  ) : (
-     
-    <>
-      {isRecording && (
-        <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
-          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-          <span className="text-sm font-medium">
-            {Math.floor(recordingTime / 60)}:
-            {(recordingTime % 60).toString().padStart(2, "0")}
-          </span>
-          <button onClick={cancelRecording} className="ml-4 text-xs underline">
-            Annuler
-            </button>
+      <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
+        {isBlocked && blockedBy === 'me' ? (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+            <div className="text-center space-y-3">
+              <p className="text-sm text-red-800 dark:text-red-200 font-medium">
+                {t("chat.youBlocked") || "Vous avez bloqué"} {otherUserName || "cet utilisateur"}
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-300">
+                {t("chat.blockMessage") || "Vous ne pouvez pas contacter cette personne ou l'appeler dans cette discussion. Vous ne recevez pas ses messages ou appels."}
+              </p>
+              <button
+                onClick={() => setIsConfirmUnblockModalOpen(true)}
+                className="px-4 py-2 bg-myYellow hover:bg-yellow-400 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                {t("chat.unblock") || "Débloquer"}
+              </button>
+            </div>
           </div>
+        ) : isBlocked && blockedBy === 'them' ? (
+          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+            <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+              {t("chat.blockedByOther") || "Vous ne pouvez pas envoyer de message à cette personne"}
+            </p>    
+          </div>
+        ) : (
+          <>
+            {isRecording && (
+              <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium">
+                  {Math.floor(recordingTime / 60)}:
+                  {(recordingTime % 60).toString().padStart(2, "0")}
+                </span>
+                <button onClick={cancelRecording} className="ml-4 text-xs underline">
+                  Annuler
+                </button>
+              </div>
+            )}
+            {selectedFile && (
+              <div className="mb-2 p-2 border rounded bg-white dark:bg-neutral-800">
+                {selectedFile.type.startsWith("image/") && (
+                  <img src={filePreview} className="max-h-40 rounded" alt="preview" />
+                )}
+
+                {selectedFile.type.startsWith("video/") && (
+                  <video src={filePreview} controls className="max-h-40 rounded" />
+                )}
+
+                {!selectedFile.type.startsWith("image/") &&
+                !selectedFile.type.startsWith("video/") && (
+                  <p className="text-sm">📎 {selectedFile.name}</p>
+                )}
+
+                <button
+                  onClick={() => {
+                    setSelectedFile(null);
+                    setFilePreview(null);
+                  }}
+                  className="text-xs text-red-500 underline mt-1"
+                >
+                  Annuler
+                </button>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 w-full">
+              <div className="flex-1 flex items-center gap-2 px-4 py-4 rounded-xl bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
+                <Smile
+                  size={18}
+                  className="text-gray-700 dark:text-gray-300 cursor-pointer"
+                />
+                <Paperclip
+                  size={18}
+                  className="text-gray-700 dark:text-gray-300 cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}
+                />
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept="image/*,video/*,application/*"
+                />
+                <input
+                  type="text"
+                  className="flex items-center flex-1 bg-transparent outline-none text-xs text-myBlack dark:text-white"
+                  placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
+                  value={inputText}
+                  onChange={handleInputChange}
+                  onKeyPress={(e) =>
+                    e.key === "Enter" && !isRecording && handleSendMessage()
+                  }
+                  disabled={isRecording}
+                />
+              </div>
+              <button
+                className={`
+                  w-12 h-12 flex items-center justify-center rounded-xl
+                  text-sm font-bold text-myBlack
+                  bg-myYellow2 dark:bg-mydarkYellow 
+                `}
+                onClick={
+                  selectedFile
+                    ? handleSendMessage
+                    : inputText.trim() === ""
+                    ? handleMicClick
+                    : handleSendMessage
+                }
+              >
+                {selectedFile || inputText.trim() !== "" ? (
+                  <Send size={18} />
+                ) : (
+                  <Mic
+                    size={18}
+                    className={`text-gray-700 dark:myBlack ${
+                      isRecording ? "animate-pulse text-red-500" : ""
+                    }`}
+                  />
+                )}
+              </button>
+            </div>
+          </>
         )}
-        {selectedFile && (
-  <div className="mb-2 p-2 border rounded bg-white dark:bg-neutral-800">
-    {selectedFile.type.startsWith("image/") && (
-      <img src={filePreview} className="max-h-40 rounded" />
-    )}
+      </footer>
 
-    {selectedFile.type.startsWith("video/") && (
-      <video src={filePreview} controls className="max-h-40 rounded" />
-    )}
+      {/* Options Menu */}
+      {isOptionsOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/30 z-30"
+            onClick={() => setIsOptionsOpen(false)}
+          ></div>
+          <ChatOptionsMenu
+            selectedChat={{
+              ...selectedChat,
+              userId: selectedChat?.isGroup 
+                ? null
+                : selectedChat?.participants?.find(
+                    participant => {
+                      const participantId = participant._id || participant.id;
+                      const currentUserId = user?._id || user?.id || user?.userId;
+                      return String(participantId) !== String(currentUserId);
+                    }
+                  )?._id,
+              openInfo: () => setIsInfoOpen(true),
+              openTheme: () => {
+                setShowThemeSelector(true);
+                setIsOptionsOpen(false);
+              },
+            }}
+            onClose={() => setIsOptionsOpen(false)}
+            onOpenSearch={() => setOpenSearch(true)}
+            onBlockStatusChange={() => refresh()}
+          />
+        </>
+      )}
 
-    {!selectedFile.type.startsWith("image/") &&
-     !selectedFile.type.startsWith("video/") && (
-      <p className="text-sm">📎 {selectedFile.name}</p>
-    )}
-
-    <button
-      onClick={() => {
-        setSelectedFile(null);
-        setFilePreview(null);
-      }}
-      className="text-xs text-red-500 underline mt-1"
-    >
-      Annuler
-    </button>
-  </div>
-)}
-
-
-        <div className="flex items-center gap-2  w-full">
-          <div className="flex-1 flex items-center gap-2 px-4 py-4 rounded-xl  bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
-            <Smile
-              size={18}
-              className="text-gray-700 dark:text-gray-300 cursor-pointer"
-            />
-            <Paperclip
-              size={18}
-              className="text-gray-700 dark:text-gray-300 cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
-              accept="image/*,video/*,application/*"
-            />
-            <input
-              type="text"
-              className=" flex items-center flex-1 bg-transparent outline-none text-xs text-myBlack dark:text-white"
-              placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
-              value={inputText}
-              onChange={handleInputChange}
-              onKeyPress={(e) =>
-                e.key === "Enter" && !isRecording && handleSendMessage()
+      {/* Info Contact Modal */}
+      {isInfoOpen && (
+        <InfoContactModal
+          chat={{
+            ...selectedChat,
+            openTheme: () => setShowThemeSelector(true),
+            onArchive: async () => {
+              try {
+                if (isArchived) {
+                  await unarchiveConversation(selectedChat._id);
+                } else {
+                  await archiveConversation(selectedChat._id);
+                }
+              } catch (err) {
+                alert("Erreur lors de l'opération");
               }
-              disabled={isRecording}
-            />
-          </div>
-<button
-  className={`
-    w-12 h-12 flex items-center justify-center rounded-xl
-    text-sm font-bold text-myBlack
-    bg-myYellow2 dark:bg-mydarkYellow 
-  `}
-  onClick={
-    selectedFile
-      ? handleSendMessage
-      : inputText.trim() === ""
-      ? handleMicClick
-      : handleSendMessage
-  }
->
-            {selectedFile || inputText.trim() !== "" ? (
-  <Send size={18} />
-) : (
-  <Mic
-    size={18}
-    className={`text-gray-700 dark:myBlack ${
-      isRecording ? "animate-pulse text-red-500" : ""
-    }`}
-  />
-)}
-
-          </button>
-       </div>
-      
-    </>
-  )}
-</footer>
-
-
-      {/* Composants pour les appels */}
-      {incomingCall && (
-        <IncomingCallModal
-          call={incomingCall}
-          onAccept={handleAcceptCall}
-          onReject={handleRejectCall}
+            },
+            isArchived: isArchived,
+          }}
+          onClose={() => setIsInfoOpen(false)}
+          onBlockStatusChange={() => refresh()}
         />
       )}
 
-{activeCall && (
-  <>
-    {/* Écran d'attente pour l'appelant */}
-    {activeCall.status === 'calling' && (
-      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center">
-          <div className="animate-pulse mb-4 text-4xl">📞</div>
-          <p className="text-lg mb-2 text-gray-900 dark:text-white">Appel en cours...</p>
-          <p className="text-sm text-gray-500">{activeCall.receiverName}</p>
-          <button
-            onClick={() => {
-              if (socketService.socket) {
-                socketService.socket.emit('call:cancel', { callId: activeCall.callId });
-              }
-              setActiveCall(null);
-              setIsVideoCallOpen(false);
-            }}
-            className="mt-4 px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-          >
-            Annuler
-          </button>
-        </div>
-      </div>
-    )}
-    
-    {/* Interface vidéo une fois accepté */}
-    {isVideoCallOpen && activeCall.status === 'active' && (
-      <VideoCallScreen
-        callData={activeCall}
-        onClose={() => {
-          setIsVideoCallOpen(false);
-          setActiveCall(null);
-        }}
-      />
-    )}
-  </>
-)}
-
-     {isOptionsOpen && (
-  <>
-    <div
-      className="fixed inset-0 bg-black/30 z-30"
-      onClick={() => setIsOptionsOpen(false)}
-    ></div>
-    <ChatOptionsMenu
-      selectedChat={{
-        ...selectedChat,
-        //  AJOUTER le userId de l'autre utilisateur
-        userId: selectedChat?.isGroup 
-          ? null // Pas de blocage pour les groupes
-          : selectedChat?.participants?.find(
-              participant => {
-                const participantId = participant._id || participant.id;
-                const currentUserId = user?._id || user?.id || user?.userId;
-                return String(participantId) !== String(currentUserId);
-              }
-            )?._id,
-        openInfo: () => setIsInfoOpen(true),
-        openTheme: () => {
-          setShowThemeSelector(true);
-          setIsOptionsOpen(false);
-        },
-      }}
-      onClose={() => setIsOptionsOpen(false)}
-      onOpenSearch={() => setOpenSearch(true)}
-      // ✅ Ajouter le callback pour refresh
-      onBlockStatusChange={() => refresh()}
-    />
-  </>
-)}
-      {isInfoOpen && (
-
-  <InfoContactModal
-    chat={{
-      ...selectedChat,
-      openTheme: () => setShowThemeSelector(true),
-      onArchive: async () => {
-        try {
-          if (isArchived) {
-            await unarchiveConversation(selectedChat._id);
-          } else {
-            await archiveConversation(selectedChat._id);
-          }
-        } catch (err) {
-          alert("Erreur lors de l'opération");
-        }
-      },
-      isArchived: isArchived,
-    }}
-    onClose={() => setIsInfoOpen(false)}
-      onBlockStatusChange={() => refresh()}
-  />
-)}
-
-
+      {/* Search Modal */}
       {openSearch && (
         <>
           <div
@@ -1861,50 +1580,7 @@ useEffect(() => {
         </>
       )}
 
-            {/* 🔥 BANDEAU DEMANDE DE MESSAGE 🔥 */}
-      {/* {isMessageRequest && (
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-4 text-center">
-          <p className="font-bold text-lg">Demande de message</p>
-          <p className="text-sm mt-1 opacity-90">
-            {conversationName} veut discuter avec vous
-          </p>
-          <div className="flex justify-center gap-4 mt-4">
-            <button
-              onClick={async () => {
-                try {
-                  await fetch("/api/relations/accept-from-chat", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contactId: otherUserId }),
-                  });
-                  alert("Demande acceptée ! Vous pouvez maintenant répondre.");
-                  window.location.reload();
-                } catch (err) {
-                  alert("Erreur lors de l'acceptation");
-                }
-              }}
-              className="bg-white text-indigo-600 px-8 py-2.5 rounded-full font-semibold hover:scale-105 transition"
-            >
-              Accepter
-            </button>
-            <button
-              onClick={() => {
-                if (confirm("Supprimer cette demande de message ?")) {
-                  onBack();
-                }
-              }}
-              className="border border-white px-8 py-2.5 rounded-full font-semibold hover:bg-white/20 transition"
-            >
-              Supprimer
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-} */}
-
-
+      {/* Confirm Unblock Modal */}
       <ConfirmBlockModal
         isOpen={isConfirmUnblockModalOpen}
         onClose={() => setIsConfirmUnblockModalOpen(false)}
@@ -1918,11 +1594,8 @@ useEffect(() => {
           avatar: conversationAvatar
         }}
       />
-      {console.log("Conversations disponibles pour transfert :", conversations)}
-      {console.log("Mes conversations chargées :", myConversations)}
-      {console.log("Conversations passées au modal :", myConversations)}
-{console.log("Conversation actuelle ID :", selectedChat?._id)}
 
+      {/* Forward Modal */}
       <ForwardModal
         isOpen={showForwardModal}
         onClose={() => {
@@ -1930,7 +1603,7 @@ useEffect(() => {
           setMessageToForward(null);
         }}
         message={messageToForward}
-        conversations={myConversations}  // ← TES CONVERSATIONS CHARGÉES DIRECTEMENT
+        conversations={myConversations}
         currentConversationId={selectedChat?._id}
         onForward={(targetConversationId) => {
           forwardMessage(messageToForward?._id, targetConversationId);

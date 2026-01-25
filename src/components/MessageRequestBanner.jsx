@@ -1,4 +1,4 @@
-import React from 'react';
+ import React from 'react';
 
 const MessageRequestBanner = ({ conversationName, conversationAvatar, onAccept, onDelete }) => {
   return (
