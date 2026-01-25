@@ -102,7 +102,10 @@
   "changePhoto": "Changer photo",
   "deleteAccount": "Supprimer le compte",
   "username": "Nom d'utilisateur",
-  "email": "E-mail"
+  "email": "E-mail",
+  "votreqrcode": "Votre QR code",
+    "Telecharger": "Télécharger",
+    "Fermer": "Fermer"
 },
 "parametresMenu": {
 
@@ -363,7 +366,11 @@
     "noGroupe": "Aucun groupe",
     "all": "Tout",
     "groups": "Groupes",
-    "searchGroupe": "Rechercher un groupe"
+    "searchGroupe": "Rechercher un groupe",
+     "favorites": "Conversations favorites",
+    "archived": "Conversations archivées",
+    "showAll": "Tout voir"
+    
 
   },
   "buttons": {

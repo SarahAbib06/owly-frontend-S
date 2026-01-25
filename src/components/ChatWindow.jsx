@@ -31,6 +31,8 @@ import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
 import { Archive } from "lucide-react";
 import { useChat } from "../context/ChatContext"; // ← AJOUTE CET IMPORT
+import EmojiPicker from 'emoji-picker-react';
+
 
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
@@ -126,7 +128,7 @@ const [selectedTargetConversation, setSelectedTargetConversation] = useState(nul
 const [showForwardModal, setShowForwardModal] = useState(false);
 const [messageToForward, setMessageToForward] = useState(null);
 const [deletedMessages, setDeletedMessages] = useState([]); // ajouter pour supprimer le message
-
+const [showEmojiPicker, setShowEmojiPicker] = useState(false); //imojie
 
 const { conversations: myConversations, loading: convLoading } = useConversations();
 
@@ -199,7 +201,10 @@ const getUserStatusText = () => {
   if (contactStatus.isOnline) {
     return "En ligne";
   }
-
+// 🔒 Si pas de lastSeen ET offline → Statut masqué (statusVisibility = "Personne")
+  if (!contactStatus.lastSeen) {
+    return ""; // ← Ne rien afficher
+  }
   // ⚪ Offline avec lastSeen
   if (contactStatus.lastSeen) {
     const last = new Date(contactStatus.lastSeen);
@@ -262,7 +267,16 @@ useEffect(() => {
     .catch(err => console.error("Erreur statut:", err));
 }, [contactId]);
 
+useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (showEmojiPicker && !event.target.closest('.EmojiPickerReact')) {
+      setShowEmojiPicker(false);
+    }
+  };
 
+  document.addEventListener('mousedown', handleClickOutside);
+  return () => document.removeEventListener('mousedown', handleClickOutside);
+}, [showEmojiPicker]);
 // Après les autres useEffect (vers la fin du composant, avant les returns), ajoute :
 // ajouter pour supprimer 
 // Sauvegarder les messages supprimés
@@ -572,86 +586,275 @@ file.type.startsWith("video/")) {
       await startRecording();
     }
   };
+  //imoji
+ const onEmojiClick = (emojiObject) => {
+  setInputText((prevInput) => prevInput + emojiObject.emoji);
+  // Optionnel : fermer le picker après sélection
+  // setShowEmojiPicker(false);
+};
+//theme discution
+ const applyTheme = React.useCallback(async (theme, save = true) => {
+  console.log("Thème sélectionné :", theme);
+  let style = {};
+  setThemeEmojis([]);
 
-  // Gestion du thème
-  const applyTheme = async (theme, save = true) => {
-     console.log("Thème sélectionné :", theme); // <-- AJOUTE ÇA
-    let style = {};
-    setThemeEmojis([]);
+  const emojisFromTheme = theme?.emojis ?? (theme?.emoji ? [theme.emoji] : null);
+  //imoji
+ 
 
-    const emojisFromTheme = theme?.emojis ?? (theme?.emoji ? [theme.emoji] : null);
-
-    if (theme.type === "upload" && theme.value instanceof File) {
-      const base64 = await fileToBase64(theme.value);
-      style = {
-        backgroundImage: `url(${base64})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      };
-      setThemeStyle(style);
-      setSendBtnColor("");
-      setBubbleBg("");
-      if (save) localStorage.setItem(chatKey, JSON.stringify({ ...theme, value: base64 }));
-      return;
-    }
-
-    if ((theme.type === "image" || theme.type === "upload") && typeof theme.value === "string") {
-      style = {
-        backgroundImage: `url(${theme.value})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      };
-      setThemeStyle(style);
-      setSendBtnColor("");
-      setBubbleBg("");
-      if (save) localStorage.setItem(chatKey, JSON.stringify(theme));
-      return;
-    }
-
-    if (theme.type === "color" || theme.type === "gradient" || theme.type === "seasonal") {
-      style = { background: theme.value };
-      setThemeStyle(style);
-      setBubbleBg(theme.value || "");
-      setSendBtnColor(theme.value || "");
-
-      if (
-        theme.type === "seasonal" &&
-        emojisFromTheme &&
-        Array.isArray(emojisFromTheme) &&
-        emojisFromTheme.length > 0
-      ) {
-        setThemeEmojis(emojisFromTheme);
-        const count = 35;
-        const arr = Array.from({ length: count }).map((_, i) => ({
-          id: `${Date.now()}_${i}`,
-          left: Math.random() * 100,
-          top: Math.random() * 60,
-          size: 12 + Math.random() * 20,
-          speed: 0.25 + Math.random() * 0.6,
-          rotate: (Math.random() - 0.5) * 30,
-          direction: Math.random() > 0.5 ? 1 : -1,
-        }));
-        setFloatingEmojis(arr);
-      } else {
-        setThemeEmojis([]);
-        setFloatingEmojis([]);
-      }
-
-      if (save) localStorage.setItem(chatKey, JSON.stringify(theme));
-    }
-  };
-
-  const removeTheme = () => {
-    setThemeStyle({});
-    setBubbleBg("");
+  // Gestion upload fichier
+  if (theme.type === "upload" && theme.value instanceof File) {
+    const base64 = await fileToBase64(theme.value);
+    style = {
+      backgroundImage: `url(${base64})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    };
+    setThemeStyle(style);
     setSendBtnColor("");
-    setThemeEmojis([]);
-    setFloatingEmojis([]);
-    localStorage.removeItem(chatKey);
+    setBubbleBg("");
+    
+    if (save) {
+      localStorage.setItem(chatKey, JSON.stringify({ ...theme, value: base64 }));
+      // 🆕 SAUVEGARDER DANS LE BACKEND
+      await saveThemeToBackend({ ...theme, value: base64 });
+    }
+    return;
+  }
+
+  // Gestion image (URL ou base64)
+  if ((theme.type === "image" || theme.type === "upload") && typeof theme.value === "string") {
+    style = {
+      backgroundImage: `url(${theme.value})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    };
+    setThemeStyle(style);
+    setSendBtnColor("");
+    setBubbleBg("");
+    
+    if (save) {
+      localStorage.setItem(chatKey, JSON.stringify(theme));
+      // 🆕 SAUVEGARDER DANS LE BACKEND
+      await saveThemeToBackend(theme);
+    }
+    return;
+  }
+
+  // Gestion couleurs, gradients, saisonniers
+  if (theme.type === "color" || theme.type === "gradient" || theme.type === "seasonal") {
+    style = { background: theme.value };
+    setThemeStyle(style);
+    setBubbleBg(theme.value || "");
+    setSendBtnColor(theme.value || "");
+
+    if (
+      theme.type === "seasonal" &&
+      emojisFromTheme &&
+      Array.isArray(emojisFromTheme) &&
+      emojisFromTheme.length > 0
+    ) {
+      setThemeEmojis(emojisFromTheme);
+      const count = 35;
+      const arr = Array.from({ length: count }).map((_, i) => ({
+        id: `${Date.now()}_${i}`,
+        left: Math.random() * 100,
+        top: Math.random() * 60,
+        size: 12 + Math.random() * 20,
+        speed: 0.25 + Math.random() * 0.6,
+        rotate: (Math.random() - 0.5) * 30,
+        direction: Math.random() > 0.5 ? 1 : -1,
+      }));
+      setFloatingEmojis(arr);
+    } else {
+      setThemeEmojis([]);
+      setFloatingEmojis([]);
+    }
+
+    if (save) {
+      localStorage.setItem(chatKey, JSON.stringify(theme));
+      // 🆕 SAUVEGARDER DANS LE BACKEND
+      await saveThemeToBackend(theme);
+    }
+  }
+}, [selectedChat?._id, chatKey]); // 🔥 Ajouter les dépendances
+
+// 2️⃣ NOUVELLE FONCTION : Sauvegarder dans le backend
+const saveThemeToBackend = async (theme) => {
+  try {
+    const token = localStorage.getItem("token");
+    
+    console.log("💾 Sauvegarde thème backend:", {
+      conversationId: selectedChat._id,
+      type: theme.type,
+      hasEmojis: theme.emojis?.length > 0,
+    });
+
+    const response = await fetch("http://localhost:5000/api/themes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        conversationId: selectedChat._id,
+        type: theme.type,
+        value: theme.value,
+        emojis: theme.emojis || (theme.emoji ? [theme.emoji] : []),
+        name: theme.name || null,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error("❌ Erreur sauvegarde thème:", error);
+      return;
+    }
+
+    const data = await response.json();
+    console.log("✅ Thème sauvegardé avec succès:", data);
+  } catch (error) {
+    console.error("💥 Erreur réseau sauvegarde thème:", error);
+  }
+};
+
+// 3️⃣ NOUVELLE FONCTION : Charger depuis le backend
+const loadThemeFromBackend = React.useCallback(async () => {
+  try {
+    const token = localStorage.getItem("token");
+    
+    console.log("📥 Chargement thème backend pour:", selectedChat._id);
+
+    const response = await fetch(
+      `http://localhost:5000/api/themes/${selectedChat._id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.log("ℹ️ Pas de thème en backend, utilisation localStorage");
+      
+      // Fallback sur localStorage
+      const savedTheme = localStorage.getItem(chatKey);
+      if (savedTheme) {
+        const parsed = JSON.parse(savedTheme);
+        applyTheme(parsed, false);
+      }
+      return;
+    }
+
+    const data = await response.json();
+    console.log("✅ Thème chargé depuis backend:", data);
+
+    if (data.success && data.data) {
+      const theme = {
+        type: data.data.type,
+        value: data.data.value,
+        emojis: data.data.emojis,
+        name: data.data.name,
+      };
+      
+      // Appliquer le thème SANS sauvegarder (déjà en DB)
+      applyTheme(theme, false);
+      
+      // Sync localStorage pour cohérence
+      localStorage.setItem(chatKey, JSON.stringify(theme));
+    }
+  } catch (error) {
+    console.error("💥 Erreur chargement thème:", error);
+    
+    // Fallback sur localStorage
+    const savedTheme = localStorage.getItem(chatKey);
+    if (savedTheme) {
+      const parsed = JSON.parse(savedTheme);
+      applyTheme(parsed, false);
+    }
+  }
+}, [selectedChat?._id, chatKey, applyTheme]); // 🔥 Ajouter les dépendances
+
+// 4️⃣ MODIFIER removeTheme pour supprimer aussi du backend
+const removeTheme = async () => {
+  setThemeStyle({});
+  setBubbleBg("");
+  setSendBtnColor("");
+  setThemeEmojis([]);
+  setFloatingEmojis([]);
+  localStorage.removeItem(chatKey);
+  
+  // 🆕 SUPPRIMER AUSSI DU BACKEND
+  try {
+    const token = localStorage.getItem("token");
+    
+    const response = await fetch(
+      `http://localhost:5000/api/themes/${selectedChat._id}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      console.log("✅ Thème supprimé du backend");
+    } else {
+      console.error("❌ Erreur suppression thème backend");
+    }
+  } catch (error) {
+    console.error("💥 Erreur réseau suppression thème:", error);
+  }
+};
+
+// 5️⃣ MODIFIER le useEffect de chargement (REMPLACER l'ancien)
+useEffect(() => {
+  if (selectedChat?._id) {
+    loadThemeFromBackend();
+  }
+}, [selectedChat?._id, loadThemeFromBackend]); // 🔥 Ajouter loadThemeFromBackend
+
+// 6️⃣ AJOUTER useEffect pour écouter les changements Socket.io (si pas déjà fait)
+useEffect(() => {
+  if (!socketService.socket || !selectedChat) return;
+
+  const handleThemeChanged = ({ conversationId, theme }) => {
+    if (conversationId === selectedChat._id) {
+      console.log("🎨 Thème reçu via socket:", theme);
+      
+      // Appliquer le thème reçu SANS sauvegarder (déjà fait par l'émetteur)
+      applyTheme(theme, false);
+      
+      // Sync localStorage
+      localStorage.setItem(chatKey, JSON.stringify(theme));
+    }
   };
 
+  const handleThemeRemoved = ({ conversationId }) => {
+    if (conversationId === selectedChat._id) {
+      console.log("🗑️ Thème supprimé via socket");
+      
+      // Réinitialiser
+      setThemeStyle({});
+      setBubbleBg("");
+      setSendBtnColor("");
+      setThemeEmojis([]);
+      setFloatingEmojis([]);
+      localStorage.removeItem(chatKey);
+    }
+  };
+
+  socketService.socket.on("themeChanged", handleThemeChanged);
+  socketService.socket.on("themeRemoved", handleThemeRemoved);
+
+  return () => {
+    socketService.socket.off("themeChanged", handleThemeChanged);
+    socketService.socket.off("themeRemoved", handleThemeRemoved);
+  };
+}, [selectedChat, chatKey, applyTheme]); // 🔥 Ajouter les dépendances
   // Gérer l'appel entrant
 const handleAcceptCall = () => {
   if (!socketService.socket || !incomingCall) {
@@ -695,17 +898,23 @@ const handleAcceptCall = () => {
 
   // Charger le thème sauvegardé
   useEffect(() => {
-    const savedTheme = localStorage.getItem(chatKey);
-    if (savedTheme) {
-      try {
-        const parsed = JSON.parse(savedTheme);
-        applyTheme(parsed, false);
-      } catch (e) {
-        console.error("Erreur chargement thème:", e);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedChat]);
+  // 🔥 RÉINITIALISER D'ABORD LE THÈME
+  const resetTheme = () => {
+    setThemeStyle({});
+    setBubbleBg("");
+    setSendBtnColor("");
+    setThemeEmojis([]);
+    setFloatingEmojis([]);
+  };
+
+  // Réinitialiser avant de charger le nouveau thème
+  resetTheme();
+
+  // Charger le thème de la conversation actuelle
+  if (selectedChat?._id) {
+    loadThemeFromBackend();
+  }
+}, [selectedChat?._id, loadThemeFromBackend]);
 
   // Animation des emojis flottants
   useEffect(() => {
@@ -1442,7 +1651,6 @@ useEffect(() => {
 
 
       
-
 <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
   {/* ✅ SI BLOQUÉ : Afficher le message de blocage */}
   {isBlocked && blockedBy === 'me' ? (
@@ -1454,23 +1662,21 @@ useEffect(() => {
         <p className="text-xs text-red-600 dark:text-red-300">
           {t("chat.blockMessage") || "Vous ne pouvez pas contacter cette personne ou l'appeler dans cette discussion. Vous ne recevez pas ses messages ou appels."}
         </p>
-         <button
-        onClick={() => setIsConfirmUnblockModalOpen(true)}
-        className="px-4 py-2 bg-myYellow hover:bg-yellow-400 text-white rounded-lg text-sm font-medium transition-colors"
-      >
-        {t("chat.unblock") || "Débloquer"}
-      </button>
+        <button
+          onClick={() => setIsConfirmUnblockModalOpen(true)}
+          className="px-4 py-2 bg-myYellow hover:bg-yellow-400 text-white rounded-lg text-sm font-medium transition-colors"
+        >
+          {t("chat.unblock") || "Débloquer"}
+        </button>
       </div>
     </div>
   ) : isBlocked && blockedBy === 'them' ? (
-    // ✅ SI BLOQUÉ PAR L'AUTRE : Afficher un message simple
     <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
       <p className="text-sm text-center text-gray-600 dark:text-gray-400">
         {t("chat.blockedByOther") || "Vous ne pouvez pas envoyer de message à cette personne"}
       </p>    
-     </div>
+    </div>
   ) : (
-     
     <>
       {isRecording && (
         <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
@@ -1481,43 +1687,69 @@ useEffect(() => {
           </span>
           <button onClick={cancelRecording} className="ml-4 text-xs underline">
             Annuler
-            </button>
+          </button>
+        </div>
+      )}
+
+      {selectedFile && (
+        <div className="mb-2 p-2 border rounded bg-white dark:bg-neutral-800">
+          {selectedFile.type.startsWith("image/") && (
+            <img src={filePreview} className="max-h-40 rounded" alt="preview" />
+          )}
+
+          {selectedFile.type.startsWith("video/") && (
+            <video src={filePreview} controls className="max-h-40 rounded" />
+          )}
+
+          {!selectedFile.type.startsWith("image/") &&
+           !selectedFile.type.startsWith("video/") && (
+            <p className="text-sm">📎 {selectedFile.name}</p>
+          )}
+
+          <button
+            onClick={() => {
+              setSelectedFile(null);
+              setFilePreview(null);
+            }}
+            className="text-xs text-red-500 underline mt-1"
+          >
+            Annuler
+          </button>
+        </div>
+      )}
+
+      {/* 🎨 EMOJI PICKER - POSITION RELATIVE AU FOOTER */}
+      <div className="relative">
+        {showEmojiPicker && (
+          <div className="absolute bottom-16 left-0 z-50">
+            <EmojiPicker
+              onEmojiClick={onEmojiClick}
+              theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+              searchDisabled={false}
+              skinTonesDisabled={false}
+              height={400}
+              width={320}
+            />
           </div>
         )}
-        {selectedFile && (
-  <div className="mb-2 p-2 border rounded bg-white dark:bg-neutral-800">
-    {selectedFile.type.startsWith("image/") && (
-      <img src={filePreview} className="max-h-40 rounded" />
-    )}
 
-    {selectedFile.type.startsWith("video/") && (
-      <video src={filePreview} controls className="max-h-40 rounded" />
-    )}
+        <div className="flex items-center gap-2 w-full">
+          <div className="flex-1 flex items-center gap-2 px-4 py-4 rounded-xl bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
+            {/* 🎨 BOUTON EMOJI MODIFIÉ */}
+            <button
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              type="button"
+            >
+              <Smile
+                size={18}
+                className={`cursor-pointer transition-colors ${
+                  showEmojiPicker 
+                    ? 'text-myYellow' 
+                    : 'text-gray-700 dark:text-gray-300'
+                }`}
+              />
+            </button>
 
-    {!selectedFile.type.startsWith("image/") &&
-     !selectedFile.type.startsWith("video/") && (
-      <p className="text-sm">📎 {selectedFile.name}</p>
-    )}
-
-    <button
-      onClick={() => {
-        setSelectedFile(null);
-        setFilePreview(null);
-      }}
-      className="text-xs text-red-500 underline mt-1"
-    >
-      Annuler
-    </button>
-  </div>
-)}
-
-
-        <div className="flex items-center gap-2  w-full">
-          <div className="flex-1 flex items-center gap-2 px-4 py-4 rounded-xl  bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
-            <Smile
-              size={18}
-              className="text-gray-700 dark:text-gray-300 cursor-pointer"
-            />
             <Paperclip
               size={18}
               className="text-gray-700 dark:text-gray-300 cursor-pointer"
@@ -1532,7 +1764,7 @@ useEffect(() => {
             />
             <input
               type="text"
-              className=" flex items-center flex-1 bg-transparent outline-none text-xs text-myBlack dark:text-white"
+              className="flex items-center flex-1 bg-transparent outline-none text-xs text-myBlack dark:text-white"
               placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
               value={inputText}
               onChange={handleInputChange}
@@ -1542,38 +1774,33 @@ useEffect(() => {
               disabled={isRecording}
             />
           </div>
-<button
-  className={`
-    w-12 h-12 flex items-center justify-center rounded-xl
-    text-sm font-bold text-myBlack
-    bg-myYellow2 dark:bg-mydarkYellow 
-  `}
-  onClick={
-    selectedFile
-      ? handleSendMessage
-      : inputText.trim() === ""
-      ? handleMicClick
-      : handleSendMessage
-  }
->
-            {selectedFile || inputText.trim() !== "" ? (
-  <Send size={18} />
-) : (
-  <Mic
-    size={18}
-    className={`text-gray-700 dark:myBlack ${
-      isRecording ? "animate-pulse text-red-500" : ""
-    }`}
-  />
-)}
 
+          <button
+            className="w-12 h-12 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack bg-myYellow2 dark:bg-mydarkYellow"
+            onClick={
+              selectedFile
+                ? handleSendMessage
+                : inputText.trim() === ""
+                ? handleMicClick
+                : handleSendMessage
+            }
+          >
+            {selectedFile || inputText.trim() !== "" ? (
+              <Send size={18} />
+            ) : (
+              <Mic
+                size={18}
+                className={`text-gray-700 dark:myBlack ${
+                  isRecording ? "animate-pulse text-red-500" : ""
+                }`}
+              />
+            )}
           </button>
-       </div>
-      
+        </div>
+      </div>
     </>
   )}
 </footer>
-
 
       {/* Composants pour les appels */}
       {incomingCall && (
