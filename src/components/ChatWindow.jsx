@@ -1,4 +1,3 @@
-// frontend/src/components/ChatWindow.jsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   Phone,
@@ -20,7 +19,10 @@ import { useTyping } from "../hooks/useTyping";
 import { useReactions } from "../hooks/useReactions";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
+import { useCall } from "../context/CallContext";
 import socketService from "../services/socketService";
+
+import VideoCallScreen from "./VideoCallScreen"; // Seul écran d'appel
 import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
@@ -103,7 +105,7 @@ const fileToBase64 = (file) =>
 
 const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "🎉"];
 
-// Composant Typing Indicator
+// 🔤 COMPOSANT TYPING INDICATOR
 const TypingIndicator = ({ avatar, username }) => (
   <div className="flex justify-start items-start gap-2 mb-3">
     {/* Avatar */}
@@ -154,6 +156,74 @@ const TypingIndicator = ({ avatar, username }) => (
   </div>
 );
 
+// 🔥 COMPOSANT POUR AFFICHER UN MESSAGE D'APPEL
+const CallMessage = ({ callType, callResult, duration, fromMe }) => {
+  // Icônes selon le type
+  const CallIcon = callType === "audio" ? Phone : Video;
+  
+  // Couleur selon le statut
+  const getStatusColor = () => {
+    switch (callResult) {
+      case "missed":
+        return "text-red-500";
+      case "rejected":
+        return "text-orange-500";
+      case "ended":
+        return "text-green-500";
+      default:
+        return "text-gray-500";
+    }
+  };
+
+  // Texte selon le statut
+  const getStatusText = () => {
+    switch (callResult) {
+      case "missed":
+        return "Appel manqué";
+      case "rejected":
+        return "Appel refusé";
+      case "ended":
+        return "Appel terminé";
+      default:
+        return "Appel";
+    }
+  };
+
+  // Format durée (mm:ss)
+  const formatDuration = (seconds) => {
+    if (!seconds || seconds === 0) return null;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const durationText = formatDuration(duration);
+
+  return (
+    <div className="flex items-center gap-2 py-1">
+      {/* Icône d'appel */}
+      <CallIcon size={18} className={getStatusColor()} />
+      
+      {/* Informations d'appel */}
+      <div className="flex flex-col">
+        <span className={`text-xs font-medium ${getStatusColor()}`}>
+          Appel {callType === "audio" ? "audio" : "vidéo"}
+        </span>
+        
+        <div className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-400">
+          <span>{getStatusText()}</span>
+          {durationText && (
+            <>
+              <span>•</span>
+              <span>{durationText}</span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
   const isFromArchived = selectedChat?.isFromArchived === true;
@@ -162,6 +232,13 @@ export default function ChatWindow({ selectedChat, onBack }) {
   console.log("isArchived ?", isArchived, selectedChat?._id);
   const { archiveConversation, unarchiveConversation } = useChat();
   const { user, socketConnected } = useAuth();
+  
+  // 🎥 ÉTAT POUR LA FONCTIONNALITÉ AGORA
+  const {
+    incomingCall,
+    getActiveCall,
+    clearActiveCall
+  } = useCall();
   const [selectedTargetConversation, setSelectedTargetConversation] = useState(null);
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [messageToForward, setMessageToForward] = useState(null);
@@ -170,6 +247,9 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const { conversations: myConversations, loading: convLoading } = useConversations();
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
+  
+  // ✅ ÉTAPE 2 — UNIFIER L'ÉTAT D'APPEL
+  const [activeCallType, setActiveCallType] = useState(null); // "audio" | "video"
   
   // Récupérer le userId de l'autre utilisateur
   const otherUserId = selectedChat?.isGroup 
@@ -192,34 +272,34 @@ export default function ChatWindow({ selectedChat, onBack }) {
         }
       );
 
- const otherUserName = React.useMemo(() => {
-  if (selectedChat?.isGroup) return null;
-  
-  // Essayer de trouver dans participants
-  const otherParticipant = selectedChat?.participants?.find(
-    participant => {
-      const participantId = participant._id || participant.id || participant.userId;
-      const currentUserId = user?._id || user?.id || user?.userId;
-      return participantId && currentUserId && String(participantId) !== String(currentUserId);
+  const otherUserName = React.useMemo(() => {
+    if (selectedChat?.isGroup) return null;
+    
+    // Essayer de trouver dans participants
+    const otherParticipant = selectedChat?.participants?.find(
+      participant => {
+        const participantId = participant._id || participant.id || participant.userId;
+        const currentUserId = user?._id || user?.id || user?.userId;
+        return participantId && currentUserId && String(participantId) !== String(currentUserId);
+      }
+    );
+    
+    if (otherParticipant?.username) {
+      return otherParticipant.username;
     }
-  );
-  
-  if (otherParticipant?.username) {
-    return otherParticipant.username;
-  }
-  
-  // Sinon, utiliser le nom de la conversation
-  if (selectedChat?.name) {
-    return selectedChat.name;
-  }
-  
-  // Sinon, utiliser targetUser s'il existe
-  if (selectedChat?.targetUser?.username) {
-    return selectedChat.targetUser.username;
-  }
-  
-  return null;
-}, [selectedChat, user]);
+    
+    // Sinon, utiliser le nom de la conversation
+    if (selectedChat?.name) {
+      return selectedChat.name;
+    }
+    
+    // Sinon, utiliser targetUser s'il existe
+    if (selectedChat?.targetUser?.username) {
+      return selectedChat.targetUser.username;
+    }
+    
+    return null;
+  }, [selectedChat, user]);
 
   const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
@@ -366,6 +446,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
     };
   }, [contactId]);
 
+  // Reste de votre code...
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
   
@@ -434,7 +515,47 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const { isRecording, recordingTime, startRecording, stopAndSend, cancelRecording } =
     useAudioRecorder(selectedChat?._id);
 
-  // Charger les messages épinglés
+  // ✅ ÉTAPE 3 — DÉTECTION DES APPELS ENTRANTS (CORRECTE)
+  useEffect(() => {
+    if (!selectedChat) return;
+
+    const call = incomingCall || getActiveCall();
+
+    if (call && call.chatId === selectedChat._id) {
+      console.log('📞 [ChatWindow] Appel entrant détecté:', call.callType);
+      // ✅ Détection correcte basée sur callType
+      setActiveCallType(call.callType || 'video'); // Défaut: vidéo
+      clearActiveCall(); // Nettoyer le contexte d'appel
+    }
+  }, [selectedChat, incomingCall, getActiveCall, clearActiveCall]);
+
+  // 🔥 Gérer l'enregistrement du message côté client
+  useEffect(() => {
+    if (!selectedChat) return;
+
+    const handleSaveCallMessage = async (data) => {
+      console.log("💾 [ChatWindow] Enregistrement message d'appel:", data);
+      
+      try {
+        // Émettre vers le serveur pour enregistrer en DB
+        socketService.emit("call-message", {
+          ...data,
+          chatId: selectedChat._id
+        });
+      } catch (error) {
+        console.error("❌ Erreur save call message:", error);
+      }
+    };
+
+   socketService.socket?.on("save-call-message", handleSaveCallMessage);
+
+return () => {
+  socketService.socket?.off("save-call-message", handleSaveCallMessage);
+};
+
+  }, [selectedChat]);
+
+  // 🔥 Charger les messages épinglés
   useEffect(() => {
     const pinned = messages.filter((msg) => msg.isPinned);
     setPinnedMessages(pinned);
@@ -801,8 +922,10 @@ const conversationAvatar = React.useMemo(() => {
                 />
               )}
 
+              {/* ✅ MESSAGE TEXTE */}
               {msg.typeMessage === "text" && msg.content}
 
+              {/* ✅ MESSAGE IMAGE */}
               {msg.typeMessage === "image" && (
                 <img
                   src={msg.content} 
@@ -812,6 +935,7 @@ const conversationAvatar = React.useMemo(() => {
                 />
               )}
 
+              {/* ✅ MESSAGE VIDÉO */}
               {msg.typeMessage === "video" && (
                 <video
                   src={msg.content} 
@@ -821,9 +945,12 @@ const conversationAvatar = React.useMemo(() => {
                 />
               )}
 
+              {/* ✅ MESSAGE AUDIO */}
               {msg.typeMessage === "audio" && (
                 <AudioMessage src={msg.content || msg.fileUrl} />
               )}
+
+              {/* ✅ MESSAGE FICHIER */}
               {msg.typeMessage === "file" && (
                 <a
                   href={msg.content}
@@ -832,6 +959,16 @@ const conversationAvatar = React.useMemo(() => {
                 >
                   📎 {msg.fileName || "Fichier"}
                 </a>
+              )}
+
+              {/* 🔥 NOUVEAU : MESSAGE APPEL */}
+              {msg.typeMessage === "call" && (
+                <CallMessage
+                  callType={msg.callType}
+                  callResult={msg.callResult}
+                  duration={msg.duration}
+                  fromMe={fromMe}
+                />
               )}
             </div>
 
@@ -1018,16 +1155,23 @@ const conversationAvatar = React.useMemo(() => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Boutons statiques pour appels */}
+          {/* ✅ ÉTAPE 4 — BOUTON APPEL AUDIO */}
           <Phone
             size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
-            onClick={() => alert("Fonctionnalité d'appel vocal bientôt disponible!")}
+            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
+            onClick={() => {
+              console.log('📞 [ChatWindow] Bouton audio cliqué');
+              setActiveCallType("audio");
+            }}
           />
+          {/* ✅ ÉTAPE 4 — BOUTON APPEL VIDÉO */}
           <Video
             size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
-            onClick={() => alert("Fonctionnalité d'appel vidéo bientôt disponible!")}
+            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+            onClick={() => {
+              console.log('🎬 [ChatWindow] Bouton vidéo cliqué');
+              setActiveCallType("video");
+            }}
           />
           
           <button onClick={() => setIsOptionsOpen(true)}>
@@ -1347,7 +1491,19 @@ const conversationAvatar = React.useMemo(() => {
         )}
       </footer>
 
-      {/* Options Menu */}
+      {/* ✅ ÉTAPE 5 — UN SEUL MODAL D'APPEL */}
+      {activeCallType && selectedChat && (
+        <VideoCallScreen
+          selectedChat={selectedChat}
+          callType={activeCallType} // 🔥 TRANSMIS
+          onClose={() => {
+            console.log(`📞 [ChatWindow] Fermeture ${activeCallType} call`);
+            setActiveCallType(null);
+            clearActiveCall();
+          }}
+        />
+      )}
+
       {isOptionsOpen && (
         <>
           <div
