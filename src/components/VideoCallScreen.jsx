@@ -782,49 +782,61 @@ const handleEndCall = () => {
             <p className="debug-info">En attente d'acceptation...</p>
           </div>
           
-      <button 
-  className="btn-cancel-call" 
-  onClick={() => {
-    console.log("👆 Bouton Annuler cliqué – tentative d'annulation");
+      <button
+  className="btn-cancel-call"
+  onClick={async () => {
+    console.log("👆 Bouton Annuler cliqué");
 
-    // 1. Vérifier connexion socket
     if (!socketService.socket?.connected) {
-      console.warn("Socket déconnecté → fermeture locale seulement");
+      console.warn("Socket déconnecté → fermeture locale");
       endCall('missed');
       return;
     }
 
-    // 2. Récupérer l'ID du destinataire (celui qui reçoit l'appel)
     const recipient = callChat?.participants?.find(
-      p => (p._id || p.id) !== (user._id || user.id)
+      (p) => (p._id || p.id) !== (user._id || user.id)
     );
 
     const recipientId = recipient?._id || recipient?.id;
 
     if (!recipientId) {
-      console.warn("Impossible de trouver le destinataire → fermeture locale");
+      console.warn("Destinataire non trouvé → fermeture locale");
       endCall('missed');
       return;
     }
 
-    // 3. ÉMETTRE L'ÉVÉNEMENT D'ANNULATION VERS LE SERVEUR
+    // ─────────────────────────────────────────────────────────────
+    // On s'abonne temporairement pour détecter le message d'appel annulé
+    const handleNewMessage = (newMsg) => {
+      if (
+        newMsg?.typeMessage === "call" &&
+        ["cancelled", "missed"].includes(newMsg?.callResult)
+      ) {
+        console.log("→ Message 'appel annulé/manqué' bien reçu !");
+        socketService.socket.off("new-message", handleNewMessage);
+      }
+    };
+
+    socketService.socket.once("new-message", handleNewMessage);
+    // ─────────────────────────────────────────────────────────────
+
+    // On envoie la demande d'annulation
     socketService.socket.emit("cancel-call", {
       channelName: channelNameRef.current,
       chatId: callChat?._id,
       callerId: user?._id || user?.id,
-      recipientId: recipientId,           // ← C'EST ÇA QUI MANQUAIT !
-      callType: currentCallType,
-      callId: null                        // si tu as callId plus tard, ajoute-le
-    });
-
-    console.log("📤 Événement 'cancel-call' envoyé au serveur", {
       recipientId,
-      channelName: channelNameRef.current,
-      chatId: callChat?._id
+      callType: currentCallType,
+      callId: null, // ← tu pourras le remplir plus tard si tu stockes callId
     });
 
-    // 4. Fermer immédiatement l'écran de l'appelant
-    endCall('cancelled');  // ou 'missed' — 'cancelled' est plus précis ici
+    console.log("📤 cancel-call envoyé", { recipientId });
+
+    // On donne un peu de temps au serveur pour créer et diffuser le message
+    await new Promise((resolve) => setTimeout(resolve, 700));
+
+    // On ferme l'écran d'appel
+    endCall("cancelled");
   }}
 >
   <Phone size={24} />
