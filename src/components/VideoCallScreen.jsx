@@ -126,13 +126,12 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
     });
 
     socket.on('call-rejected', (data) => {
-      console.log('❌ Appel refusé:', data);
-      setCallStatus('rejected');
-      setDebugInfo('Appel refusé');
-      alert(`L'appel a été refusé: ${data.reason || 'Par l\'utilisateur'}`);
-      setIsCalling(false);
-      handleEndCall();
-    });
+  console.log('❌ Appel refusé:', data);
+  setCallStatus('rejected');
+  setDebugInfo('Appel refusé');
+  alert(`L'appel a été refusé: ${data.reason || 'Par l\'utilisateur'}`);
+  endCall('rejected');   // ← raison "rejected"
+});
     
 socket.on('call-ended', (data) => {
   if (data.channelName !== channelNameRef.current) return;
@@ -322,16 +321,14 @@ socket.on('call-ended', (data) => {
       console.log('📤 Événement envoyé:', callData);
       
       // ✅ CORRECTION 3: Utiliser la ref au lieu du state pour éviter stale state
-      setTimeout(() => {
-        if (callStatusRef.current === 'calling' && !isCallActive) {
-          console.log('⏰ Timeout: Appel non répondu');
-          setDebugInfo('Appel non répondu (timeout)');
-          alert('L\'appel n\'a pas été répondu');
-          setIsCalling(false);
-          setCallStatus('ended');
-          handleEndCall();
-        }
-      }, 30000);
+    setTimeout(() => {
+  if (callStatusRef.current === 'calling' && !isCallActive) {
+    console.log('⏰ Timeout: Appel non répondu');
+    setDebugInfo('Appel non répondu (timeout)');
+    alert('L\'appel n\'a pas été répondu');
+    endCall('missed');   // ← raison "missed"
+  }
+}, 30000);
       
     } catch (error) {
       console.error('💥 Erreur connexion socket:', error);
@@ -447,45 +444,57 @@ socket.on('call-ended', (data) => {
     }
   };
 
-  const endCall = async () => {
-    console.log("📞 Fin de l'appel demandée");
+const endCall = async (reason = 'ended') => {   // ← on passe la raison en paramètre
+  console.log(`📞 Fin de l'appel demandée (${reason})`);
 
-    clearInterval(callTimerRef.current);
-    setDebugInfo("Fin de l'appel...");
+  clearInterval(callTimerRef.current);
 
-    // ✅ CORRECTION 1: NE PAS mettre agoraStartedRef.current = false ici
-    // Laisser le leaveChannel() gérer cela
-    // agoraStartedRef.current = false; // ❌ SUPPRIMÉ
+  const duration = callDuration;  // déjà en secondes grâce au timer
 
-    // ✅ ENVOYER chatId POUR CRÉER LE MESSAGE D'APPEL
-    socketService.socket?.emit("end-call", {
-  chatId: callChat?._id,
-  channelName: channelNameRef.current
-});
-
-
-    // 🔌 Quitter Agora localement
-    await agoraService.leaveChannel();
-
-    // 🧹 Nettoyage UI
-    handleEndCall();
+  // Préparer les données du message d'appel
+  const callMessageData = {
+    chatId: callChat?._id,
+    callType: currentCallType,
+    callResult: reason,
+    duration: duration,
+    senderId: user._id || user.id
   };
 
-  const handleEndCall = () => {
-    setIsCallActive(false);
-    setIsCalling(false);
-    setCallStatus('ended');
-    setCallDuration(0);
-    setIsScreenSharing(false);
-    setDebugInfo('Appel terminé');
-    
-    setTimeout(() => {
-      if (clearActiveCall) {
-        clearActiveCall();
-      }
-      if (onClose) onClose();
-    }, 300);
-  };
+  console.log("→ Préparation message d'appel :", callMessageData);
+
+  // Émettre vers le serveur → c'est lui qui va créer le message en base
+  // et le diffuser à toute la conversation via "new-message"
+  socketService.socket?.emit("call-message", callMessageData);
+
+  // Optionnel : émettre aussi un événement de fin pour nettoyer les rooms
+  socketService.socket?.emit("end-call", {
+    chatId: callChat?._id,
+    channelName: channelNameRef.current,
+    duration,
+    reason
+  });
+
+  // Quitter Agora
+  await agoraService.leaveChannel();
+
+  // Nettoyage UI + fermeture
+  handleEndCall();
+};
+
+// Puis modifier handleEndCall pour être plus clair
+const handleEndCall = () => {
+  setIsCallActive(false);
+  setIsCalling(false);
+  setCallStatus('ended');
+  setCallDuration(0);
+  setIsScreenSharing(false);
+  setDebugInfo('Appel terminé');
+
+  setTimeout(() => {
+    clearActiveCall?.();
+    onClose?.();
+  }, 400);
+};
 
   const toggleMicrophone = async () => {
     const newState = !isMuted;
@@ -636,14 +645,13 @@ socket.on('call-ended', (data) => {
               )}
             </button>
 
-            <button 
-              className="control-btn btn-end-call"
-              onClick={endCall}
-              title="Terminer l'appel"
-              disabled={isUpgradingToVideo}
-            >
-              <Phone size={20} />
-            </button>
+           <button 
+  className="control-btn btn-end-call"
+  onClick={() => endCall('ended')}          
+  title="Terminer l'appel"
+>
+  <Phone size={20} />
+</button>
           </div>
           
           {isUpgradingToVideo && (
@@ -716,13 +724,13 @@ socket.on('call-ended', (data) => {
                 <Monitor size={20} />
               </button>
               
-              <button 
-                className="control-btn btn-end-call"
-                onClick={endCall}
-                title="Terminer l'appel"
-              >
-                <Phone size={20} />
-              </button>
+            <button 
+  className="control-btn btn-end-call"
+  onClick={() => endCall('ended')}
+  title="Terminer l'appel"
+>
+  <Phone size={20} />
+</button>
             </div>
           </div>
 
