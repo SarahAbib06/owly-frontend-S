@@ -444,41 +444,66 @@ socket.on('call-ended', (data) => {
     }
   };
 
-const endCall = async (reason = 'ended') => {   // ← on passe la raison en paramètre
-  console.log(`📞 Fin de l'appel demandée (${reason})`);
+const endCall = async (reason = 'ended') => {
+  console.log(`→ endCall appelé avec reason = ${reason}, duration = ${callDuration}s`);
 
-  clearInterval(callTimerRef.current);
+  try {
+    // Arrêter le timer s'il existe
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+      callTimerRef.current = null;
+    }
 
-  const duration = callDuration;  // déjà en secondes grâce au timer
+    const duration = callDuration || 0;
 
-  // Préparer les données du message d'appel
-  const callMessageData = {
-    chatId: callChat?._id,
-    callType: currentCallType,
-    callResult: reason,
-    duration: duration,
-    senderId: user._id || user.id
-  };
+    // Déterminer le vrai résultat final (plus fiable que ce que passe le caller)
+    let finalReason = reason;
+    if (reason === 'ended' && duration < 3) {
+      finalReason = 'missed'; // ou 'cancelled'
+    }
 
-  console.log("→ Préparation message d'appel :", callMessageData);
+    // Message d'appel (même si annulé très tôt)
+    const callMessageData = {
+      chatId: callChat?._id,
+      callType: currentCallType,
+      callResult: finalReason,
+      duration,
+      senderId: user?._id || user?.id
+    };
 
-  // Émettre vers le serveur → c'est lui qui va créer le message en base
-  // et le diffuser à toute la conversation via "new-message"
-  socketService.socket?.emit("call-message", callMessageData);
+    console.log("→ Envoi du message d'appel :", callMessageData);
 
-  // Optionnel : émettre aussi un événement de fin pour nettoyer les rooms
-  socketService.socket?.emit("end-call", {
-    chatId: callChat?._id,
-    channelName: channelNameRef.current,
-    duration,
-    reason
-  });
+    // Envoie au serveur → création + diffusion
+    if (socketService.socket?.connected) {
+      socketService.socket.emit("call-message", callMessageData);
+    } else {
+      console.warn("Socket déconnecté → message d'appel non envoyé");
+    }
 
-  // Quitter Agora
-  await agoraService.leaveChannel();
+    // Signale la fin (nettoyage room, notification à l'autre)
+    socketService.socket?.emit("end-call", {
+      chatId: callChat?._id,
+      channelName: channelNameRef.current,
+      duration,
+      reason: finalReason
+    });
 
-  // Nettoyage UI + fermeture
-  handleEndCall();
+    // Quitte Agora (même si pas encore join → safe)
+    try {
+      await agoraService.leaveChannel();
+      console.log("→ Agora quitté (ou déjà quitté)");
+    } catch (err) {
+      console.warn("leaveChannel a échoué (normal si pas join)", err);
+    }
+
+    // Ferme l'UI
+    handleEndCall();
+
+  } catch (err) {
+    console.error("Erreur dans endCall :", err);
+    // Force la fermeture même en cas d'erreur
+    handleEndCall();
+  }
 };
 
 // Puis modifier handleEndCall pour être plus clair
@@ -757,12 +782,13 @@ const handleEndCall = () => {
             <p className="debug-info">En attente d'acceptation...</p>
           </div>
           
-          <div className="calling-controls">
-            <button className="btn-cancel-call" onClick={endCall}>
-              <Phone size={24} />
-              <span>Annuler</span>
-            </button>
-          </div>
+          <button 
+  className="btn-cancel-call" 
+  onClick={() => endCall('missed')}   // ou 'cancelled' si tu veux différencier
+>
+  <Phone size={24} />
+  <span>Annuler</span>
+</button>
           
           <div className="ringing-animation">
             <div className="ring"></div>
