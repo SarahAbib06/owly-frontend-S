@@ -133,10 +133,39 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
   endCall('rejected');   // ← raison "rejected"
 });
     
-socket.on('call-ended', (data) => {
-  if (data.channelName !== channelNameRef.current) return;
-  handleEndCall();
+// ────────────────────────────────────────────────
+//  Écouteur UNIQUE et fiable pour la fin d'appel
+// ────────────────────────────────────────────────
+socket.on('call:ended', (data) => {
+  console.log("📴 call:ended reçu du serveur", data);
+
+  // On accepte l'événement si :
+  // - il concerne notre conversation actuelle
+  // OU
+  // - on n'a pas encore de chatId précis (cas rare mais possible)
+  const concerneCetteConversation =
+    !callChat?._id ||                    // sécurité si chat pas encore chargé
+    data.conversationId === callChat?._id ||
+    data.channelName?.includes(callChat?._id);
+
+  if (concerneCetteConversation) {
+    console.log("→ Cet événement concerne bien notre appel → on ferme");
+    handleEndCall();
+  } else {
+    console.log("call:ended ignoré (pas pour cette conv)", {
+      reçu: data.conversationId || data.channelName,
+      actuel: callChat?._id
+    });
+  }
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+
+// 📝 MODIFICATION 2 : Ajouter ce listener JUSTE APRÈS le socket.on('call:ended')
+// Pour être sûr de capter tous les événements de fin d'appel
+
+
+
 
     socket.on('call-initiated', (data) => {
       console.log('📞 Appel initié avec succès:', data);
@@ -175,7 +204,7 @@ socket.on('call-ended', (data) => {
       if (socket) {
         socket.off('call-accepted');
         socket.off('call-rejected');
-        socket.off('call-ended');
+       socket.off('call:ended');
         socket.off('call-initiated');
         socket.off('call-error');
         socket.off('call-upgraded-to-video');
@@ -230,6 +259,26 @@ socket.on('call-ended', (data) => {
     
     testSocket();
   }, []);
+  useEffect(() => {
+  return () => {
+    // Si on était en appel ou en cours d'appel → signaler la fin
+    if (['in-call', 'calling'].includes(callStatusRef.current)) {
+      console.log('Composant démonté → signalement fin d’appel');
+      
+      socketService.socket?.emit('end-call', {
+        channelName: channelNameRef.current,
+        chatId: callChat?._id,
+        duration: callDuration,
+        reason: 'window_closed'
+      });
+    }
+    
+    // Nettoyage local
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+    }
+  };
+}, []); // Dépendances vides = exécuté au démontage
 
   const startOutgoingCall = () => {
     console.log('🔍 === DÉBUT startOutgoingCall ===');
@@ -445,24 +494,21 @@ socket.on('call-ended', (data) => {
   };
 
 const endCall = async (reason = 'ended') => {
-  console.log(`→ endCall appelé avec reason = ${reason}, duration = ${callDuration}s`);
+  console.log(`→ endCall appelé avec reason = ${reason}, duration = ${callDuration}s, role = ${acceptedCall ? 'receiver' : 'caller'}`);
 
   try {
-    // Arrêter le timer s'il existe
     if (callTimerRef.current) {
       clearInterval(callTimerRef.current);
       callTimerRef.current = null;
     }
 
     const duration = callDuration || 0;
-
-    // Déterminer le vrai résultat final (plus fiable que ce que passe le caller)
     let finalReason = reason;
     if (reason === 'ended' && duration < 3) {
-      finalReason = 'missed'; // ou 'cancelled'
+      finalReason = 'missed';
     }
 
-    // Message d'appel (même si annulé très tôt)
+    // Message d'appel
     const callMessageData = {
       chatId: callChat?._id,
       callType: currentCallType,
@@ -471,38 +517,39 @@ const endCall = async (reason = 'ended') => {
       senderId: user?._id || user?.id
     };
 
-    console.log("→ Envoi du message d'appel :", callMessageData);
-
-    // Envoie au serveur → création + diffusion
     if (socketService.socket?.connected) {
       socketService.socket.emit("call-message", callMessageData);
-    } else {
-      console.warn("Socket déconnecté → message d'appel non envoyé");
+      console.log("→ call-message émis");
     }
 
-    // Signale la fin (nettoyage room, notification à l'autre)
-    socketService.socket?.emit("end-call", {
-      chatId: callChat?._id,
-      channelName: channelNameRef.current,
-      duration,
-      reason: finalReason
-    });
+    // ──── IMPORTANT ────
+    const callIdToSend = acceptedCall?.callId || channelNameRef.current?.split('_')[1] || null;
 
-    // Quitte Agora (même si pas encore join → safe)
+    if (socketService.socket?.connected) {
+      socketService.socket.emit("end-call", {
+        chatId: callChat?._id,
+        channelName: channelNameRef.current,
+        callId: callIdToSend,           // ← ajouté pour aider le serveur
+        duration,
+        reason: finalReason
+      });
+      console.log("→ end-call émis", { callId: callIdToSend, reason: finalReason });
+    } else {
+      console.warn("Socket déconnecté → fin locale seulement");
+    }
+
     try {
       await agoraService.leaveChannel();
-      console.log("→ Agora quitté (ou déjà quitté)");
+      console.log("→ Agora quitté");
     } catch (err) {
-      console.warn("leaveChannel a échoué (normal si pas join)", err);
+      console.warn("leaveChannel échoué (peut-être déjà quitté)", err);
     }
 
-    // Ferme l'UI
     handleEndCall();
 
   } catch (err) {
-    console.error("Erreur dans endCall :", err);
-    // Force la fermeture même en cas d'erreur
-    handleEndCall();
+    console.error("Erreur endCall :", err);
+    handleEndCall(); // on ferme quand même
   }
 };
 
