@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
+import { Phone, Video, X, Check } from "lucide-react";
 import { useCall } from "../context/CallContext";
-import socketService from "../services/socketService"; // ← AJOUTE CETTE IMPORTATION
+import socketService from "../services/socketService";
 import "./IncomingCallModal.css";
 
 const IncomingCallModal = () => {
@@ -9,36 +10,25 @@ const IncomingCallModal = () => {
     showIncomingCallModal,
     acceptCall,
     rejectCall,
-    setShowIncomingCallModal,     // ← AJOUTE ÇA si pas déjà présent
-    setIncomingCall               // ← AJOUTE ÇA si pas déjà présent
+    setShowIncomingCallModal,
+    setIncomingCall
   } = useCall();
 
-  // Arrêt sonnerie (si tu as une fonction stopRingtone dans CallContext)
   const stopRingtone = () => {
-    // Implémente ici ou récupère depuis context
     const audio = document.querySelector('audio');
     if (audio) audio.pause();
   };
 
-  // ÉCOUTE L'ANNULATION PAR L'APPELANT
+  // Écoute l'annulation par l'appelant
   useEffect(() => {
     const socket = socketService.socket;
     if (!socket) return;
 
     const handleCallCancelled = (data) => {
       console.log("📴 [call-cancelled] Appel annulé par l'appelant", data);
-
-      // Ferme le modal
       setShowIncomingCallModal(false);
-
-      // Arrête la sonnerie
       stopRingtone();
-
-      // Nettoie l'état
       setIncomingCall(null);
-
-      // Optionnel : notification visible
-      // alert("L'appel a été annulé par l'autre personne");
     };
 
     socket.on("call-cancelled", handleCallCancelled);
@@ -50,19 +40,48 @@ const IncomingCallModal = () => {
 
   if (!showIncomingCallModal || !incomingCall) return null;
 
+  // 🔥 DIFFÉRENCIATION AUDIO/VIDÉO
+  const isVideoCall = incomingCall.callType === "video";
+
   return (
     <div className="incoming-call-overlay">
       <div className="incoming-call-modal">
-        <h3>📞 Appel entrant</h3>
-        <p>{incomingCall.callerName}</p>
+        {/* Icône animée selon le type d'appel */}
+        <div className={`call-icon ${isVideoCall ? 'video' : 'audio'}`}>
+          {isVideoCall ? (
+            <Video size={48} strokeWidth={1.5} />
+          ) : (
+            <Phone size={48} strokeWidth={1.5} />
+          )}
+        </div>
+
+        {/* Titre selon le type */}
+        <h3>
+          {isVideoCall ? " Appel vidéo entrant" : "Appel audio entrant"}
+        </h3>
+        
+        <p className="caller-name">{incomingCall.callerName}</p>
+        <p className="call-type-label">
+          {isVideoCall ? "Souhaite vous appeler en vidéo" : "Souhaite vous appeler"}
+        </p>
 
         <div className="incoming-call-actions">
-          <button onClick={acceptCall} className="accept">
-            Accepter
+          <button 
+            onClick={rejectCall} 
+            className="reject"
+            aria-label="Refuser l'appel"
+          >
+            <X size={24} />
+            <span>Refuser</span>
           </button>
 
-          <button onClick={rejectCall} className="reject">
-            Refuser
+          <button 
+            onClick={acceptCall} 
+            className="accept"
+            aria-label="Accepter l'appel"
+          >
+            <Check size={24} />
+            <span>Accepter</span>
           </button>
         </div>
       </div>
