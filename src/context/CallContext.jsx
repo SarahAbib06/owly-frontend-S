@@ -50,20 +50,20 @@ export const CallProvider = ({ children }) => {
     stopRingtone();
     setShowIncomingCallModal(false);
 
-    // 🔥 CORRECTION 1 : Utiliser le BON nom d'événement
-    socketService.socket?.emit("call-accepted", {
+    // 🔥 CORRECTION : Utiliser "accept-call" au lieu de "call-accepted"
+    socketService.socket?.emit("accept-call", {
       channelName: incomingCall.channelName,
       callerSocketId: incomingCall.callerSocketId,
       callType: incomingCall.callType,
-      chatId: incomingCall.chatId, // ✅ Ajouté
+      chatId: incomingCall.chatId,
+      callId: incomingCall.callId, // ✅ Important pour la BDD
     });
 
-    console.log("✅ Appel accepté - Événement 'call-accepted' émis");
+    console.log("✅ Appel accepté - Événement 'accept-call' émis");
 
     // 🔥 Déclencher l'affichage de VideoCallScreen
     setAcceptedCall({
       ...incomingCall,
-      // ✅ GARANTIR que ces props existent
       channelName: incomingCall.channelName,
       callType: incomingCall.callType,
       chatId: incomingCall.chatId,
