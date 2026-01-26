@@ -82,7 +82,7 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
 
       container.innerHTML = "";
       videoTrack.play(container);
-      setDebugInfo(`Vidéo distante ${uid} reçue`);
+      //setDebugInfo(`Vidéo distante ${uid} reçue`);
     };
     
     agoraService.onRemoteVideoRemoved = (uid) => {
@@ -111,13 +111,13 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
 
     socket.on('call-accepted', (data) => {
       console.log('✅ Appel accepté par le destinataire:', data);
-      setDebugInfo('Appel accepté par le destinataire');
+      //setDebugInfo('Appel accepté par le destinataire');
       
       const targetChannel = data.channelName || channelNameRef.current;
       
       if (!targetChannel) {
         console.error('❌ Channel name manquant dans call-accepted');
-        setDebugInfo('Erreur: Channel manquant');
+        //setDebugInfo('Erreur: Channel manquant');
         return;
       }
       
@@ -128,7 +128,7 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
     socket.on('call-rejected', (data) => {
   console.log('❌ Appel refusé:', data);
   setCallStatus('rejected');
-  setDebugInfo('Appel refusé');
+  //setDebugInfo('Appel refusé');
   alert(`L'appel a été refusé: ${data.reason || 'Par l\'utilisateur'}`);
   endCall('rejected');   // ← raison "rejected"
 });
@@ -170,12 +170,12 @@ socket.on('call:ended', (data) => {
     socket.on('call-initiated', (data) => {
       console.log('📞 Appel initié avec succès:', data);
       setCallStatus('calling');
-      setDebugInfo('Appel initié, en attente de réponse...');
+      //setDebugInfo('Appel initié, en attente de réponse...');
     });
 
     socket.on('call-error', (data) => {
       console.error('💥 Erreur appel:', data);
-      setDebugInfo(`Erreur: ${data.error}`);
+      //setDebugInfo(`Erreur: ${data.error}`);
       alert(`Erreur: ${data.error}`);
       setIsCalling(false);
       setCallStatus('idle');
@@ -184,7 +184,7 @@ socket.on('call:ended', (data) => {
 
     socket.on('connect', () => {
       console.log('✅ Socket reconnecté');
-      setDebugInfo('Connexion rétablie');
+      //setDebugInfo('Connexion rétablie');
     });
 
     // ✅ SIMPLIFIÉ - Juste mettre à jour l'UI
@@ -192,7 +192,7 @@ socket.on('call:ended', (data) => {
       if (channelName !== channelNameRef.current) return;
 
       console.log('🎥 Upgrade vidéo reçu (remote)');
-      setDebugInfo('L\'autre utilisateur a activé la caméra');
+      //setDebugInfo('L\'autre utilisateur a activé la caméra');
       setCurrentCallType('video');
     });
 
@@ -242,7 +242,7 @@ socket.on('call:ended', (data) => {
     if (!isAudioCall && agoraService.localVideoTrack && localVideoRef.current) {
       console.log('🎬 Lecture vidéo locale');
       agoraService.localVideoTrack.play(localVideoRef.current);
-      setDebugInfo('Vidéo locale active');
+      //setDebugInfo('Vidéo locale active');
     }
   }, [isCallActive, isAudioCall, currentCallType]);
 
@@ -310,7 +310,7 @@ socket.on('call:ended', (data) => {
   };
 
   const _startOutgoingCall = async () => {
-    setDebugInfo('Démarrage appel sortant...');
+    //setDebugInfo('Démarrage appel sortant...');
     
     if (!callChat?._id) {
       alert('Conversation invalide');
@@ -365,23 +365,23 @@ socket.on('call:ended', (data) => {
       };
       
       socketService.socket.emit('initiate-call', callData);
-      setDebugInfo('Appel émis, en attente d\'acceptation...');
+      //setDebugInfo('Appel émis, en attente d\'acceptation...');
       
       console.log('📤 Événement envoyé:', callData);
       
       // ✅ CORRECTION 3: Utiliser la ref au lieu du state pour éviter stale state
     setTimeout(() => {
   if (callStatusRef.current === 'calling' && !isCallActive) {
-    console.log('⏰ Timeout: Appel non répondu');
-    setDebugInfo('Appel non répondu (timeout)');
-    alert('L\'appel n\'a pas été répondu');
+    //console.log('⏰ Timeout: Appel non répondu');
+    //setDebugInfo('Appel non répondu (timeout)');
+    //alert('L\'appel n\'a pas été répondu');
     endCall('missed');   // ← raison "missed"
   }
 }, 30000);
       
     } catch (error) {
       console.error('💥 Erreur connexion socket:', error);
-      setDebugInfo(`Erreur socket: ${error.message}`);
+      //setDebugInfo(`Erreur socket: ${error.message}`);
       alert(`Erreur de connexion: ${error.message}`);
       setIsCalling(false);
       setCallStatus('idle');
@@ -390,7 +390,7 @@ socket.on('call:ended', (data) => {
 
   const fetchTokenAndStartCall = async (channel) => {
     try {
-      setDebugInfo('Génération du token...');
+      //setDebugInfo('Génération du token...');
       console.log('🔑 Génération token pour channel:', channel);
       
       const response = await axios.post(
@@ -407,7 +407,7 @@ socket.on('call:ended', (data) => {
       );
 
       console.log('✅ Token reçu:', response.data);
-      setDebugInfo('Token généré avec succès');
+      //setDebugInfo('Token généré avec succès');
       
       if (response.data.success) {
         await startAgoraCall(
@@ -420,7 +420,7 @@ socket.on('call:ended', (data) => {
       }
     } catch (error) {
       console.error('❌ Erreur token Agora:', error);
-      setDebugInfo(`Erreur token: ${error.message}`);
+      //setDebugInfo(`Erreur token: ${error.message}`);
       
       if (error.response) {
         if (error.response.status === 404) {
@@ -451,7 +451,7 @@ socket.on('call:ended', (data) => {
     
     try {
       console.log('🚀 Démarrage appel Agora:', { channel, uid, isAudioCall });
-      setDebugInfo('Connexion à Agora...');
+      //setDebugInfo('Connexion à Agora...');
       
       const result = await agoraService.joinChannel(
         channel,
@@ -464,7 +464,7 @@ socket.on('call:ended', (data) => {
         setIsCallActive(true);
         setCallStatus('in-call');
         setIsCalling(false);
-        setDebugInfo(`Connecté au canal: ${channel}`);
+        //setDebugInfo(`Connecté au canal: ${channel}`);
         
         console.log('📊 État Agora après connexion:', {
           channel: channel,
@@ -486,7 +486,7 @@ socket.on('call:ended', (data) => {
       }
     } catch (error) {
       console.error('Erreur démarrage Agora:', error);
-      setDebugInfo(`Erreur Agora: ${error.message}`);
+      //setDebugInfo(`Erreur Agora: ${error.message}`);
       setCallStatus('idle');
       agoraStartedRef.current = false;
       handleEndCall();
@@ -560,7 +560,7 @@ const handleEndCall = () => {
   setCallStatus('ended');
   setCallDuration(0);
   setIsScreenSharing(false);
-  setDebugInfo('Appel terminé');
+  //setDebugInfo('Appel terminé');
 
   setTimeout(() => {
     clearActiveCall?.();
@@ -571,7 +571,7 @@ const handleEndCall = () => {
   const toggleMicrophone = async () => {
     const newState = !isMuted;
     setIsMuted(newState);
-    setDebugInfo(`Micro ${newState ? 'désactivé' : 'activé'}`);
+    //setDebugInfo(`Micro ${newState ? 'désactivé' : 'activé'}`);
     await agoraService.toggleMicrophone(!newState);
   };
 
@@ -582,7 +582,7 @@ const handleEndCall = () => {
     }
     const newState = !isVideoOff;
     setIsVideoOff(newState);
-    setDebugInfo(`Caméra ${newState ? 'désactivée' : 'activée'}`);
+    //setDebugInfo(`Caméra ${newState ? 'désactivée' : 'activée'}`);
     await agoraService.toggleCamera(!newState);
   };
 
@@ -590,7 +590,7 @@ const handleEndCall = () => {
     console.log("🎥 Activation de la caméra...");
     
     setIsUpgradingToVideo(true);
-    setDebugInfo('Activation de la caméra...');
+    //setDebugInfo('Activation de la caméra...');
     
     try {
       console.log('1. Demande d\'accès à la caméra...');
@@ -624,13 +624,13 @@ const handleEndCall = () => {
       }
       
       setIsVideoOff(false);
-      setDebugInfo('Appel audio mis à niveau en vidéo !');
+      //setDebugInfo('Appel audio mis à niveau en vidéo !');
       
       console.log('✅ Appel audio mis à jour en vidéo avec succès');
       
     } catch (error) {
       console.error('❌ Erreur lors de l\'activation de la caméra:', error);
-      setDebugInfo(`Erreur caméra: ${error.message}`);
+      //setDebugInfo(`Erreur caméra: ${error.message}`);
       
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
         alert('Permission caméra refusée. Veuillez autoriser l\'accès à la caméra dans les paramètres de votre navigateur.');
@@ -655,7 +655,7 @@ const handleEndCall = () => {
           channelName: channelNameRef.current,
         });
 
-        setDebugInfo("Partage d'écran activé");
+        //setDebugInfo("Partage d'écran activé");
       } else {
         await agoraService.stopScreenShare();
         setIsScreenSharing(false);
@@ -664,7 +664,7 @@ const handleEndCall = () => {
           channelName: channelNameRef.current,
         });
 
-        setDebugInfo("Partage d'écran arrêté");
+        //setDebugInfo("Partage d'écran arrêté");
       }
     } catch (err) {
       console.error("❌ Erreur partage écran:", err);
@@ -767,7 +767,7 @@ const handleEndCall = () => {
               <div className="call-duration">
                 {formatDuration(callDuration)}
               </div>
-              <div className="debug-text">{debugInfo}</div>
+            <div className="debug-text">{debugInfo}</div>
             </div>
             
             <div className="control-buttons">
