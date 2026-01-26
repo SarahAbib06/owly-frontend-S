@@ -7,14 +7,19 @@ import WelcomeChatScreen from "../components/WelcomeChatScreen";
 import { Search, Plus, QrCode, PanelLeftClose } from "lucide-react";
 import SearchModal from "../components/SearchModal";
 import ResizablePanel from "../components/ResizablePanel";
+import { useConversations } from "../hooks/useConversations";
 
 export default function Messages() {
+
+    // 🔥 AJOUTÉ : TON HOOK
+  const { conversations, loadConversations } = useConversations();
   const [selectedChat, setSelectedChat] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [panelWidth, setPanelWidth] = useState(360);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const { setChatOpen } = useOutletContext();
+  
 
   const openChat = (chat, isFromArchived = false) => {
     setSelectedChat({
@@ -100,19 +105,17 @@ export default function Messages() {
       </div>
 
           {/* MODAL DE RECHERCHE */}
-      {showSearchModal && (
-        <SearchModal 
-          onClose={() => setShowSearchModal(false)}
-          onUserSelect={(conversationObj) => {
-            console.log("🎯 Conversation reçue de SearchModal:", conversationObj);
-            console.log("📛 Nom de la conversation:", conversationObj.name);
-            
-            setShowSearchModal(false);
-            // Utilisez directement l'objet conversation
-            openChat(conversationObj);
-          }}
-        />
-      )}
+  {showSearchModal && (
+    <SearchModal 
+      onClose={() => setShowSearchModal(false)}
+      onUserSelect={(conversationObj) => {
+        console.log("🎯 Conversation reçue:", conversationObj);
+        setShowSearchModal(false);
+        openChat(conversationObj);
+      }}
+      loadConversations={loadConversations}  // ✅ MAINTENANT ÇA MARCHE !
+    />
+  )}
     </div>
   );
 }

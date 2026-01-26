@@ -13,6 +13,7 @@ import {
   CornerUpRight,
   Pin,
   Trash2,
+  Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMessages } from "../hooks/useMessages";
@@ -25,6 +26,7 @@ import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
+import GroupManagerModal from "./GroupManagerModal";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
 
@@ -182,6 +184,11 @@ const [showEmojiPicker, setShowEmojiPicker] = useState(false); //imojie
 
 const { conversations: myConversations, loading: convLoading } = useConversations();
 
+const [showGroupInfo, setShowGroupInfo] = useState(false);
+const [groupMembers, setGroupMembers] = useState([]);
+const [showGroupManager, setShowGroupManager] = useState(false);
+const [myRoleInGroup, setMyRoleInGroup] = useState('membre');
+
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
  
   // Récupérer le userId de l'autre utilisateur
@@ -277,7 +284,37 @@ useEffect(() => {
 }, [contactStatus.lastSeen, contactStatus.isOnline]);
 
 
-
+// Charger membres (useEffect)
+// 🔥 GARDE SEULEMENT CE useEffect (SUPPRIME L'AUTRE)
+useEffect(() => {
+  if (selectedChat?.isGroup && selectedChat._id) {
+    const fetchGroupMembers = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`http://localhost:5000/api/groups/${selectedChat._id}/members`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          setGroupMembers(data.members || []);
+          
+          // Récupérer MON rôle
+          const userId = localStorage.getItem('userId');
+          const myMember = data.members.find(m => String(m.id) === String(userId));
+          setMyRoleInGroup(myMember?.role || 'membre');
+          
+          console.log('✅ Membres chargés:', data.members.length);
+          console.log('🔑 Mon rôle:', myMember?.role);
+        }
+      } catch (err) {
+        console.error("❌ Erreur chargement membres:", err);
+      }
+    };
+    
+    fetchGroupMembers();
+  }
+}, [selectedChat?._id]);
 
 
 console.log("selectedChat:", selectedChat, "user:", user);
@@ -1056,40 +1093,49 @@ const handleAcceptCall = () => {
       : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:!text-white rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-4 text-xs";
 
   // Nom de la conversation
- const conversationName = selectedChat?.isGroup
-    ? selectedChat.groupName
-    : otherUserName || selectedChat?.name || "Utilisateur";
+const conversationName = React.useMemo(() => {
+  if (selectedChat?.isGroup) {
+    return selectedChat.groupName || selectedChat.name || "Groupe";
+  }
+  return otherUserName || selectedChat?.name || "Utilisateur";
+}, [selectedChat, otherUserName]);
 
 // Dans ChatWindow.jsx, remplacez la ligne 151 par :
 const conversationAvatar = React.useMemo(() => {
-  console.log("🖼️ DEBUG - Recherche photo de profil:");
-  console.log("1. selectedChat:", selectedChat);
-  console.log("2. targetUser:", selectedChat?.targetUser);
-  console.log("3. targetUser.profilePicture:", selectedChat?.targetUser?.profilePicture);
- 
-  if (selectedChat?.isGroup) return "/group-avatar.png";
- 
-  // 1. Chercher dans targetUser (vient de SearchModal)
+  console.log("🖼️ DEBUG AVATAR GROUPE:", {
+    isGroup: selectedChat?.isGroup,
+    groupPic: selectedChat?.groupPic,
+    groupAvatar: selectedChat?.groupAvatar,
+    avatar: selectedChat?.avatar,
+  });
+
+  if (selectedChat?.isGroup) {
+    // 🔥 ORDRE DE PRIORITÉ pour les groupes
+    return (
+      selectedChat.groupPic ||
+      selectedChat.groupAvatar ||
+      selectedChat.avatar ||
+      "/group-avatar.png"
+    );
+  }
+
+  // Pour les conversations privées
   if (selectedChat?.targetUser?.profilePicture) {
-    console.log("✅ Photo trouvée dans targetUser:", selectedChat.targetUser.profilePicture);
     return selectedChat.targetUser.profilePicture;
   }
- 
-  // 2. Chercher dans participants
+
   const fromParticipants = selectedChat?.participants?.find(
-    p => {
+    (p) => {
       const pid = p._id || p.id;
       const uid = otherUserId;
       return pid && uid && String(pid) === String(uid);
     }
   )?.profilePicture;
- 
+
   if (fromParticipants) {
-    console.log("✅ Photo trouvée dans participants:", fromParticipants);
     return fromParticipants;
   }
- 
-  console.log("❌ Aucune photo trouvée, utilisation par défaut");
+
   return "/default-avatar.png";
 }, [selectedChat, otherUserId]);
 
@@ -1186,183 +1232,208 @@ const conversationAvatar = React.useMemo(() => {
       }
     };
 
-    return (
-      <div className={`flex ${fromMe ? "justify-end" : "justify-start"} group`}>
-        <div className="flex flex-col max-w-[85%] relative">
-          {!fromMe && selectedChat?.isGroup && (
-            <p className="text-[10px] ml-1 mb-1 text-gray-700 dark:text-gray-300">
-              {msg.senderUsername || msg.senderId?.username || "Utilisateur"}
-            </p>
-          )}
-
-          <div className="relative">
-            <div
-              id={`message-${msg._id}`}
-              className={`${bubbleClasses(fromMe)} ${
-                isMatch ? "ring-2 ring-blue-400" : ""
-              } cursor-pointer`}
-              style={{
-                background: fromMe ? bubbleBg || undefined : undefined,
-                color: textColor,
-              }}
-              onMouseDown={startLongPress}
-              onMouseUp={cancelLongPress}
-              onMouseLeave={cancelLongPress}
-              onTouchStart={startLongPress}
-              onTouchEnd={cancelLongPress}
-              onClick={() => {
-                if (showMessageMenu === msg._id) setShowMessageMenu(null);
-              }}
-            >
-              {msg.isPinned && (
-                <Pin
-                  size={12}
-                  className="absolute -top-1 -right-1 text-myYellow"
-                />
-              )}
-
-              {msg.typeMessage === "text" && msg.content}
-
-              {msg.typeMessage === "image" && (
-                <img
-                  src={msg.content}
-                  alt="image"
-                  className="max-w-full rounded mt-1"
-                  style={{ maxHeight: "300px" }}
-                />
-              )}
-
-              {msg.typeMessage === "video" && (
-                <video
-                  src={msg.content}
-                  controls
-                  className="max-w-full rounded mt-1"
-                  style={{ maxHeight: "300px" }}
-                />
-              )}
-
-              {msg.typeMessage === "audio" && (
-                <AudioMessage src={msg.content || msg.fileUrl} />
-              )}
-              {msg.typeMessage === "file" && (
-                <a
-                  href={msg.content}
-                  download
-                  className="flex items-center gap-2 underline"
-                >
-                  📎 {msg.fileName || "Fichier"}
-                </a>
-              )}
-            </div>
-
-            {showMessageMenu === msg._id && (
-              <div
-                className={`message-menu absolute ${
-                  fromMe ? "right-0" : "left-0"
-                } top-full mt-1 bg-white dark:bg-neutral-800 rounded-lg shadow-xl z-50 py-1 min-w-[150px]`}
-              >
-                <button
-                  onClick={() => {
-                    console.log("🟡 click Réagir pour", msg._id);
-                    setShowReactionPicker(msg._id);
-                    setShowMessageMenu(null);
-                  }}
-                  className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
-                >
-                  <Smile size={16} /> Réagir
-                </button>
-                <button
-                  onClick={handlePinMessage}
-                  className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
-                >
-                  <Pin size={16} />{" "}
-                  {msg.isPinned ? "Désépingler" : "Épingler"}
-                </button>
-                <button
-                  onClick={() => {
-                    setMessageToForward(msg);
-                    setSelectedTargetConversation(null);
-                    setShowForwardModal(true);
-                    setShowMessageMenu(null);
-                  }}
-                  className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
-                >
-                  <CornerUpRight size={16} /> Transférer
-                </button>
-                {fromMe && (
-                  <button
-                    onClick={() => {
-                      setMessageToDelete(msg._id);           // On garde l'ID du message
-                      setShowDeleteModal(true);              // Ouvre le modal
-                      setShowMessageMenu(null);              // Ferme le menu contextuel
-                    }}
-                    className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
-                  >
-                    <Trash2 size={16} /> Supprimer
-                  </button>
-                )}
-              </div>
-            )}
-
-            {showReactionPicker === msg._id && (
-              <div
-                className={`reaction-picker absolute ${
-                  fromMe ? "right-0" : "left-0"
-                } top-full mt-1 bg-white dark:bg-neutral-800 rounded-full shadow-xl z-50 px-2 py-1 flex gap-1`}
-              >
-                {EMOJI_REACTIONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => handleAddReaction(emoji)}
-                    className="text-xl hover:scale-125 transition-transform p-1"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {reactions && reactions.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {reactions.map((reaction) => (
-                <div
-                  key={reaction._id}
-                  className="bg-white dark:bg-neutral-700 rounded-full px-2 py-0.5 text-xs flex items-center gap-1 shadow-sm"
-                >
-                  <span>{reaction.emoji}</span>
-                  {reaction.id_user && (
-                    <span className="text-gray-600 dark:text-gray-300">
-                      {reaction.id_user.username}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div
-            className={`text-[10px] mt-1 flex items-center gap-1.5 ${
-              fromMe ? "justify-end" : "justify-start"
-            } text-gray-500 dark:text-gray-400`}
-          >
-            <span>{messageTime}</span>
-
-            {fromMe && (
-              <span className="flex items-center gap-1">
-    {msg.status === "sending" ? (
-      // 1 flèche grise (en cours d'envoi)
-      <span className="text-gray-400">✓</span>
-    ) : (
-      // 2 flèches grises (envoyé avec succès)
-      <span className="text-gray-500">✓✓</span>
-    )}
-  </span>
-            )}
-          </div>
-        </div>
+return (
+  <div className={`flex ${fromMe ? "justify-end" : "justify-start"} group`}>
+    {/* 🆕 AVATAR À GAUCHE (seulement pour les messages REÇUS dans un GROUPE) */}
+    {!fromMe && selectedChat?.isGroup && (
+      <div className="flex-shrink-0 mr-2">
+        <img
+          src={
+            msg.senderProfilePicture ||
+            msg.senderId?.profilePicture ||
+            "/default-avatar.png"
+          }
+          alt={msg.senderUsername || "User"}
+          className="w-8 h-8 rounded-full object-cover"
+          onError={(e) => {
+            e.target.src = "/default-avatar.png";
+          }}
+        />
       </div>
-    );
+    )}
+
+    <div className="flex flex-col max-w-[85%] relative">
+      {/* 🆕 NOM + 3 PREMIÈRES LETTRES (seulement pour groupes) */}
+      {!fromMe && selectedChat?.isGroup && (
+        <div className="flex items-center gap-1 ml-1 mb-1">
+          <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+            {(msg.senderUsername || msg.senderId?.username || "User").substring(0, 3).toUpperCase()}
+          </span>
+          <span className="text-[10px] text-gray-700 dark:text-gray-300">
+            {msg.senderUsername || msg.senderId?.username || "Utilisateur"}
+          </span>
+        </div>
+      )}
+
+      <div className="relative">
+        <div
+          id={`message-${msg._id}`}
+          className={`${bubbleClasses(fromMe)} ${
+            isMatch ? "ring-2 ring-blue-400" : ""
+          } cursor-pointer`}
+          style={{
+            background: fromMe ? bubbleBg || undefined : undefined,
+            color: textColor,
+          }}
+          onMouseDown={startLongPress}
+          onMouseUp={cancelLongPress}
+          onMouseLeave={cancelLongPress}
+          onTouchStart={startLongPress}
+          onTouchEnd={cancelLongPress}
+          onClick={() => {
+            if (showMessageMenu === msg._id) setShowMessageMenu(null);
+          }}
+        >
+          {msg.isPinned && (
+            <Pin
+              size={12}
+              className="absolute -top-1 -right-1 text-myYellow"
+            />
+          )}
+
+          {msg.typeMessage === "text" && msg.content}
+
+          {msg.typeMessage === "image" && (
+            <img
+              src={msg.content}
+              alt="image"
+              className="max-w-full rounded mt-1"
+              style={{ maxHeight: "300px" }}
+            />
+          )}
+
+          {msg.typeMessage === "video" && (
+            <video
+              src={msg.content}
+              controls
+              className="max-w-full rounded mt-1"
+              style={{ maxHeight: "300px" }}
+            />
+          )}
+
+          {msg.typeMessage === "audio" && (
+            <AudioMessage src={msg.content || msg.fileUrl} />
+          )}
+
+          {/* 🔥 LIGNE CORRIGÉE ICI */}
+          {msg.typeMessage === "file" && (
+            <a
+              href={msg.content}
+              download
+              className="flex items-center gap-2 underline"
+            >
+              📎 {msg.fileName || "Fichier"}
+            </a>
+          )}
+        </div>
+
+        {/* Menu contextuel */}
+        {showMessageMenu === msg._id && (
+          <div
+            className={`message-menu absolute ${
+              fromMe ? "right-0" : "left-0"
+            } top-full mt-1 bg-white dark:bg-neutral-800 rounded-lg shadow-xl z-50 py-1 min-w-[150px]`}
+          >
+            <button
+              onClick={() => {
+                setShowReactionPicker(msg._id);
+                setShowMessageMenu(null);
+              }}
+              className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
+            >
+              <Smile size={16} /> Réagir
+            </button>
+            <button
+              onClick={handlePinMessage}
+              className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
+            >
+              <Pin size={16} /> {msg.isPinned ? "Désépingler" : "Épingler"}
+            </button>
+            <button
+              onClick={() => {
+                setMessageToForward(msg);
+                setSelectedTargetConversation(null);
+                setShowForwardModal(true);
+                setShowMessageMenu(null);
+              }}
+              className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
+            >
+              <CornerUpRight size={16} /> Transférer
+            </button>
+            {fromMe && (
+              <button
+                onClick={() => {
+                  setMessageToDelete(msg._id);
+                  setShowDeleteModal(true);
+                  setShowMessageMenu(null);
+                }}
+                className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
+              >
+                <Trash2 size={16} /> Supprimer
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Picker de réactions */}
+        {showReactionPicker === msg._id && (
+          <div
+            className={`reaction-picker absolute ${
+              fromMe ? "right-0" : "left-0"
+            } top-full mt-1 bg-white dark:bg-neutral-800 rounded-full shadow-xl z-50 px-2 py-1 flex gap-1`}
+          >
+            {EMOJI_REACTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => handleAddReaction(emoji)}
+                className="text-xl hover:scale-125 transition-transform p-1"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Réactions */}
+      {reactions && reactions.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {reactions.map((reaction) => (
+            <div
+              key={reaction._id}
+              className="bg-white dark:bg-neutral-700 rounded-full px-2 py-0.5 text-xs flex items-center gap-1 shadow-sm"
+            >
+              <span>{reaction.emoji}</span>
+              {reaction.id_user && (
+                <span className="text-gray-600 dark:text-gray-300">
+                  {reaction.id_user.username}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Heure + statut */}
+      <div
+        className={`text-[10px] mt-1 flex items-center gap-1.5 ${
+          fromMe ? "justify-end" : "justify-start"
+        } text-gray-500 dark:text-gray-400`}
+      >
+        <span>{messageTime}</span>
+        {fromMe && (
+          <span className="flex items-center gap-1">
+            {msg.status === "sending" ? (
+              <span className="text-gray-400">✓</span>
+            ) : (
+              <span className="text-gray-500">✓✓</span>
+            )}
+          </span>
+        )}
+      </div>
+    </div>
+  </div>
+);
   };
 
   if (loading) {
@@ -1462,6 +1533,44 @@ const conversationAvatar = React.useMemo(() => {
           </button>
         </div>
       </header>
+
+      {selectedChat?.isGroup && (
+  <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 border-b border-blue-100 dark:border-gray-700">
+    <div className="flex justify-between items-center mb-2">
+      <div className="flex items-center gap-2">
+        <Users size={16} className="text-blue-600" />
+        <span className="font-semibold text-sm">{groupMembers?.length || 0} membres</span>
+      </div>
+      <button 
+        onClick={() => setShowGroupInfo(true)}
+        className="text-blue-600 hover:text-blue-700 text-xs font-medium px-3 py-1 bg-white/50 hover:bg-white rounded-full transition-all"
+      >
+        Gérer
+      </button>
+    </div>
+    <div className="flex gap-1 overflow-x-auto pb-1">
+      {groupMembers?.slice(0, 5).map((m, i) => (
+        <div key={m.id} className="flex flex-col items-center gap-1 min-w-[40px] flex-shrink-0">
+          <img 
+            src={m.profilePicture || 'default-avatar.png'} 
+            className="w-8 h-8 rounded-full ring-2 ring-white/50 shadow-md"
+            alt={m.username}
+          />
+          {m.role === 'admin' && (
+            <span className="text-xs text-yellow-600 font-bold">👑</span>
+          )}
+          <span className="text-xs truncate text-gray-600 dark:text-gray-400 max-w-[40px]">{m.username}</span>
+        </div>
+      ))}
+      {groupMembers?.length > 5 && (
+        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md">
+          +{groupMembers.length - 5}
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
 
       {/* DEMANDE DE MESSAGE */}
       {isIncomingMessageRequest && (
@@ -2019,6 +2128,28 @@ const conversationAvatar = React.useMemo(() => {
     onConversationDeleted={onConversationDeleted}   // ← AJOUTE CETTE PROP ICI
   />
 )}
+
+ {showGroupInfo && (
+          <GroupManagerModal
+            groupId={selectedChat._id}
+            myRole={myRoleInGroup}
+            members={groupMembers}
+            onClose={() => setShowGroupInfo(false)}
+            onMembersUpdated={() => {
+              // Recharger les membres après modification
+              const token = localStorage.getItem('token');
+              fetch(`http://localhost:5000/api/groups/${selectedChat._id}/members`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              })
+              .then(res => res.json())
+              .then(data => {
+                if (data.success) {
+                  setGroupMembers(data.members || []);
+                }
+              });
+            }}
+          />
+        )}
 
     </div>
   );
