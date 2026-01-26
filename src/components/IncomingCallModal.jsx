@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useCall } from "../context/CallContext";
+import socketService from "../services/socketService"; // ← AJOUTE CETTE IMPORTATION
 import "./IncomingCallModal.css";
 
 const IncomingCallModal = () => {
@@ -8,7 +9,44 @@ const IncomingCallModal = () => {
     showIncomingCallModal,
     acceptCall,
     rejectCall,
+    setShowIncomingCallModal,     // ← AJOUTE ÇA si pas déjà présent
+    setIncomingCall               // ← AJOUTE ÇA si pas déjà présent
   } = useCall();
+
+  // Arrêt sonnerie (si tu as une fonction stopRingtone dans CallContext)
+  const stopRingtone = () => {
+    // Implémente ici ou récupère depuis context
+    const audio = document.querySelector('audio');
+    if (audio) audio.pause();
+  };
+
+  // ÉCOUTE L'ANNULATION PAR L'APPELANT
+  useEffect(() => {
+    const socket = socketService.socket;
+    if (!socket) return;
+
+    const handleCallCancelled = (data) => {
+      console.log("📴 [call-cancelled] Appel annulé par l'appelant", data);
+
+      // Ferme le modal
+      setShowIncomingCallModal(false);
+
+      // Arrête la sonnerie
+      stopRingtone();
+
+      // Nettoie l'état
+      setIncomingCall(null);
+
+      // Optionnel : notification visible
+      // alert("L'appel a été annulé par l'autre personne");
+    };
+
+    socket.on("call-cancelled", handleCallCancelled);
+
+    return () => {
+      socket.off("call-cancelled", handleCallCancelled);
+    };
+  }, [setShowIncomingCallModal, setIncomingCall]);
 
   if (!showIncomingCallModal || !incomingCall) return null;
 

@@ -50,18 +50,16 @@ export const CallProvider = ({ children }) => {
     stopRingtone();
     setShowIncomingCallModal(false);
 
-    // 🔥 CORRECTION : Utiliser "accept-call" au lieu de "call-accepted"
     socketService.socket?.emit("accept-call", {
       channelName: incomingCall.channelName,
       callerSocketId: incomingCall.callerSocketId,
       callType: incomingCall.callType,
       chatId: incomingCall.chatId,
-      callId: incomingCall.callId, // ✅ Important pour la BDD
+      callId: incomingCall.callId,
     });
 
     console.log("✅ Appel accepté - Événement 'accept-call' émis");
 
-    // 🔥 Déclencher l'affichage de VideoCallScreen
     setAcceptedCall({
       ...incomingCall,
       channelName: incomingCall.channelName,
@@ -69,7 +67,6 @@ export const CallProvider = ({ children }) => {
       chatId: incomingCall.chatId,
     });
 
-    // 🔥 Nettoyage
     setIncomingCall(null);
 
     localStorage.setItem(
@@ -124,13 +121,27 @@ export const CallProvider = ({ children }) => {
   return (
     <CallContext.Provider
       value={{
+        // States
         incomingCall,
         showIncomingCallModal,
+        acceptedCall,
+        
+        // Setters - AJOUTÉS ICI
+        setIncomingCall,
+        setShowIncomingCallModal,
+        setAcceptedCall,
+        
+        // Actions
         acceptCall,
         rejectCall,
-        acceptedCall,
+        
+        // Utilitaires
         getActiveCall,
         clearActiveCall,
+        
+        // Fonctions de sonnerie (si besoin dans d'autres composants)
+        playRingtone,
+        stopRingtone,
       }}
     >
       {children}
