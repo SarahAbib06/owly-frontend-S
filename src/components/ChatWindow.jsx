@@ -250,7 +250,7 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
   
   // ✅ ÉTAPE 2 — UNIFIER L'ÉTAT D'APPEL
-  const [activeCallType, setActiveCallType] = useState(null); // "audio" | "video"
+  const [startOutgoingCallType, setStartOutgoingCallType] = useState(null); // null | "audio" | "video"
   
   // Récupérer le userId de l'autre utilisateur
   const otherUserId = selectedChat?.isGroup 
@@ -515,20 +515,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
   // Hook pour l'enregistrement audio
   const { isRecording, recordingTime, startRecording, stopAndSend, cancelRecording } =
     useAudioRecorder(selectedChat?._id);
-
-  // ✅ ÉTAPE 3 — DÉTECTION DES APPELS ENTRANTS (CORRECTE)
-  useEffect(() => {
-    if (!selectedChat) return;
-
-    const call = incomingCall || getActiveCall();
-
-    if (call && call.chatId === selectedChat._id) {
-      console.log('📞 [ChatWindow] Appel entrant détecté:', call.callType);
-      // ✅ Détection correcte basée sur callType
-      setActiveCallType(call.callType || 'video'); // Défaut: vidéo
-      clearActiveCall(); // Nettoyer le contexte d'appel
-    }
-  }, [selectedChat, incomingCall, getActiveCall, clearActiveCall]);
 
   // 🔥 Gérer l'enregistrement du message côté client
   useEffect(() => {
@@ -1156,22 +1142,22 @@ const conversationAvatar = React.useMemo(() => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* ✅ ÉTAPE 4 — BOUTON APPEL AUDIO */}
+          {/* BOUTON APPEL AUDIO */}
           <Phone
             size={16}
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
             onClick={() => {
-              console.log('📞 [ChatWindow] Bouton audio cliqué');
-              setActiveCallType("audio");
+              console.log('📞 [ChatWindow] Lancement appel AUDIO');
+              setStartOutgoingCallType("audio");
             }}
           />
-          {/* ✅ ÉTAPE 4 — BOUTON APPEL VIDÉO */}
+          {/* BOUTON APPEL VIDÉO */}
           <Video
             size={16}
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
             onClick={() => {
-              console.log('🎬 [ChatWindow] Bouton vidéo cliqué');
-              setActiveCallType("video");
+              console.log('🎬 [ChatWindow] Lancement appel VIDÉO');
+              setStartOutgoingCallType("video");
             }}
           />
           
@@ -1492,14 +1478,14 @@ const conversationAvatar = React.useMemo(() => {
         )}
       </footer>
 
-      {/* ✅ ÉTAPE 5 — UN SEUL MODAL D'APPEL */}
-      {activeCallType && selectedChat && (
+      {/* UN SEUL MODAL D'APPEL */}
+      {startOutgoingCallType && selectedChat && (
         <VideoCallScreen
           selectedChat={selectedChat}
-          callType={activeCallType} // 🔥 TRANSMIS
+          callType={startOutgoingCallType}  // "audio" ou "video"
           onClose={() => {
-            console.log(`📞 [ChatWindow] Fermeture ${activeCallType} call`);
-            setActiveCallType(null);
+            console.log(`📞 [ChatWindow] Fermeture appel sortant`);
+            setStartOutgoingCallType(null);
             clearActiveCall();
           }}
         />

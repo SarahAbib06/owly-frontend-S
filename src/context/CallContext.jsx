@@ -44,36 +44,33 @@ export const CallProvider = ({ children }) => {
   }, []);
 
   /* ✅ Accepter - CORRIGÉ */
-  const acceptCall = useCallback(() => {
-    if (!incomingCall) return;
+const acceptCall = useCallback(() => {
+  if (!incomingCall) return;
 
-    stopRingtone();
-    setShowIncomingCallModal(false);
+  stopRingtone();
+  setShowIncomingCallModal(false);
 
-    socketService.socket?.emit("accept-call", {
-      channelName: incomingCall.channelName,
-      callerSocketId: incomingCall.callerSocketId,
-      callType: incomingCall.callType,
-      chatId: incomingCall.chatId,
-      callId: incomingCall.callId,
-    });
+  socketService.socket?.emit("accept-call", {
+    channelName: incomingCall.channelName,
+    callerSocketId: incomingCall.callerSocketId,
+    callType: incomingCall.callType,
+    chatId: incomingCall.chatId,
+    callId: incomingCall.callId,
+  });
 
-    console.log("✅ Appel accepté - Événement 'accept-call' émis");
+  console.log("✅ Appel accepté - Événement 'accept-call' émis");
 
-    setAcceptedCall({
-      ...incomingCall,
-      channelName: incomingCall.channelName,
-      callType: incomingCall.callType,
-      chatId: incomingCall.chatId,
-    });
+  setAcceptedCall({
+    ...incomingCall,
+    channelName: incomingCall.channelName,
+    callType: incomingCall.callType,
+    chatId: incomingCall.chatId,
+  });
 
-    setIncomingCall(null);
+- setIncomingCall(null);           // ← SUPPRIME CETTE LIGNE ou mets-la en commentaire
 
-    localStorage.setItem(
-      "activeCall",
-      JSON.stringify(incomingCall)
-    );
-  }, [incomingCall]);
+  localStorage.setItem("activeCall", JSON.stringify(incomingCall));
+}, [incomingCall]);
 
   /* ❌ Refuser */
   const rejectCall = useCallback(() => {
