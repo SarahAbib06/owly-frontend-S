@@ -1,5 +1,5 @@
 // frontend/src/components/ChatWindow.jsx
-// 🔥 VERSION CORRIGÉE : Header de groupe + Info expéditeur dans les groupes
+// 🔥 VERSION CORRIGÉE : Tous les conflits de merge résolus
 
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -120,33 +120,35 @@ const TypingIndicator = ({ avatar, username }) => (
         className="w-8 h-8 rounded-full object-cover"
       />
     </div>
-   
+    
+    {/* Bulle de message avec animation */}
     <div className="flex flex-col max-w-[70%]">
       {username && (
         <p className="text-[10px] ml-1 mb-1 text-gray-700 dark:text-gray-300">
           {username}
         </p>
       )}
-     
+      
       <div className="bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-3">
         <div className="flex items-center gap-1">
           <div className="flex items-center gap-1">
-            <div
+            <div 
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
               style={{ animationDelay: '0ms' }}
             ></div>
-            <div
+            <div 
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
               style={{ animationDelay: '150ms' }}
             ></div>
-            <div
+            <div 
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
               style={{ animationDelay: '300ms' }}
             ></div>
           </div>
         </div>
       </div>
-     
+      
+      {/* Timestamp (optionnel) */}
       <div className="text-[10px] mt-1 text-gray-500 dark:text-gray-400">
         {new Date().toLocaleTimeString("fr-FR", {
           hour: "2-digit",
@@ -160,14 +162,15 @@ const TypingIndicator = ({ avatar, username }) => (
 export default function ChatWindow({ selectedChat, onBack, onConversationDeleted }) {
 
   console.log("🔍 DEBUG selectedChat:", {
-  _id: selectedChat?._id,
-  name: selectedChat?.name,
-  groupName: selectedChat?.groupName,
-  isGroup: selectedChat?.isGroup,
-  type: selectedChat?.type,
-  participants: selectedChat?.participants?.length,
-  "Clés disponibles": Object.keys(selectedChat || {})
-});
+    _id: selectedChat?._id,
+    name: selectedChat?.name,
+    groupName: selectedChat?.groupName,
+    isGroup: selectedChat?.isGroup,
+    type: selectedChat?.type,
+    participants: selectedChat?.participants?.length,
+    "Clés disponibles": Object.keys(selectedChat || {})
+  });
+  
   const { t } = useTranslation();
   const isFromArchived = selectedChat?.isFromArchived === true;
   const { conversations, archivedConversations } = useChat();
@@ -192,9 +195,10 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   const [myRoleInGroup, setMyRoleInGroup] = useState('membre');
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
- 
-  const otherUserId = selectedChat?.isGroup
-    ? null
+  
+  // Récupérer le userId de l'autre utilisateur
+  const otherUserId = selectedChat?.isGroup 
+    ? null 
     : selectedChat?.participants?.find(
         participant => {
           const participantId = participant._id || participant.id;
@@ -309,22 +313,22 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   }, [contactId]);
 
   useEffect(() => {
-  if (!socketService.socket || !selectedChat?._id) return;
+    if (!socketService.socket || !selectedChat?._id) return;
 
-  // Écouter les nouveaux messages (incluant les messages système)
-  const handleNewMessage = (data) => {
-    console.log("📨 Nouveau message reçu:", data);
-    
-    // Le message sera automatiquement ajouté via votre hook useMessages
-    // Pas besoin de logique supplémentaire
-  };
+    // Écouter les nouveaux messages (incluant les messages système)
+    const handleNewMessage = (data) => {
+      console.log("📨 Nouveau message reçu:", data);
+      
+      // Le message sera automatiquement ajouté via votre hook useMessages
+      // Pas besoin de logique supplémentaire
+    };
 
-  socketService.socket.on("new_message", handleNewMessage);
+    socketService.socket.on("new_message", handleNewMessage);
 
-  return () => {
-    socketService.socket.off("new_message", handleNewMessage);
-  };
-}, [selectedChat?._id]);
+    return () => {
+      socketService.socket.off("new_message", handleNewMessage);
+    };
+  }, [selectedChat?._id]);
 
   useEffect(() => {
     if (selectedChat?._id && deletedMessages.length > 0) {
@@ -373,15 +377,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   }, [showEmojiPicker]);
 
   useEffect(() => {
-    if (selectedChat?._id && deletedMessages.length > 0) {
-      localStorage.setItem(
-        `deleted_${selectedChat._id}`,
-        JSON.stringify(deletedMessages)
-      );
-    }
-  }, [deletedMessages, selectedChat?._id]);
-
-  useEffect(() => {
     if (selectedChat?._id) {
       const saved = localStorage.getItem(`deleted_${selectedChat._id}`);
       if (saved) {
@@ -396,9 +391,10 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
 
   useEffect(() => {
     if (!socketService.socket || !contactId) return;
-   
+    
     window.socket = socketService.socket;
-   
+    console.log("🌐 Socket accessible via window.socket");
+    
     const handleOnline = ({ userId }) => {
       if (!contactId) return;
       if (String(userId) === String(contactId)) {
@@ -431,7 +427,8 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
 
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
- 
+  
+  // Écoute les thèmes envoyés par l'autre participant
   useEffect(() => {
     if (!socketService.socket || !selectedChat) return;
 
@@ -452,8 +449,8 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   const [sendBtnColor, setSendBtnColor] = useState("");
   const [themeEmojis, setThemeEmojis] = useState([]);
   const [inputText, setInputText] = useState("");
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null); 
+  const [filePreview, setFilePreview] = useState(null); 
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState([]);
@@ -461,7 +458,8 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   const [searchTerm, setSearchTerm] = useState("");
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showPinnedSection, setShowPinnedSection] = useState(false);
- 
+  
+  // États pour les interactions
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
@@ -555,7 +553,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesContainerRef = useRef(null);
- 
+  
   const [isConfirmUnblockModalOpen, setIsConfirmUnblockModalOpen] = useState(false);
 
   const {
@@ -591,6 +589,64 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   useEffect(() => {
   }, [selectedChat, archivedConversations]);
 
+  // ✅ MARQUER LES MESSAGES COMME VUS - VERSION INSTANTANÉE
+  useEffect(() => {
+    if (!selectedChat?._id || !user?.id || !messages.length) return;
+
+    const markMessagesAsSeen = async () => {
+      try {
+        // 🔍 Trouver les messages NON VUS de l'autre utilisateur
+        const unreadMessages = messages.filter(msg => {
+          const isFromOther = String(msg.senderId || msg.Id_sender) !== String(user.id);
+          const notSeenByMe = !msg.readBy?.some(r => String(r.userId) === String(user.id));
+          return isFromOther && notSeenByMe;
+        });
+
+        if (unreadMessages.length === 0) {
+          console.log("✅ Aucun message à marquer comme vu");
+          return;
+        }
+
+        console.log(`👁️ ${unreadMessages.length} messages à marquer comme vus`);
+
+        const token = localStorage.getItem("token");
+        
+        const response = await fetch(
+          `http://localhost:5000/api/messages/${selectedChat._id}/mark-all-seen`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log(`✅ ${data.messagesMarked} messages marqués comme vus`);
+        }
+      } catch (error) {
+        console.error("❌ Erreur marquer messages vus:", error);
+      }
+    };
+
+    // 🔥 MARQUER IMMÉDIATEMENT au chargement
+    const initialTimeout = setTimeout(markMessagesAsSeen, 500);
+
+    // 🔥 RÉÉCOUTER À CHAQUE NOUVEAU MESSAGE
+    const messageCheckInterval = setInterval(() => {
+      markMessagesAsSeen();
+    }, 1000); // Vérifier toutes les secondes
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(messageCheckInterval);
+    };
+  }, [selectedChat?._id, user?.id, messages]);
+
+  // Gérer la saisie avec typing indicator
   const handleInputChange = (e) => {
     setInputText(e.target.value);
     if (e.target.value.length > 0) {
@@ -622,17 +678,18 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
     }
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-   
-    setSelectedFile(file);
-   
-    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
-      setFilePreview(URL.createObjectURL(file));
-    } else {
-      setFilePreview(null);
-    }
+  // Gérer l'upload de fichiers
+  const handleFileSelect = (e) => { 
+    const file = e.target.files[0]; 
+    if (!file) return; 
+    
+    setSelectedFile(file); 
+    
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) { 
+      setFilePreview(URL.createObjectURL(file)); 
+    } else { 
+      setFilePreview(null); 
+    } 
   };
 
   const handleMicClick = async () => {
@@ -658,6 +715,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
 
     const emojisFromTheme = theme?.emojis ?? (theme?.emoji ? [theme.emoji] : null);
 
+    // Gestion upload fichier
     if (theme.type === "upload" && theme.value instanceof File) {
       const base64 = await fileToBase64(theme.value);
       style = {
@@ -669,7 +727,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       setThemeStyle(style);
       setSendBtnColor("");
       setBubbleBg("");
-     
+      
       if (save) {
         localStorage.setItem(chatKey, JSON.stringify({ ...theme, value: base64 }));
         await saveThemeToBackend({ ...theme, value: base64 });
@@ -677,6 +735,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       return;
     }
 
+    // Gestion image (URL ou base64)
     if ((theme.type === "image" || theme.type === "upload") && typeof theme.value === "string") {
       style = {
         backgroundImage: `url(${theme.value})`,
@@ -687,7 +746,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       setThemeStyle(style);
       setSendBtnColor("");
       setBubbleBg("");
-     
+      
       if (save) {
         localStorage.setItem(chatKey, JSON.stringify(theme));
         await saveThemeToBackend(theme);
@@ -695,6 +754,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       return;
     }
 
+    // Gestion couleurs, gradients, saisonniers
     if (theme.type === "color" || theme.type === "gradient" || theme.type === "seasonal") {
       style = { background: theme.value };
       setThemeStyle(style);
@@ -734,6 +794,12 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   const saveThemeToBackend = async (theme) => {
     try {
       const token = localStorage.getItem("token");
+      
+      console.log("💾 Sauvegarde thème backend:", {
+        conversationId: selectedChat._id,
+        type: theme.type,
+        hasEmojis: theme.emojis?.length > 0,
+      });
 
       const response = await fetch("http://localhost:5000/api/themes", {
         method: "POST",
@@ -875,40 +941,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
     };
   }, [selectedChat, chatKey, applyTheme]);
 
-  const handleAcceptCall = () => {
-    if (!socketService.socket || !incomingCall) {
-      console.error('Socket non disponible ou appel inexistant');
-      return;
-    }
-
-    const callToAccept = { ...incomingCall };
-    setIncomingCall(null);
-   
-    socketService.socket.emit('call:accept', {
-      callId: callToAccept.callId,
-      callerId: callToAccept.callerId
-    });
-
-    setActiveCall({
-      ...callToAccept,
-      status: 'accepted'
-    });
-  };
-
-  const handleRejectCall = async () => {
-    if (!socketService.socket || !incomingCall) {
-      console.error('Socket non disponible ou appel inexistant');
-      return;
-    }
-
-    socketService.socket.emit('call:reject', {
-      callId: incomingCall.callId,
-      callerId: incomingCall.callerId
-    });
-
-    setIncomingCall(null);
-  };
-
   useEffect(() => {
     const resetTheme = () => {
       setThemeStyle({});
@@ -969,8 +1001,8 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:!text-white rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-4 text-xs";
 
   // 🔥 CORRECTION : Nom de la conversation
-const conversationName = React.useMemo(() => {
-    if (selectedChat?.type === 'group') {  // ← ✅ type existe !
+  const conversationName = React.useMemo(() => {
+    if (selectedChat?.type === 'group') {
       return selectedChat?.name || "Groupe";
     }
     return otherUserName || selectedChat?.name || "Utilisateur";
@@ -978,8 +1010,8 @@ const conversationName = React.useMemo(() => {
 
   // 🔥 CORRECTION : Avatar de la conversation
   const conversationAvatar = React.useMemo(() => {
-    if (selectedChat?.type === 'group') {  // ← ✅ type existe !
-    return selectedChat?.groupPic || selectedChat?.avatar || "/group-avatar.png"; // ← groupPic EN PREMIER
+    if (selectedChat?.type === 'group') {
+      return selectedChat?.groupPic || selectedChat?.avatar || "/group-avatar.png";
     }
 
     if (selectedChat?.targetUser?.profilePicture) {
@@ -1011,46 +1043,46 @@ const conversationName = React.useMemo(() => {
         }
       )?.profilePicture || "/default-avatar.png";
 
-const SystemMessage = ({ message }) => {
-  // Déterminer l'icône et la couleur selon le type de message
-  const getMessageStyle = (content) => {
-    if (content.includes("ajouté")) return { icon: "➕", color: "blue" };
-    if (content.includes("quitté")) return { icon: "👋", color: "yellow" };
-    if (content.includes("retiré")) return { icon: "➖", color: "red" };
-    if (content.includes("promu")) return { icon: "👑", color: "purple" };
-    if (content.includes("créé")) return { icon: "✨", color: "green" };
-    if (content.includes("modifié")) return { icon: "✏️", color: "indigo" };
-    return { icon: "ℹ️", color: "blue" };
-  };
+  const SystemMessage = ({ message }) => {
+    // Déterminer l'icône et la couleur selon le type de message
+    const getMessageStyle = (content) => {
+      if (content.includes("ajouté")) return { icon: "➕", color: "blue" };
+      if (content.includes("quitté")) return { icon: "👋", color: "yellow" };
+      if (content.includes("retiré")) return { icon: "➖", color: "red" };
+      if (content.includes("promu")) return { icon: "👑", color: "purple" };
+      if (content.includes("créé")) return { icon: "✨", color: "green" };
+      if (content.includes("modifié")) return { icon: "✏️", color: "indigo" };
+      return { icon: "ℹ️", color: "blue" };
+    };
 
-  const { icon, color } = getMessageStyle(message.content);
+    const { icon, color } = getMessageStyle(message.content);
 
-  const colorClasses = {
-    blue: "from-blue-50 via-indigo-50 to-blue-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-blue-900/20 border-blue-200 dark:border-blue-700/50 text-blue-700 dark:text-blue-300",
-    green: "from-green-50 via-emerald-50 to-green-50 dark:from-green-900/20 dark:via-emerald-900/20 dark:to-green-900/20 border-green-200 dark:border-green-700/50 text-green-700 dark:text-green-300",
-    yellow: "from-yellow-50 via-amber-50 to-yellow-50 dark:from-yellow-900/20 dark:via-amber-900/20 dark:to-yellow-900/20 border-yellow-200 dark:border-yellow-700/50 text-yellow-700 dark:text-yellow-300",
-    red: "from-red-50 via-rose-50 to-red-50 dark:from-red-900/20 dark:via-rose-900/20 dark:to-red-900/20 border-red-200 dark:border-red-700/50 text-red-700 dark:text-red-300",
-    purple: "from-purple-50 via-violet-50 to-purple-50 dark:from-purple-900/20 dark:via-violet-900/20 dark:to-purple-900/20 border-purple-200 dark:border-purple-700/50 text-purple-700 dark:text-purple-300",
-    indigo: "from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 border-indigo-200 dark:border-indigo-700/50 text-indigo-700 dark:text-indigo-300",
-  };
+    const colorClasses = {
+      blue: "from-blue-50 via-indigo-50 to-blue-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-blue-900/20 border-blue-200 dark:border-blue-700/50 text-blue-700 dark:text-blue-300",
+      green: "from-green-50 via-emerald-50 to-green-50 dark:from-green-900/20 dark:via-emerald-900/20 dark:to-green-900/20 border-green-200 dark:border-green-700/50 text-green-700 dark:text-green-300",
+      yellow: "from-yellow-50 via-amber-50 to-yellow-50 dark:from-yellow-900/20 dark:via-amber-900/20 dark:to-yellow-900/20 border-yellow-200 dark:border-yellow-700/50 text-yellow-700 dark:text-yellow-300",
+      red: "from-red-50 via-rose-50 to-red-50 dark:from-red-900/20 dark:via-rose-900/20 dark:to-red-900/20 border-red-200 dark:border-red-700/50 text-red-700 dark:text-red-300",
+      purple: "from-purple-50 via-violet-50 to-purple-50 dark:from-purple-900/20 dark:via-violet-900/20 dark:to-purple-900/20 border-purple-200 dark:border-purple-700/50 text-purple-700 dark:text-purple-300",
+      indigo: "from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 border-indigo-200 dark:border-indigo-700/50 text-indigo-700 dark:text-indigo-300",
+    };
 
-  return (
-    <div className="flex justify-center my-4">
-      <div className={`bg-gradient-to-r ${colorClasses[color]} rounded-full px-5 py-2.5 text-xs max-w-[85%] text-center shadow-md border backdrop-blur-sm`}>
-        <span className="font-medium flex items-center gap-2 justify-center">
-          <span className="text-lg">{icon}</span>
-          {message.content}
-        </span>
-        <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-1">
-          {new Date(message.createdAt).toLocaleTimeString("fr-FR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+    return (
+      <div className="flex justify-center my-4">
+        <div className={`bg-gradient-to-r ${colorClasses[color]} rounded-full px-5 py-2.5 text-xs max-w-[85%] text-center shadow-md border backdrop-blur-sm`}>
+          <span className="font-medium flex items-center gap-2 justify-center">
+            <span className="text-lg">{icon}</span>
+            {message.content}
+          </span>
+          <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-1">
+            {new Date(message.createdAt).toLocaleTimeString("fr-FR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   // 🔥 COMPOSANT MESSAGE CORRIGÉ
   const MessageBubble = ({ msg, deletedMessages, setDeletedMessages }) => {
@@ -1125,7 +1157,7 @@ const SystemMessage = ({ message }) => {
         console.error("Erreur épinglage:", error);
       }
     };
-   
+    
     const handleDeleteMessage = (msgId) => {
       if (window.confirm("Supprimer ce message pour moi ?")) {
         setDeletedMessages(prev => [...prev, msgId]);
@@ -1148,7 +1180,7 @@ const SystemMessage = ({ message }) => {
 
         <div className="flex flex-col max-w-[85%] relative">
           {/* 🔥 NOM + 3 PREMIÈRES LETTRES (seulement pour groupes) */}
-         {!fromMe && selectedChat?.type === 'group' && ( 
+          {!fromMe && selectedChat?.type === 'group' && ( 
             <div className="flex items-center gap-1 ml-1 mb-1">
               <span className="text-[10px] text-gray-700 dark:text-gray-300">
                 {msg.senderUsername || msg.senderId?.username || "Utilisateur"}
@@ -1186,7 +1218,7 @@ const SystemMessage = ({ message }) => {
 
               {msg.typeMessage === "image" && (
                 <img
-                  src={msg.content}
+                  src={msg.content} 
                   alt="image"
                   className="max-w-full rounded mt-1"
                   style={{ maxHeight: "300px" }}
@@ -1195,7 +1227,7 @@ const SystemMessage = ({ message }) => {
 
               {msg.typeMessage === "video" && (
                 <video
-                  src={msg.content}
+                  src={msg.content} 
                   controls
                   className="max-w-full rounded mt-1"
                   style={{ maxHeight: "300px" }}
@@ -1304,19 +1336,25 @@ const SystemMessage = ({ message }) => {
             </div>
           )}
 
-          {/* Heure + statut */}
           <div
             className={`text-[10px] mt-1 flex items-center gap-1.5 ${
               fromMe ? "justify-end" : "justify-start"
             } text-gray-500 dark:text-gray-400`}
           >
             <span>{messageTime}</span>
+
             {fromMe && (
               <span className="flex items-center gap-1">
-                {msg.status === "sending" ? (
-                  <span className="text-gray-400">✓</span>
+                {msg._id.startsWith("pending_") || msg.status === "sending" ? (
+                  <span className="flex items-center gap-1 text-gray-400">
+                    ✓
+                  </span>
+                ) : msg.status === "seen" || (msg.readBy && msg.readBy.length > 0) ? (
+                  // 👁️ VU - DOUBLE COCHE BLEUE
+                  <span className="text-blue-500">✓✓✓</span>
                 ) : (
-                  <span className="text-gray-500">✓✓</span>
+                  // Envoyé - DOUBLE COCHE GRISE
+                  <span className="text-gray-400">✓✓</span>
                 )}
               </span>
             )}
@@ -1413,7 +1451,7 @@ const SystemMessage = ({ message }) => {
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
             onClick={() => alert("Fonctionnalité d'appel vidéo bientôt disponible!")}
           />
-         
+          
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
               size={16}
@@ -1467,6 +1505,8 @@ const SystemMessage = ({ message }) => {
           onAccept={async () => {
             const token = localStorage.getItem("token");
             try {
+              console.log('🟢 Acceptation demande pour conversation:', selectedChat._id);
+              
               const res = await fetch("http://localhost:5000/api/relations/accept-request", {
                 method: "POST",
                 headers: {
@@ -1492,6 +1532,8 @@ const SystemMessage = ({ message }) => {
 
             const token = localStorage.getItem("token");
             try {
+              console.log('🔴 Suppression demande pour conversation:', selectedChat._id);
+              
               const res = await fetch("http://localhost:5000/api/relations/delete-request", {
                 method: "POST",
                 headers: {
@@ -1603,39 +1645,23 @@ const SystemMessage = ({ message }) => {
           const messageSenderId = typeof rawSender === "object" && rawSender?._id ? rawSender._id : rawSender;
           const wasFromMe = currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
 
-              // 🆕 GESTION DES MESSAGES SYSTÈME
-    if (msg.typeMessage === "system") {
-      return (
-        <div key={msg._id}>
-          {showDate && (
-            <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
-              <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
-                {formatDateLabel(msg.createdAt, t)}
-              </span>
-            </div>
-          )}
-          <SystemMessage message={msg} />
-        </div>
-      );
-    }
-
+          // Si supprimé → placeholder avec alignement correct
           if (isDeletedByMe || isDeletedForEveryone) {
             return (
               <div key={msg._id}>
                 {showDate && (
-                  <div className="text-center text-[10px] text-myBlack my-2">
+                  <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
                     <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
                       {formatDateLabel(msg.createdAt, t)}
                     </span>
                   </div>
                 )}
-                
                 <div className={`flex ${wasFromMe ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`
                       max-w-[85%] px-4 py-3 rounded-lg text-sm italic text-gray-500 dark:text-gray-400
-                      ${wasFromMe
-                        ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none"
+                      ${wasFromMe 
+                        ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none" 
                         : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"}
                     `}
                   >
@@ -1666,7 +1692,7 @@ const SystemMessage = ({ message }) => {
         })}
 
         {isTyping && typingUsers.length > 0 && (
-          <TypingIndicator
+          <TypingIndicator 
             avatar={otherUserAvatar}
             username={selectedChat?.isGroup ? typingUsers[0]?.username : null}
           />
@@ -1726,7 +1752,7 @@ const SystemMessage = ({ message }) => {
                 )}
 
                 {!selectedFile.type.startsWith("image/") &&
-                 !selectedFile.type.startsWith("video/") && (
+                  !selectedFile.type.startsWith("video/") && (
                   <p className="text-sm">📎 {selectedFile.name}</p>
                 )}
 
