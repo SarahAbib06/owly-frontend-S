@@ -334,106 +334,146 @@
   }
 }
 
-/* Écran initial */
+/* ────────────────────────────────────────────────
+   ÉCRAN INITIAL – VERSION 2025 (cohérent audio call)
+──────────────────────────────────────────────── */
+
+/* ────────────────────────────────────────────────
+   ÉCRAN INITIAL – VERSION MINIMAL DARK 2025/2026
+   Ultra sobre, neutre, très peu de couleurs
+──────────────────────────────────────────────── */
+
 .init-screen {
+  position: fixed;
+  inset: 0;
+  background: #0a0e17;                    /* Très sombre, presque noir profond */
+  color: #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 24px;
+  z-index: 1000;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .call-init-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 30px;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 40px;
-  border-radius: 20px;
-  max-width: 400px;
-  width: 90%;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-}
-
-.user-info {
+  background: rgba(15, 23, 42, 0.55);     /* Glass très transparent + sombre */
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.04);  /* Bordure ultra-discrète */
+  border-radius: 28px;
+  padding: 48px 36px 40px;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.6);
   text-align: center;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.call-init-container:hover {
+  transform: translateY(-4px);
+}
+
+/* Avatar ultra-minimal – plus petit, sans gradient flashy */
 .user-avatar-large {
-  width: 120px;
-  height: 120px;
+  width: 110px;
+  height: 110px;
+  margin: 0 auto 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: #1e293b;                    /* Gris anthracite neutre */
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 48px;
-  font-weight: bold;
-  color: white;
-  margin: 0 auto 20px;
+  font-weight: 700;
+  color: #cbd5e1;
+  position: relative;
+}
+
+/* On enlève complètement le ::after glow/pulse → trop chargé pour du minimal */
+.user-avatar-large::after {
+  display: none;  /* ou supprime carrément la règle */
 }
 
 .user-info h3 {
-  margin: 0 0 10px 0;
-  font-size: 24px;
-  color: #333;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  color: #f1f5f9;                         /* Blanc très clair */
+  margin: 0 0 6px;
 }
 
 .user-info p {
-  margin: 0;
-  color: #666;
+  font-size: 16px;
+  color: #94a3b8;                         /* Gris moyen discret */
+  margin: 0 0 36px;
+  font-weight: 450;
 }
 
+/* Contrôles très minimalistes */
 .init-controls {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 14px;
   width: 100%;
 }
 
 .btn-start-call {
-  padding: 18px;
-  background: #34c759;
-  color: white;
-  border: none;
-  border-radius: 50px;
+  padding: 18px 48px;
+  background: #1e293b;                    /* Même gris anthracite que l'avatar */
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
   font-size: 16px;
   font-weight: 600;
+  letter-spacing: 0.1px;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   cursor: pointer;
-  transition: all 0.3s ease;
 }
 
 .btn-start-call:hover {
-  background: #2da84f;
-  transform: scale(1.02);
+  background: #334155;                    /* Légère éclaircie au hover */
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+}
+
+.btn-start-call:active {
+  transform: translateY(0);
+  opacity: 0.92;
 }
 
 .btn-close {
-  padding: 15px;
+  padding: 14px 40px;
   background: transparent;
-  color: #666;
-  border: 2px solid #ddd;
-  border-radius: 50px;
-  font-size: 16px;
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.28s ease;
   cursor: pointer;
-  transition: all 0.3s ease;
 }
 
 .btn-close:hover {
-  background: #f5f5f5;
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.03);
 }
 
+/* Permissions note (optionnel – souvent supprimé dans les apps modernes) */
 .permissions-note {
-  text-align: center;
-  color: #888;
-  font-size: 14px;
-  max-width: 300px;
+  margin-top: 28px;
+  color: #64748b;
+  font-size: 13px;
+  opacity: 0.7;
+  line-height: 1.4;
 }
-
 .close-call-btn {
   position: absolute;
   top: 20px;
@@ -478,9 +518,7 @@
     padding: 30px 20px;
   }
 }
-/* ────────────────────────────────────────────────
-   AUDIO CALL SCREEN – VERSION 2025 MODERNE
-──────────────────────────────────────────────── */
+
 
 .audio-call-screen {
   position: fixed;
@@ -704,4 +742,195 @@
   .control-buttons {
     gap: 20px;
   }
+}
+/* ────────────────────────────────────────────────
+   MODAL INIT CALL - 2025/2026 style
+──────────────────────────────────────────────── */
+
+/* ────────────────────────────────────────────────
+   MODAL INIT CALL - VERSION JAUNE/NOIR VIVANTE & MODERNE 2025/2026
+   Palette : #f9ee34 (jaune vif), #ffeca2 (jaune doux), noir profond
+──────────────────────────────────────────────── */
+
+.call-init-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(249, 238, 52, 0.08);      /* voile jaune très très léger */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.32s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.call-init-modal-content {
+  background: linear-gradient(145deg, #ffffff 0%, #fffdf5 100%); /* blanc → très léger jaune pâle */
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid #ffeca2;                 /* bordure jaune doux */
+  border-radius: 28px;
+  padding: 48px 40px 44px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 
+    0 20px 50px rgba(249, 238, 52, 0.18),   /* ombre jaune vive subtile */
+    0 8px 24px rgba(0, 0, 0, 0.10);
+  position: relative;
+  color: #0f172a;                            /* noir profond pour texte */
+  animation: modalPop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Bouton close (X) */
+.modal-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(249, 238, 52, 0.12);      /* jaune très clair */
+  border: none;
+  color: #0f172a;                            /* noir */
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+
+.modal-close-btn:hover {
+  background: #f9ee34;                       /* jaune vif au hover */
+  color: #0f172a;
+  transform: scale(1.14) rotate(90deg);
+}
+
+/* Avatar */
+.call-init-modal-content .user-avatar-large {
+  width: 110px;
+  height: 110px;
+  font-size: 46px;
+  margin: 0 auto 28px;
+  border-radius: 50%;
+  background: #ffeca2;                       /* jaune doux */
+  border: 4px solid #f9ee34;                 /* bordure jaune vif */
+  box-shadow: 0 8px 24px rgba(249, 238, 52, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #0f172a;                            /* lettre en noir profond */
+}
+
+/* Contrôles */
+.call-init-modal-content .init-controls {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.call-init-modal-content .btn-start-call {
+  width: 100%;
+  padding: 18px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  background: #f9ee34;                       /* jaune vif principal */
+  color: #0f172a;                            /* texte noir pour contraste max */
+  border: none;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: all 0.28s ease;
+  box-shadow: 0 6px 16px rgba(249, 238, 52, 0.4);
+}
+
+.call-init-modal-content .btn-start-call:hover {
+  background: #ffeca2;                       /* jaune plus doux et lumineux */
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 24px rgba(249, 238, 52, 0.5);
+  color: #0f172a;
+}
+
+.call-init-modal-content .btn-close {
+  width: 100%;
+  padding: 16px 24px;
+  background: transparent;
+  border: 2px solid #f9ee34;                 /* contour jaune vif */
+  color: #0f172a;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.25s ease;
+}
+
+.call-init-modal-content .btn-close:hover {
+  background: #ffeca2;                       /* fond jaune doux au hover */
+  color: #0f172a;
+  border-color: #f9ee34;
+  transform: translateY(-1px);
+}
+/* Centrage total et texte en noir pur */
+.call-init-modal-content {
+  text-align: center;                    /* centre tout le texte */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 380px;                     /* hauteur minimale pour bon centrage vertical */
+}
+
+/* Nom d'utilisateur + texte "Prêt pour..." en noir pur */
+.call-init-modal-content .user-info h3,
+.call-init-modal-content .user-info p {
+  color: #000000;                        /* noir pur – très visible */
+  margin: 0 auto;
+  text-align: center;
+}
+
+.call-init-modal-content .user-info h3 {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.call-init-modal-content .user-info p {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 32px;
+}
+
+/* Avatar bien centré */
+.call-init-modal-content .user-avatar-large {
+  margin: 0 auto 28px;                   /* déjà centré, on renforce */
+}
+
+/* Contrôles (boutons) bien centrés */
+.call-init-modal-content .init-controls {
+  width: 100%;
+  max-width: 320px;                      /* limite la largeur pour rester centré et propre */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }

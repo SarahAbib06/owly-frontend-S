@@ -1142,24 +1142,35 @@ const conversationAvatar = React.useMemo(() => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* BOUTON APPEL AUDIO */}
-          <Phone
-            size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
-            onClick={() => {
-              console.log('📞 [ChatWindow] Lancement appel AUDIO');
-              setStartOutgoingCallType("audio");
-            }}
-          />
-          {/* BOUTON APPEL VIDÉO */}
-          <Video
-            size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-            onClick={() => {
-              console.log('🎬 [ChatWindow] Lancement appel VIDÉO');
-              setStartOutgoingCallType("video");
-            }}
-          />
+         {/* BOUTON APPEL AUDIO */}
+<Phone
+  size={16}
+  className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
+  onClick={() => {
+    console.log('📞 [ChatWindow] Lancement appel AUDIO');
+    
+    // Reset + force réouverture même si déjà "audio"
+    setStartOutgoingCallType(null);
+    setTimeout(() => {
+      setStartOutgoingCallType("audio");
+    }, 0);
+  }}
+/>
+
+{/* BOUTON APPEL VIDÉO */}
+<Video
+  size={16}
+  className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+  onClick={() => {
+    console.log('🎬 [ChatWindow] Lancement appel VIDÉO');
+    
+    // Reset + force réouverture même si déjà "video"
+    setStartOutgoingCallType(null);
+    setTimeout(() => {
+      setStartOutgoingCallType("video");
+    }, 0);
+  }}
+/>
           
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical

@@ -33,7 +33,8 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
   const callTimerRef = useRef(null);
   const channelNameRef = useRef(callChat?._id ? `call_${callChat._id}` : null);
   const agoraStartedRef = useRef(false);
-  const callStatusRef = useRef('idle'); // ✅ AJOUTÉ pour fixer le timeout
+  const callStatusRef = useRef('idle'); 
+  const [showCallInitModal, setShowCallInitModal] = useState(true);  // true = modal visible par défaut
   
   // ✅ Mettre à jour la ref quand le state change
   useEffect(() => {
@@ -278,7 +279,21 @@ socket.on('call:ended', (data) => {
       clearInterval(callTimerRef.current);
     }
   };
-}, []); // Dépendances vides = exécuté au démontage
+}, []); 
+ useEffect(() => {
+ // Réinitialise le modal chaque fois que le type d'appel change
+ setShowCallInitModal(true);
+  setIsCalling(false);
+ setCallStatus('idle');
+   setIsCallActive(false);
+  // Optionnel : reset d'autres états "en cours" si besoin
+ }, [callType]);     
+ // Ajoute ceci juste après ton useEffect existant sur [callType]
+useEffect(() => {
+  if (callStatus === 'idle' && !isCalling && !isCallActive) {
+    setShowCallInitModal(true);
+  }
+}, [callStatus, isCalling, isCallActive]);
 
   const startOutgoingCall = () => {
     console.log('🔍 === DÉBUT startOutgoingCall ===');
@@ -900,43 +915,70 @@ const handleEndCall = () => {
     );
   }
 
-  return (
-    <div className="video-call-screen init-screen">
-      <div className="call-init-container">
-        <div className="user-info">
-          <div className="user-avatar-large">
-            {callChat?.participants?.[0]?.username?.charAt(0).toUpperCase() || 'U'}
-          </div>
-          <h3>{callChat?.participants?.[0]?.username || 'Utilisateur'}</h3>
-          <p>Prêt pour un appel {currentCallType === 'audio' ? 'audio' : 'vidéo'} ?</p>
+ if (!showCallInitModal) {
+  return null; // ou return <></>;   ← on ne rend plus rien quand modal fermée
+}
+
+return (
+  <div 
+    className="call-init-modal-overlay"
+    onClick={() => setShowCallInitModal(false)} // clic extérieur → ferme
+  >
+    <div 
+      className="call-init-modal-content"
+      onClick={e => e.stopPropagation()} // empêche la fermeture quand on clique dedans
+    >
+      <button 
+        className="modal-close-btn"
+        onClick={() => setShowCallInitModal(false)}
+        aria-label="Fermer"
+      >
+        <X size={24} />
+      </button>
+
+      <div className="user-info">
+        <div className="user-avatar-large">
+          {callChat?.participants?.[0]?.username?.charAt(0).toUpperCase() || 'U'}
         </div>
+        <h3>{callChat?.participants?.[0]?.username || 'Utilisateur'}</h3>
+        <p>Prêt pour un appel {isAudioCall ? 'audio' : 'vidéo'} ?</p>
+      </div>
+      
+      <div className="init-controls">
+        <button 
+          className="btn-start-call" 
+          onClick={startOutgoingCall}
+          disabled={isCalling}
+        >
+          {isAudioCall ? (
+            <>
+              <Phone size={24} />
+              <span>Démarrer l'appel audio</span>
+            </>
+          ) : (
+            <>
+              <Video size={24} />
+              <span>Démarrer l'appel vidéo</span>
+            </>
+          )}
+        </button>
         
-        <div className="init-controls">
-          <button className="btn-start-call" onClick={startOutgoingCall}>
-            {currentCallType === 'audio' ? (
-              <>
-                <Phone size={24} />
-                <span>Démarrer l'appel audio</span>
-              </>
-            ) : (
-              <>
-                <Video size={24} />
-                <span>Démarrer l'appel vidéo</span>
-              </>
-            )}
-          </button>
-          
-          <button className="btn-close" onClick={onClose}>
-            Annuler
-          </button>
-        </div>
-        
-        <div className="permissions-note">
-          <p>Assurez-vous d'avoir autorisé l'accès au micro{currentCallType === 'video' ? ' et à la caméra' : ''}</p>
-        </div>
+        <button 
+          className="btn-close" 
+          onClick={() => setShowCallInitModal(false)}
+        >
+          Annuler
+        </button>
+      </div>
+
+      {/* Optionnel : petite note permissions */}
+      <div className="permissions-note">
+        {isAudioCall 
+          }
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default VideoCallScreen;
