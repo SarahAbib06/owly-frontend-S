@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X, User, MessageCircle, QrCode, Camera, Upload, UserCheck, Users, Image, Plus } from 'lucide-react';
 import jsQR from 'jsqr';
+import { useTranslation } from 'react-i18next';
+
 
 const SearchModal = ({ onClose, onUserSelect, loadConversations }) => {
   const [activeTab, setActiveTab] = useState('search');
@@ -82,7 +84,7 @@ const fetchContacts = async () => {
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       
-      if (!response.ok) throw new Error('Erreur de recherche');
+      if (!response.ok) throw new Error(t("search_error"));
       
       const data = await response.json();
       console.log("📋 Résultats de recherche:", data);
@@ -90,11 +92,12 @@ const fetchContacts = async () => {
       setUsers(Array.isArray(data) ? data : []);
       
       if (data.length === 0) {
-        setError('Aucun utilisateur trouvé');
+        setError(t('no_user_found'));
       }
     } catch (error) {
       console.error('❌ Erreur recherche:', error);
-      setError('Erreur lors de la recherche');
+      setError(t('suppression'));
+
     } finally {
       setLoading(false);
     }
@@ -158,7 +161,7 @@ const handleOpenConversation = async (targetUser) => {
     }
   } catch (err) {
     console.error("❌ Erreur ouverture conversation:", err);
-    alert("Impossible d'ouvrir la conversation : " + err.message);
+   alert(t('conversation_ouverture') + ": " + err.message);
   }
 };
 
@@ -245,7 +248,8 @@ const handleOpenConversation = async (targetUser) => {
       }
     } catch (error) {
       console.error('Erreur caméra:', error);
-      setError('Impossible d\'accéder à la caméra');
+     setError(t('camera_access'));
+
       setActiveTab('search');
     }
   };
@@ -302,11 +306,13 @@ const handleOpenConversation = async (targetUser) => {
         setScanResult(data.users[0]);
         setError('');
       } else {
-        setError(data.message || 'QR code non reconnu');
+        setError(t('qr_error'));
+
       }
     } catch (error) {
       console.error('Erreur scan:', error);
-      setError('Erreur lors du scan');
+     setError(t('scan_error'));
+
     }
   };
 
@@ -330,7 +336,8 @@ const handleOpenConversation = async (targetUser) => {
         if (code) {
           handleQRScan(code.data);
         } else {
-          setError('Aucun QR code détecté dans l\'image');
+         setError(t('no_qr_detected'));
+
         }
       };
       img.src = e.target.result;
@@ -364,6 +371,7 @@ const handleOpenConversation = async (targetUser) => {
       fetchContacts();
     }
   }, [activeTab]);
+const { t } = useTranslation();
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -373,7 +381,7 @@ const handleOpenConversation = async (targetUser) => {
         <div className="flex justify-between items-center p-4 border-b">
           <div className="flex items-center gap-2">
             <Search size={20} className="text-gray-600" />
-            <span className="font-medium">Rechercher</span>
+            <span className="font-medium">{t('search')}</span>
           </div>
           <button
             onClick={onClose}
@@ -396,7 +404,7 @@ const handleOpenConversation = async (targetUser) => {
               }`}
               onClick={() => setActiveTab('search')}
             >
-              Recherche
+             {t('search')}
             </button>
             <button
               className={`flex-1 py-2 text-center text-sm font-medium rounded-md transition-colors ${
@@ -406,7 +414,7 @@ const handleOpenConversation = async (targetUser) => {
               }`}
               onClick={() => setActiveTab('scan')}
             >
-              QR Code
+              {t('qr_code')}
             </button>
 
 {/* 🔥 NOUVEAU ONGLETT GROUPE */}
@@ -428,7 +436,7 @@ const handleOpenConversation = async (targetUser) => {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Rechercher sur Owly..."
+                   placeholder={t('search_placeholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -453,11 +461,11 @@ const handleOpenConversation = async (targetUser) => {
               {loading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-600">Recherche...</p>
+                  <p className="mt-2 text-sm text-gray-600">{t('searching')}</p>
                 </div>
               ) : users.length > 0 ? (
                 <div>
-                  <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3 px-1">Résultats</h3>
+                  <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3 px-1">  {t('results')}</h3>
                   <div className="space-y-2">
                     {users.map((user) => (
                       <div
@@ -495,7 +503,7 @@ const handleOpenConversation = async (targetUser) => {
                         <button
                           onClick={() => handleOpenConversation(user)}
                           className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
-                          title="Envoyer un message"
+                          title={t('send_message')}
                         >
                           <MessageCircle size={18} />
                         </button>
@@ -505,7 +513,7 @@ const handleOpenConversation = async (targetUser) => {
                 </div>
               ) : searchQuery && !loading && (
                 <div className="text-center py-4 text-gray-500">
-                  Aucun résultat pour "{searchQuery}"
+                  {t('no_results', { query: searchQuery })}
                 </div>
               )}
               {/* Contacts suggérés */}
@@ -514,7 +522,7 @@ const handleOpenConversation = async (targetUser) => {
                 {loadingContacts ? (
                   <div className="text-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-2 text-sm text-gray-600">Chargement...</p>
+                    <p className="mt-2 text-sm text-gray-600">{t('loading')}</p>
                   </div>
                 ) : contacts.length > 0 ? (
                   <div className="space-y-2">
@@ -550,7 +558,7 @@ const handleOpenConversation = async (targetUser) => {
                         <button
                           onClick={() => handleOpenConversation(contact)}
                           className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
-                          title="Envoyer un message"
+                          title={t('send_message')}
                         >
                           <MessageCircle size={18} />
                         </button>
@@ -559,7 +567,7 @@ const handleOpenConversation = async (targetUser) => {
                   </div>
                 ) : (
                   <div className="text-center py-4 text-gray-500 text-sm">
-                    Aucun contact pour le moment
+                   {t('no_contacts')}
                   </div>
                 )}
               </div>
@@ -570,9 +578,9 @@ const handleOpenConversation = async (targetUser) => {
             /* SCANNER QR CODE (inchangé) */
             <div>
               <div className="text-center mb-6">
-                <h3 className="font-medium mb-2">Scanner un QR Code</h3>
+                <h3 className="font-medium mb-2">{t('scan_qr_code')}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Scannez le code QR d'un utilisateur
+                  {t('scan_qr_user')}
                 </p>
               </div>
               
@@ -591,7 +599,7 @@ const handleOpenConversation = async (targetUser) => {
                   </div>
                   <h3 className="text-lg font-bold mb-1">{scanResult.username}</h3>
                   <p className="text-gray-600 dark:text-gray-300 mb-6 text-sm">
-                    Utilisateur trouvé
+                   {t('user_found')}
                   </p>
                   <div className="flex gap-2 justify-center">
                     <button
@@ -602,7 +610,7 @@ const handleOpenConversation = async (targetUser) => {
                       className="flex-1 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2"
                     >
                       <MessageCircle size={18} />
-                      Message
+                     {t('message')}
                     </button>
                   </div>
                   <button
@@ -613,7 +621,7 @@ const handleOpenConversation = async (targetUser) => {
                     }}
                     className="mt-4 text-blue-500 hover:text-blue-700 text-sm"
                   >
-                    Scanner un autre code
+                    {t('scan_another_code')}
                   </button>
                 </div>
               ) : (
@@ -639,18 +647,18 @@ const handleOpenConversation = async (targetUser) => {
                   ) : (
                     <div className="border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded-2xl p-8 text-center mb-6">
                       <QrCode className="mx-auto mb-4 text-gray-400" size={48} />
-                      <p className="text-gray-600 dark:text-gray-300">Préparation...</p>
+                      <p className="text-gray-600 dark:text-gray-300">{t('preparing')}</p>
                     </div>
                   )}
 
                   <div className="mb-4">
                     <label className="block text-center">
                       <span className="text-sm text-gray-600 dark:text-gray-300 mb-2 block">
-                        OU téléchargez une image
+                       {t('or_upload_image')}
                       </span>
                       <div className="inline-flex items-center gap-2 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 px-4 py-2 rounded-xl cursor-pointer transition-colors">
                         <Upload size={18} />
-                        <span className="text-sm">Choisir une image</span>
+                        <span className="text-sm">{t('choose_image')}</span>
                         <input
                           type="file"
                           accept="image/*"

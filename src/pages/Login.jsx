@@ -21,6 +21,10 @@ const Login = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+ const errorMap = {
+    "Mot de passe incorrect": "errors.invalidPassword",
+    "Erreur serveur": "errors.serverError"
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -61,7 +65,8 @@ const Login = () => {
         });
       }
     } catch (err) {
-      setError(err.message || t("login.errors.loginFailed"));
+      setError(t(errorMap[err.message] || "errors.loginFailed"));
+
     } finally {
       setLoading(false);
     }

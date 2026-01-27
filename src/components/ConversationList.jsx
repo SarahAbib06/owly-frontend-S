@@ -269,7 +269,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
             transition
             p-2.5 md:p-3
           "
-          title="Nouvelle discussion"
+          title={t("chat.new")}
         >
           <Plus size={18} />
         </button>

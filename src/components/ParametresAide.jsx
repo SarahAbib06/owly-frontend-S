@@ -46,64 +46,65 @@ export default function ParametresAide({ setSelectedMenu }) {
 
   const faqItems = [
     {
-      id: "messages",
-      icon: MessageCircle,
-      iconColor: "text-blue-500",
-      iconBg: "bg-blue-500/10",
-      question: "Comment envoyer une invitation à un contact ?",
-      answer: "Pour ajouter un nouveau contact, recherchez son nom d'utilisateur dans la barre de recherche, puis envoyez-lui une invitation. L'autre personne devra accepter votre demande pour devenir votre contact."
-    },
+    id: "messages",
+    icon: MessageCircle,
+    iconColor: "text-blue-500",
+    iconBg: "bg-blue-500/10",
+    question: t("faq.messages.question"),
+    answer: t("faq.messages.answer")
+  },
     {
-      id: "calls",
-      icon: Shield,
-      iconColor: "text-green-500",
-      iconBg: "bg-green-500/10",
-      question: "Mes conversations sont-elles sécurisées ?",
-      answer: "Oui ! Tous vos messages personnels sont chiffrés de bout en bout. Cela signifie que seuls vous et votre destinataire pouvez lire les messages échangés."
-    },
-    {
-      id: "block",
-      icon: Shield,
-      iconColor: "text-red-500",
-      iconBg: "bg-red-500/10",
-      question: "Comment bloquer un utilisateur ?",
-      answer: "Ouvrez une conversation avec l'utilisateur, cliquez sur les options (3 points), puis sélectionnez 'Bloquer'. Les utilisateurs bloqués ne pourront plus vous contacter."
-    },
-    {
-      id: "games",
-      icon: Zap,
-      iconColor: "text-purple-500",
-      iconBg: "bg-purple-500/10",
-      question: "Comment accéder aux jeux ?",
-      answer: "Cliquez sur l'icône 'Jeux' dans la barre latérale pour accéder à nos jeux intégrés : Owly Quiz, Pierre-Papier-Ciseaux, Jeu de Mémoire et Devine le nombre."
-    },
-    {
-      id: "ai",
-      icon: MessageCircle,
-      iconColor: "text-orange-500",
-      iconBg: "bg-orange-500/10",
-      question: "Qu'est-ce qu'Owly AI ?",
-      answer: "Owly AI est notre assistant intelligent qui peut répondre à vos questions, vous aider et discuter avec vous. Accédez-y depuis la barre latérale."
-    }
+  id: "calls",
+  icon: Shield,
+  iconColor: "text-green-500",
+  iconBg: "bg-green-500/10",
+  question: t("faq.calls.question"),
+  answer: t("faq.calls.answer")
+},
+   {
+  id: "block",
+  icon: Shield,
+  iconColor: "text-red-500",
+  iconBg: "bg-red-500/10",
+  question: t("faq.block.question"),
+  answer: t("faq.block.answer")
+},
+   {
+  id: "games",
+  icon: Zap,
+  iconColor: "text-purple-500",
+  iconBg: "bg-purple-500/10",
+  question: t("faq.games.question"),
+  answer: t("faq.games.answer")
+},
+   {
+  id: "ai",
+  icon: MessageCircle,
+  iconColor: "text-orange-500",
+  iconBg: "bg-orange-500/10",
+  question: t("faq.ai.question"),
+  answer: t("faq.ai.answer")
+}
   ];
 
   const supportCards = [
-    {
-      icon: Mail,
-      iconColor: "text-blue-500",
-      iconBg: "bg-blue-500/10",
-      title: "Nous contacter",
-      description: "Besoin d'aide ? Envoyez-nous un e-mail",
-      action: "owly.app.team@gmail.com"
-    },
-    {
-      icon: FileText,
-      iconColor: "text-green-500",
-      iconBg: "bg-green-500/10",
-      title: "Documentation",
-      description: "Guides et tutoriels complets",
-      action: "Consulter les docs"
-    }
+   {
+  icon: Mail,
+  iconColor: "text-blue-500",
+  iconBg: "bg-blue-500/10",
+  title: t("support.contact.title"),
+  description: t("support.contact.description"),
+  action: t("support.contact.action")
+}
+,
+   {
+  icon: FileText,
+  iconColor: "text-green-500",
+  iconBg: "bg-green-500/10",
+  title: t("support.documentation.title"),
+  description: t("support.documentation.description"),
+  action: t("support.documentation.action")
+}
   ];
 
   return (
@@ -137,13 +138,13 @@ export default function ParametresAide({ setSelectedMenu }) {
             />
           </motion.div>
           <h1 className="text-2xl font-semibold text-myBlack dark:text-white">
-            Aide & Support
-          </h1>
+  {t("help.title")}
+</h1>
         </div>
+<p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+  {t("help.subtitle")}
+</p>
 
-        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-          Trouvez des réponses à vos questions
-        </p>
       </motion.div>
 
       {/* App Info Card */}
@@ -161,20 +162,21 @@ export default function ParametresAide({ setSelectedMenu }) {
           </div>
           <div>
             <h3 className="font-semibold text-myBlack dark:text-white mb-1">
-              À propos d'Owly
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-              Owly est votre application de messagerie complète avec chat sécurisé, appels, jeux intégrés et assistant IA. Version 1.0.0
-            </p>
+  {t("about.title")}
+</h3>
+<p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+  {t("about.description")}
+</p>
           </div>
         </div>
       </motion.div>
 
       {/* FAQ Section */}
       <motion.div variants={itemVariants} className="mt-6">
-        <h2 className="text-lg font-semibold text-myBlack dark:text-white mb-3">
-          Questions fréquentes
-        </h2>
+       <h2 className="text-lg font-semibold text-myBlack dark:text-white mb-3">
+  {t("faq.title")}
+</h2>
+
 
         <div className="flex flex-col gap-2">
           {faqItems.map((item) => {
@@ -239,9 +241,10 @@ export default function ParametresAide({ setSelectedMenu }) {
 
       {/* Support Cards */}
       <motion.div variants={itemVariants} className="mt-6">
-        <h2 className="text-lg font-semibold text-myBlack dark:text-white mb-3">
-          Besoin d'aide supplémentaire ?
-        </h2>
+       <h2 className="text-lg font-semibold text-myBlack dark:text-white mb-3">
+  {t("support.moreHelp")}
+</h2>
+
 
         <div className="flex flex-col gap-3">
           {supportCards.map((card, index) => {

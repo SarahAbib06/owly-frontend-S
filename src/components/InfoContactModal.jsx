@@ -469,26 +469,25 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange, o
 
               <hr className="border-gray-300" />
 
-              {/* Favoris (conversations privées uniquement) */}
-              {!isGroup && (
-                <>
-                  <div
-                    className={`cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 ${
-                      isFavorite ? "text-yellow-500" : ""
-                    }`}
-                    onClick={toggleFavorite}
-                  >
-                    <Star size={15} fill={isFavorite ? "currentColor" : "none"} />
-                    <span>
-                      {loadingFavorite
-                        ? "Chargement..."
-                        : isFavorite
-                        ? "Retirer des favoris"
-                        : "Ajouter aux favoris"}
-                    </span>
-                  </div>
-                  <hr className="border-gray-300" />
-                </>
+
+              {/* Favoris */}
+              {!chat.isGroup && (
+                <div
+                  className={`cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 ${
+                    isFavorite ? "text-yellow-500" : ""
+                  }`}
+                  onClick={toggleFavorite}
+                >
+                  <Star size={15} fill={isFavorite ? "currentColor" : "none"} />
+                 <span>
+      {loadingFavorite
+        ? t("chat.loading")
+        : isFavorite
+        ? t("chat.removeFavorite")
+        : t("chat.addFavorite")}
+    </span>
+                </div>
+
               )}
 
               {/* Archiver */}
@@ -496,8 +495,8 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange, o
                 className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={async () => {
                   const message = chat.isArchived
-                    ? "Désarchiver cette conversation ?"
-                    : "Archiver cette conversation ?";
+                    ? t("chat.unarchiveMessage")
+      : t("chat.archiveMessage");
 
                   if (window.confirm(message)) {
                     try {
@@ -509,15 +508,19 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange, o
 
                       onClose();
                     } catch (err) {
-                      alert("Erreur lors de l'archivage/désarchivage");
+
+                      alert(t("chat.archiveError"));
+
                     }
                   }
                 }}
               >
                 <Archive size={15} />
                 <span>
-                  {chat.isArchived ? "Désarchiver" : "Archiver"} la conversation
-                </span>
+    {chat.isArchived
+      ? t("chat.unarchive") + " " + t("chat.conversation")
+      : t("chat.archive") + " " + t("chat.conversation")}
+  </span>
               </div>
 
               {/* Verrouiller */}
