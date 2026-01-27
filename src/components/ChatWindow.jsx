@@ -1,3 +1,6 @@
+// frontend/src/components/ChatWindow.jsx
+// ✅ VERSION CORRIGÉE : Tous les conflits de merge résolus
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   Phone,
@@ -12,6 +15,7 @@ import {
   CornerUpRight,
   Pin,
   Trash2,
+  Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMessages } from "../hooks/useMessages";
@@ -27,6 +31,7 @@ import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
+import GroupManagerModal from "./GroupManagerModal";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
 
@@ -34,14 +39,12 @@ import { Archive } from "lucide-react";
 import { useChat } from "../context/ChatContext";
 import EmojiPicker from 'emoji-picker-react';
 
-
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
 import MessageRequestBanner from "./MessageRequestBanner";
 import Modal from "./Modal";
-
 
 const SeenIconGray = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 48 48">
@@ -100,7 +103,6 @@ const isDarkColor = (color) => {
   return brightness < 128;
 };
 
-// Fichier → Base64
 const fileToBase64 = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -114,7 +116,6 @@ const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥
 // 🔤 COMPOSANT TYPING INDICATOR
 const TypingIndicator = ({ avatar, username }) => (
   <div className="flex justify-start items-start gap-2 mb-3">
-    {/* Avatar */}
     <div className="w-8 h-8 flex-shrink-0">
       <img
         src={avatar || "/default-avatar.png"}
@@ -133,7 +134,6 @@ const TypingIndicator = ({ avatar, username }) => (
       
       <div className="bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-3">
         <div className="flex items-center gap-1">
-          {/* Animation des trois points */}
           <div className="flex items-center gap-1">
             <div 
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
@@ -232,6 +232,17 @@ const CallMessage = ({ callType, callResult, duration, fromMe }) => {
 };
 
 export default function ChatWindow({ selectedChat, onBack, onConversationDeleted }) {
+
+  console.log("🔍 DEBUG selectedChat:", {
+    _id: selectedChat?._id,
+    name: selectedChat?.name,
+    groupName: selectedChat?.groupName,
+    isGroup: selectedChat?.isGroup,
+    type: selectedChat?.type,
+    participants: selectedChat?.participants?.length,
+    "Clés disponibles": Object.keys(selectedChat || {})
+  });
+  
   const { t } = useTranslation();
   const {
     incomingCall,
@@ -241,10 +252,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   const isFromArchived = selectedChat?.isFromArchived === true;
   const { conversations, archivedConversations } = useChat();
   const isArchived = isFromArchived || archivedConversations.some(c => c._id === selectedChat?._id);
-  console.log("isArchived ?", isArchived, selectedChat?._id);
   const { archiveConversation, unarchiveConversation } = useChat();
-
-  
 
   const { user, socketConnected } = useAuth();
   const [selectedTargetConversation, setSelectedTargetConversation] = useState(null);
@@ -254,10 +262,14 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [messageToDelete, setMessageToDelete] = useState(null);
   const [deletedForEveryone, setDeletedForEveryone] = useState([]);
-
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const { conversations: myConversations, loading: convLoading } = useConversations();
+
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [showGroupManager, setShowGroupManager] = useState(false);
+  const [myRoleInGroup, setMyRoleInGroup] = useState('membre');
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
   
@@ -285,19 +297,9 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
 
   const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
-  console.log('🔍 DEBUG MESSAGE REQUEST:', {
-    isMessageRequest: selectedChat?.isMessageRequest,
-    messageRequestFor: selectedChat?.messageRequestFor,
-    messageRequestFrom: selectedChat?.messageRequestFrom,
-    currentUserId: user?.id,
-    isForMe: selectedChat?.messageRequestFor?.toString() === user?.id?.toString()
-  });
-
-  const isIncomingMessageRequest = 
-    selectedChat?.isMessageRequest === true && 
+  const isIncomingMessageRequest =
+    selectedChat?.isMessageRequest === true &&
     selectedChat?.messageRequestFor?.toString() === user?.id?.toString();
-
-  console.log('🚨 isIncomingMessageRequest =', isIncomingMessageRequest);
 
   const [contactStatus, setContactStatus] = useState({
     isOnline: false,
@@ -339,7 +341,33 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
     return () => clearInterval(interval);
   }, [contactStatus.lastSeen, contactStatus.isOnline]);
 
-  console.log("selectedChat:", selectedChat, "user:", user);
+  // 🔥 CORRECTION : Charger membres du groupe
+  useEffect(() => {
+    if (selectedChat?.isGroup && selectedChat._id) {
+      const fetchGroupMembers = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch(`http://localhost:5000/api/groups/${selectedChat._id}/members`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          
+          if (data.success) {
+            setGroupMembers(data.members || []);
+            
+            const userId = localStorage.getItem('userId');
+            const myMember = data.members.find(m => String(m.id) === String(userId));
+            setMyRoleInGroup(myMember?.role || 'membre');
+          }
+        } catch (err) {
+          console.error("❌ Erreur chargement membres:", err);
+        }
+      };
+      
+      fetchGroupMembers();
+    }
+  }, [selectedChat?._id]);
+
   const contactId = React.useMemo(() => {
     if (!selectedChat || selectedChat.isGroup || !user) return null;
     const other = selectedChat.participants.find(
@@ -352,12 +380,10 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
 
   useEffect(() => {
     if (!contactId) return;
-    console.log("🧪 TEST contactId =", contactId);
 
     fetch(`http://localhost:5000/api/users/${contactId}/status`)
       .then(res => res.json())
       .then(data => {
-        console.log("🧪 REPONSE API STATUS =", data);
         setContactStatus({
           isOnline: data.isOnline,
           lastSeen: data.lastSeen,
@@ -365,6 +391,24 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       })
       .catch(err => console.error("Erreur statut:", err));
   }, [contactId]);
+
+  useEffect(() => {
+    if (!socketService.socket || !selectedChat?._id) return;
+
+    // Écouter les nouveaux messages (incluant les messages système)
+    const handleNewMessage = (data) => {
+      console.log("📨 Nouveau message reçu:", data);
+      
+      // Le message sera automatiquement ajouté via votre hook useMessages
+      // Pas besoin de logique supplémentaire
+    };
+
+    socketService.socket.on("new_message", handleNewMessage);
+
+    return () => {
+      socketService.socket.off("new_message", handleNewMessage);
+    };
+  }, [selectedChat?._id]);
 
   useEffect(() => {
     if (selectedChat?._id && deletedMessages.length > 0) {
@@ -377,7 +421,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
 
   const otherUserName = React.useMemo(() => {
     if (selectedChat?.isGroup) return null;
-    
+   
     const otherParticipant = selectedChat?.participants?.find(
       participant => {
         const participantId = participant._id || participant.id || participant.userId;
@@ -413,15 +457,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   }, [showEmojiPicker]);
 
   useEffect(() => {
-    if (selectedChat?._id && deletedMessages.length > 0) {
-      localStorage.setItem(
-        `deleted_${selectedChat._id}`,
-        JSON.stringify(deletedMessages)
-      );
-    }
-  }, [deletedMessages, selectedChat?._id]);
-
-  useEffect(() => {
     if (selectedChat?._id) {
       const saved = localStorage.getItem(`deleted_${selectedChat._id}`);
       if (saved) {
@@ -451,7 +486,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
     };
 
     const handleOffline = ({ userId, lastSeen }) => {
-      console.log("🔴 user offline reçu:", userId, lastSeen, "contactId:", contactId);
       if (!contactId) return;
 
       if (String(userId) === String(contactId)) {
@@ -479,7 +513,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
 
     const handleThemeChange = ({ conversationId, theme }) => {
       if (conversationId === selectedChat._id) {
-        console.log("Thème reçu via socket:", theme);
         applyTheme(theme, false);
       }
     };
@@ -661,11 +694,13 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
   useEffect(() => {
   }, [selectedChat, archivedConversations]);
 
+  // ✅ MARQUER LES MESSAGES COMME VUS - VERSION INSTANTANÉE
   useEffect(() => {
     if (!selectedChat?._id || !user?.id || !messages.length) return;
 
     const markMessagesAsSeen = async () => {
       try {
+        // 🔍 Trouver les messages NON VUS de l'autre utilisateur
         const unreadMessages = messages.filter(msg => {
           const isFromOther = String(msg.senderId || msg.Id_sender) !== String(user.id);
           const notSeenByMe = !msg.readBy?.some(r => String(r.userId) === String(user.id));
@@ -702,50 +737,19 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       }
     };
 
+    // 🔥 MARQUER IMMÉDIATEMENT au chargement
     const initialTimeout = setTimeout(markMessagesAsSeen, 500);
 
+    // 🔥 RÉÉCOUTER À CHAQUE NOUVEAU MESSAGE
     const messageCheckInterval = setInterval(() => {
       markMessagesAsSeen();
-    }, 1000);
+    }, 1000); // Vérifier toutes les secondes
 
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(messageCheckInterval);
     };
   }, [selectedChat?._id, user?.id, messages]);
-
-  useEffect(() => {
-    if (!selectedChat?._id || !user?.id) return;
-
-    const markMessagesAsSeen = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        
-        const response = await fetch(
-          `http://localhost:5000/api/messages/${selectedChat._id}/mark-all-seen`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
-
-        const data = await response.json();
-        
-        if (data.success) {
-          console.log(`✅ ${data.messagesMarked} messages marqués comme vus`);
-        }
-      } catch (error) {
-        console.error("❌ Erreur marquer messages vus:", error);
-      }
-    };
-
-    const timeout = setTimeout(markMessagesAsSeen, 500);
-
-    return () => clearTimeout(timeout);
-  }, [selectedChat?._id, user?.id]);
 
   const handleInputChange = (e) => {
     setInputText(e.target.value);
@@ -834,6 +838,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       return;
     }
 
+    // Gestion image (URL ou base64)
     if ((theme.type === "image" || theme.type === "upload") && typeof theme.value === "string") {
       style = {
         backgroundImage: `url(${theme.value})`,
@@ -852,6 +857,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       return;
     }
 
+    // Gestion couleurs, gradients, saisonniers
     if (theme.type === "color" || theme.type === "gradient" || theme.type === "seasonal") {
       style = { background: theme.value };
       setThemeStyle(style);
@@ -920,7 +926,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       }
 
       const data = await response.json();
-      console.log("✅ Thème sauvegardé avec succès:", data);
     } catch (error) {
       console.error("💥 Erreur réseau sauvegarde thème:", error);
     }
@@ -1050,71 +1055,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
     };
   }, [selectedChat, chatKey, applyTheme]);
 
-  const handleAcceptCall = () => {
-    if (!socketService.socket || !incomingCall) {
-      console.error('Socket non disponible ou appel inexistant');
-      return;
-    }
-
-    console.log('✅ Acceptation de l\'appel:', incomingCall);
-    
-    const callToAccept = { ...incomingCall };
-    setIncomingCall(null);
-    
-    socketService.socket.emit('call:accept', {
-      callId: callToAccept.callId,
-      callerId: callToAccept.callerId
-    });
-
-    setActiveCall({
-      ...callToAccept,
-      status: 'accepted'
-    });
-  };
-
-  const handleRejectCall = async () => {
-    if (!socketService.socket || !incomingCall) {
-      console.error('Socket non disponible ou appel inexistant');
-      return;
-    }
-
-    console.log('❌ Rejet de l\'appel:', incomingCall);
-    socketService.socket.emit('call:reject', {
-      callId: incomingCall.callId,
-      callerId: incomingCall.callerId
-    });
-
-    setIncomingCall(null);
-  };
-
-  useEffect(() => {
-    const resetTheme = () => {
-      setThemeStyle({});
-      setBubbleBg("");
-      setSendBtnColor("");
-      setThemeEmojis([]);
-      setFloatingEmojis([]);
-    };
-
-    resetTheme();
-
-    if (selectedChat?._id) {
-      loadThemeFromBackend();
-    }
-  }, [selectedChat?._id, loadThemeFromBackend]);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem(chatKey);
-    if (savedTheme) {
-      try {
-        const parsed = JSON.parse(savedTheme);
-        applyTheme(parsed, false);
-      } catch (e) {
-        console.error("Erreur chargement thème:", e);
-      }
-    }
-  }, [selectedChat]);
-
   useEffect(() => {
     if (!themeEmojis || themeEmojis.length === 0) return;
 
@@ -1146,25 +1086,26 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
       ? "bg-myYellow2 dark:bg-mydarkYellow text-myBlack rounded-t-lg rounded-bl-lg rounded-br-none px-4 py-4 text-xs"
       : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:!text-white rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-4 text-xs";
 
-  const conversationName = selectedChat?.isGroup
-    ? selectedChat.groupName
-    : otherUserName || selectedChat?.name || "Utilisateur";
+  // 🔥 CORRECTION : Nom de la conversation
+  const conversationName = React.useMemo(() => {
+    if (selectedChat?.type === 'group') {
+      return selectedChat?.name || "Groupe";
+    }
+    return otherUserName || selectedChat?.name || "Utilisateur";
+  }, [selectedChat, otherUserName]);
 
+  // 🔥 CORRECTION : Avatar de la conversation
   const conversationAvatar = React.useMemo(() => {
-    console.log("🖼️ DEBUG - Recherche photo de profil:");
-    console.log("1. selectedChat:", selectedChat);
-    console.log("2. targetUser:", selectedChat?.targetUser);
-    console.log("3. targetUser.profilePicture:", selectedChat?.targetUser?.profilePicture);
-    
-    if (selectedChat?.isGroup) return "/group-avatar.png";
-    
+    if (selectedChat?.type === 'group') {
+      return selectedChat?.groupPic || selectedChat?.avatar || "/group-avatar.png";
+    }
+
     if (selectedChat?.targetUser?.profilePicture) {
-      console.log("✅ Photo trouvée dans targetUser:", selectedChat.targetUser.profilePicture);
       return selectedChat.targetUser.profilePicture;
     }
-    
+
     const fromParticipants = selectedChat?.participants?.find(
-      p => {
+      (p) => {
         const pid = p._id || p.id;
         const uid = otherUserId;
         return pid && uid && String(pid) === String(uid);
@@ -1190,6 +1131,48 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
         }
       )?.profilePicture || "/default-avatar.png";
 
+  const SystemMessage = ({ message }) => {
+    // Déterminer l'icône et la couleur selon le type de message
+    const getMessageStyle = (content) => {
+      if (content.includes("ajouté")) return { icon: "➕", color: "blue" };
+      if (content.includes("quitté")) return { icon: "👋", color: "yellow" };
+      if (content.includes("retiré")) return { icon: "➖", color: "red" };
+      if (content.includes("promu")) return { icon: "👑", color: "purple" };
+      if (content.includes("créé")) return { icon: "✨", color: "green" };
+      if (content.includes("modifié")) return { icon: "✏️", color: "indigo" };
+      return { icon: "ℹ️", color: "blue" };
+    };
+
+    const { icon, color } = getMessageStyle(message.content);
+
+    const colorClasses = {
+      blue: "from-blue-50 via-indigo-50 to-blue-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-blue-900/20 border-blue-200 dark:border-blue-700/50 text-blue-700 dark:text-blue-300",
+      green: "from-green-50 via-emerald-50 to-green-50 dark:from-green-900/20 dark:via-emerald-900/20 dark:to-green-900/20 border-green-200 dark:border-green-700/50 text-green-700 dark:text-green-300",
+      yellow: "from-yellow-50 via-amber-50 to-yellow-50 dark:from-yellow-900/20 dark:via-amber-900/20 dark:to-yellow-900/20 border-yellow-200 dark:border-yellow-700/50 text-yellow-700 dark:text-yellow-300",
+      red: "from-red-50 via-rose-50 to-red-50 dark:from-red-900/20 dark:via-rose-900/20 dark:to-red-900/20 border-red-200 dark:border-red-700/50 text-red-700 dark:text-red-300",
+      purple: "from-purple-50 via-violet-50 to-purple-50 dark:from-purple-900/20 dark:via-violet-900/20 dark:to-purple-900/20 border-purple-200 dark:border-purple-700/50 text-purple-700 dark:text-purple-300",
+      indigo: "from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 border-indigo-200 dark:border-indigo-700/50 text-indigo-700 dark:text-indigo-300",
+    };
+
+    return (
+      <div className="flex justify-center my-4">
+        <div className={`bg-gradient-to-r ${colorClasses[color]} rounded-full px-5 py-2.5 text-xs max-w-[85%] text-center shadow-md border backdrop-blur-sm`}>
+          <span className="font-medium flex items-center gap-2 justify-center">
+            <span className="text-lg">{icon}</span>
+            {message.content}
+          </span>
+          <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-1">
+            {new Date(message.createdAt).toLocaleTimeString("fr-FR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 🔥 COMPOSANT MESSAGE CORRIGÉ
   const MessageBubble = ({ msg, deletedMessages, setDeletedMessages }) => {
     const longPressTimer = useRef(null);
 
@@ -1272,11 +1255,25 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
 
     return (
       <div className={`flex ${fromMe ? "justify-end" : "justify-start"} group`}>
+        {/* 🔥 AVATAR À GAUCHE (seulement pour les messages REÇUS dans un GROUPE) */}
+        {!fromMe && selectedChat?.type === 'group' && ( 
+          <div className="flex-shrink-0 mr-2">
+            <img
+              src={msg.senderProfilePicture || "/default-avatar.png"}
+              alt={msg.senderUsername || "User"}
+              className="w-8 h-8 rounded-full object-cover"
+            />
+          </div>
+        )}
+
         <div className="flex flex-col max-w-[85%] relative">
-          {!fromMe && selectedChat?.isGroup && (
-            <p className="text-[10px] ml-1 mb-1 text-gray-700 dark:text-gray-300">
-              {msg.senderUsername || msg.senderId?.username || "Utilisateur"}
-            </p>
+          {/* 🔥 NOM + 3 PREMIÈRES LETTRES (seulement pour groupes) */}
+          {!fromMe && selectedChat?.type === 'group' && ( 
+            <div className="flex items-center gap-1 ml-1 mb-1">
+              <span className="text-[10px] text-gray-700 dark:text-gray-300">
+                {msg.senderUsername || msg.senderId?.username || "Utilisateur"}
+              </span>
+            </div>
           )}
 
           <div className="relative">
@@ -1349,6 +1346,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
               )}
             </div>
 
+            {/* Menu contextuel */}
             {showMessageMenu === msg._id && (
               <div
                 className={`message-menu absolute ${
@@ -1357,7 +1355,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
               >
                 <button
                   onClick={() => {
-                    console.log("🟡 click Réagir pour", msg._id);
                     setShowReactionPicker(msg._id);
                     setShowMessageMenu(null);
                   }}
@@ -1369,8 +1366,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
                   onClick={handlePinMessage}
                   className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
                 >
-                  <Pin size={16} />{" "}
-                  {msg.isPinned ? "Désépingler" : "Épingler"}
+                  <Pin size={16} /> {msg.isPinned ? "Désépingler" : "Épingler"}
                 </button>
                 <button
                   onClick={() => {
@@ -1398,6 +1394,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
               </div>
             )}
 
+            {/* Picker de réactions */}
             {showReactionPicker === msg._id && (
               <div
                 className={`reaction-picker absolute ${
@@ -1417,6 +1414,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
             )}
           </div>
 
+          {/* Réactions */}
           {reactions && reactions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {reactions.map((reaction) => (
@@ -1449,8 +1447,10 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
                     ✓
                   </span>
                 ) : msg.status === "seen" || (msg.readBy && msg.readBy.length > 0) ? (
+                  // 👁️ VU - DOUBLE COCHE BLEUE
                   <span className="text-blue-500">✓✓✓</span>
                 ) : (
+                  // Envoyé - DOUBLE COCHE GRISE
                   <span className="text-gray-400">✓✓</span>
                 )}
               </span>
@@ -1508,7 +1508,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
         })}
       </div>
 
-      {/* HEADER */}
+      {/* 🔥 HEADER CORRIGÉ */}
       <header className="flex items-center justify-between px-2 py-2 border-b border-gray-300 dark:border-gray-700 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
         <div className="flex items-center gap-2 min-w-0">
           <button onClick={onBack} className="md:hidden mr-2 text-xl">
@@ -1573,7 +1573,43 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
         </div>
       </header>
 
-      {/* MESSAGE REQUEST BANNER */}
+      {selectedChat?.isGroup && (
+        <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 border-b border-blue-100 dark:border-gray-700">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center gap-2">
+              <Users size={16} className="text-blue-600" />
+              <span className="font-semibold text-sm">{groupMembers?.length || 0} membres</span>
+            </div>
+            <button 
+              onClick={() => setShowGroupInfo(true)}
+              className="text-blue-600 hover:text-blue-700 text-xs font-medium px-3 py-1 bg-white/50 hover:bg-white rounded-full transition-all"
+            >
+              Gérer
+            </button>
+          </div>
+          <div className="flex gap-1 overflow-x-auto pb-1">
+            {groupMembers?.slice(0, 5).map((m, i) => (
+              <div key={m.id} className="flex flex-col items-center gap-1 min-w-[40px] flex-shrink-0">
+                <img 
+                  src={m.profilePicture || 'default-avatar.png'} 
+                  className="w-8 h-8 rounded-full ring-2 ring-white/50 shadow-md"
+                  alt={m.username}
+                />
+                {m.role === 'admin' && (
+                  <span className="text-xs text-yellow-600 font-bold">👑</span>
+                )}
+                <span className="text-xs truncate text-gray-600 dark:text-gray-400 max-w-[40px]">{m.username}</span>
+              </div>
+            ))}
+            {groupMembers?.length > 5 && (
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md">
+                +{groupMembers.length - 5}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {isIncomingMessageRequest && (
         <MessageRequestBanner
           conversationName={conversationName}
@@ -1593,16 +1629,13 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
               });
 
               const data = await res.json();
-              console.log('✅ Réponse accept:', data);
 
               if (res.ok) {
                 window.location.reload();
               } else {
-                console.error('❌ Erreur accept:', data);
                 alert(data.error || "Erreur lors de l'acceptation");
               }
             } catch (err) {
-              console.error('❌ Erreur réseau accept:', err);
               alert("Erreur réseau");
             }
           }}
@@ -1623,16 +1656,13 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
               });
 
               const data = await res.json();
-              console.log('✅ Réponse delete:', data);
 
               if (res.ok) {
                 onBack();
               } else {
-                console.error('❌ Erreur delete:', data);
                 alert(data.error || "Erreur lors de la suppression");
               }
             } catch (err) {
-              console.error('❌ Erreur réseau delete:', err);
               alert("Erreur réseau");
             }
           }}
@@ -1692,7 +1722,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
         </div>
       )}
 
-      {/* THEME SELECTOR */}
       {showThemeSelector && (
         <ThemeSelector
           onSelectTheme={applyTheme}
@@ -1729,6 +1758,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
           const messageSenderId = typeof rawSender === "object" && rawSender?._id ? rawSender._id : rawSender;
           const wasFromMe = currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
 
+          // Si supprimé → placeholder avec alignement correct
           if (isDeletedByMe || isDeletedForEveryone) {
             return (
               <div key={msg._id}>
@@ -1784,7 +1814,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
         <div ref={messagesEndRef} />
       </main>
 
-      {/* ✅ FOOTER CORRIGÉ */}
+      {/* INPUT */}
       <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
         {isBlocked && blockedBy === 'me' ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
@@ -1835,7 +1865,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
                 )}
 
                 {!selectedFile.type.startsWith("image/") &&
-                 !selectedFile.type.startsWith("video/") && (
+                  !selectedFile.type.startsWith("video/") && (
                   <p className="text-sm">📎 {selectedFile.name}</p>
                 )}
 
@@ -1874,8 +1904,8 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
                     <Smile
                       size={18}
                       className={`cursor-pointer transition-colors ${
-                        showEmojiPicker 
-                          ? 'text-myYellow' 
+                        showEmojiPicker
+                          ? 'text-myYellow'
                           : 'text-gray-700 dark:text-gray-300'
                       }`}
                     />
@@ -1946,7 +1976,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
         />
       )}
 
-      {/* Search Modal */}
       {openSearch && (
         <>
           <div
@@ -1970,7 +1999,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
         </>
       )}
 
-      {/* Confirm Unblock Modal */}
       <ConfirmBlockModal
         isOpen={isConfirmUnblockModalOpen}
         onClose={() => setIsConfirmUnblockModalOpen(false)}
@@ -1985,7 +2013,6 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
         }}
       />
 
-      {/* Forward Modal */}
       <ForwardModal
         isOpen={showForwardModal}
         onClose={() => {
@@ -2066,7 +2093,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
           <ChatOptionsMenu
             selectedChat={{
               ...selectedChat,
-              userId: selectedChat?.isGroup 
+              userId: selectedChat?.isGroup
                 ? null
                 : selectedChat?.participants?.find(
                     participant => {
@@ -2099,6 +2126,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
               try {
                 if (isArchived) {
                   await unarchiveConversation(selectedChat._id);
+                  
                   if (typeof onConversationDeleted === 'function') {
                     onConversationDeleted();
                   }
@@ -2114,6 +2142,27 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
           onClose={() => setIsInfoOpen(false)}
           onBlockStatusChange={() => refresh()}
           onConversationDeleted={onConversationDeleted}
+        />
+      )}
+
+      {showGroupInfo && (
+        <GroupManagerModal
+          groupId={selectedChat._id}
+          myRole={myRoleInGroup}
+          members={groupMembers}
+          onClose={() => setShowGroupInfo(false)}
+          onMembersUpdated={() => {
+            const token = localStorage.getItem('token');
+            fetch(`http://localhost:5000/api/groups/${selectedChat._id}/members`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                setGroupMembers(data.members || []);
+              }
+            });
+          }}
         />
       )}
     </div>

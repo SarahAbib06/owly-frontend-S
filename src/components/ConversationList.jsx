@@ -109,7 +109,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
     if (filteredByType.length > 0) {
       fetchLastMessages();
     }
-  }, [filteredByType]);
+  }, [filteredByType.length]);
 
   // Filtrer les conversations selon la recherche
   const filteredList = filteredByType.filter((conv) => {
@@ -415,9 +415,9 @@ export default function ConversationList({ onSelect, onNewChat }) {
               ? (conv.groupName || conv.name || "Groupe")
               : (otherParticipant?.username || conv.name || "Utilisateur");
            
-            const avatar = isGroup
-              ? (conv.groupAvatar || "/group-avatar.png")
-              : (otherParticipant?.profilePicture || "/default-avatar.png");
+const avatar = isGroup
+  ? (conv.groupPic || conv.groupAvatar || "/group-avatar.png")  // ← AJOUTE groupPic
+  : (otherParticipant?.profilePicture || "/default-avatar.png");
            
             const lastMsg = lastMessages[conv._id];
             let lastMessage = t("messages.noMessages") || "Aucun message";
