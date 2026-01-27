@@ -11,18 +11,19 @@ export const useMessages = (conversationId) => {
   const [page, setPage] = useState(1);
   const isLoadingRef = useRef(false);
 
-  // ✅ Normaliser un message pour être sûr d'avoir createdAt
-const normalizeMessage = (message) => {
-  const baseDate = message.createdAt || message.timestamp || new Date();
-  const d = new Date(baseDate);
-  const safeDate = isNaN(d.getTime()) ? new Date() : d;
+  // ✅ Normaliser un message pour être sûr d'avoir createdAt et status
+  const normalizeMessage = (message) => {
+    const baseDate = message.createdAt || message.timestamp || new Date();
+    const d = new Date(baseDate);
+    const safeDate = isNaN(d.getTime()) ? new Date() : d;
 
-  return {
-    ...message,
-    createdAt: safeDate.toISOString(),
+    return {
+      ...message,
+      createdAt: safeDate.toISOString(),
+      status: message.status || "sent", // Par défaut "sent" pour les anciens messages
+      tempId: message.tempId || null, // 🔥 Garder le tempId pour retrouver le message
+    };
   };
-};
-
 
   // Charger les messages (API)
   const loadMessages = useCallback(
@@ -73,7 +74,7 @@ const normalizeMessage = (message) => {
   );
 
   // Envoyer un message texte
-      const sendMessage = useCallback(
+  const sendMessage = useCallback(
     async (input) => {
       if (!conversationId) return;
 
@@ -95,13 +96,38 @@ const normalizeMessage = (message) => {
       }
 
       try {
-        console.log("📨 Envoi message:", { content, Id_receiver, conversationId });
+        // 🔥 CRÉER UN MESSAGE TEMPORAIRE AVEC STATUS "SENDING"
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const userId = localStorage.getItem("userId") || localStorage.getItem("user_id");
+        
+        const tempMessage = {
+          _id: tempId,
+          content,
+          typeMessage: "text",
+          conversationId,
+          senderId: userId,
+          createdAt: new Date().toISOString(),
+          status: "sending", // ← STATUT INITIAL (1 flèche)
+          isPinned: false,
+        };
 
+        // 🔥 AJOUTER IMMÉDIATEMENT LE MESSAGE À L'UI
+        setMessages((prev) => {
+          const merged = [...prev, tempMessage];
+          return merged.sort(
+            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+          );
+        });
+
+        console.log("📨 Envoi message:", { content, Id_receiver, conversationId, tempId });
+
+        // Envoyer via socket avec l'ID temporaire
         socketService.sendMessage({
           conversationId,
           content,
           typeMessage: "text",
-          Id_receiver, // ← ENVOYÉ AU BACKEND
+          Id_receiver,
+          tempId, // ← PERMET DE RELIER LE MESSAGE TEMPORAIRE AU VRAI
         });
       } catch (err) {
         console.error("❌ Erreur envoi message:", err);
@@ -119,14 +145,37 @@ const normalizeMessage = (message) => {
       try {
         console.log("🖼️ Envoi image:", file.name);
 
+        // 🔥 CRÉER UN MESSAGE TEMPORAIRE POUR L'IMAGE
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const userId = localStorage.getItem("userId") || localStorage.getItem("user_id");
+        
         const reader = new FileReader();
         reader.onload = () => {
+          const tempMessage = {
+            _id: tempId,
+            content: reader.result,
+            typeMessage: "image",
+            conversationId,
+            senderId: userId,
+            createdAt: new Date().toISOString(),
+            status: "sending",
+            isPinned: false,
+          };
+
+          setMessages((prev) => {
+            const merged = [...prev, tempMessage];
+            return merged.sort(
+              (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+            );
+          });
+
           socketService.sendImageMessage({
             conversationId,
             file: reader.result,
             fileName: file.name,
             fileType: file.type,
             fileSize: file.size,
+            tempId,
           });
         };
         reader.readAsDataURL(file);
@@ -146,7 +195,28 @@ const normalizeMessage = (message) => {
       try {
         console.log("🎥 Envoi vidéo:", file.name);
 
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const userId = localStorage.getItem("userId") || localStorage.getItem("user_id");
+
         const arrayBuffer = await file.arrayBuffer();
+
+        const tempMessage = {
+          _id: tempId,
+          content: URL.createObjectURL(file),
+          typeMessage: "video",
+          conversationId,
+          senderId: userId,
+          createdAt: new Date().toISOString(),
+          status: "sending",
+          isPinned: false,
+        };
+
+        setMessages((prev) => {
+          const merged = [...prev, tempMessage];
+          return merged.sort(
+            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+          );
+        });
 
         socketService.sendVideoMessage({
           conversationId,
@@ -154,6 +224,7 @@ const normalizeMessage = (message) => {
           fileName: file.name,
           fileType: file.type,
           fileSize: file.size,
+          tempId,
         });
       } catch (err) {
         console.error("❌ Erreur envoi vidéo:", err);
@@ -171,8 +242,30 @@ const normalizeMessage = (message) => {
       try {
         console.log("📎 Envoi fichier:", file.name);
 
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const userId = localStorage.getItem("userId") || localStorage.getItem("user_id");
+
         const reader = new FileReader();
         reader.onload = () => {
+          const tempMessage = {
+            _id: tempId,
+            content: reader.result,
+            typeMessage: "file",
+            fileName: file.name,
+            conversationId,
+            senderId: userId,
+            createdAt: new Date().toISOString(),
+            status: "sending",
+            isPinned: false,
+          };
+
+          setMessages((prev) => {
+            const merged = [...prev, tempMessage];
+            return merged.sort(
+              (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+            );
+          });
+
           socketService.sendFileMessage({
             conversationId,
             file: reader.result,
@@ -180,6 +273,7 @@ const normalizeMessage = (message) => {
             fileType: file.type,
             fileSize: file.size,
             originalName: file.name,
+            tempId,
           });
         };
         reader.readAsDataURL(file);
@@ -205,19 +299,19 @@ const normalizeMessage = (message) => {
     try {
       await messageService.pinMessage(messageId);
       console.log("📌 Requête épinglage envoyée:", messageId);
-      // L’UI sera mise à jour via 'message:pinned' / 'message:unpinned'
+      // L'UI sera mise à jour via 'message:pinned' / 'message:unpinned'
     } catch (err) {
       console.error("❌ Erreur épinglage:", err);
       throw err;
     }
   }, []);
 
-    // Désépingler un message
+  // Désépingler un message
   const unpinMessage = useCallback(async (messageId) => {
     try {
       await messageService.unpinMessage(messageId);
       console.log("📌 Requête désépinglage envoyée:", messageId);
-      // L’UI sera mise à jour via socket 'message:unpinned'
+      // L'UI sera mise à jour via socket 'message:unpinned'
     } catch (err) {
       console.error("❌ Erreur désépinglage:", err);
       throw err;
@@ -266,47 +360,111 @@ const normalizeMessage = (message) => {
   useEffect(() => {
     if (!conversationId) return;
 
-    const handleNewMessage = (message) => {
-      console.log("📨 Nouveau message reçu:", message);
+    // 📨 Nouveau message reçu d'un autre utilisateur
+   const handleNewMessage = (message) => {
+  const normalized = normalizeMessage(message);
+  const myUserId =
+    localStorage.getItem("userId") ||
+    localStorage.getItem("user_id");
 
-      if (message.conversationId === conversationId) {
-        const normalized = normalizeMessage(message);
+  setMessages(prev => {
+    // 🚫 IGNORER les messages que J’AI envoyés
+    if (normalized.senderId === myUserId) {
+      return prev;
+    }
 
-        setMessages((prev) => {
-          if (prev.some((m) => m._id === normalized._id)) {
-            return prev;
-          }
-          const merged = [...prev, normalized];
-          return merged.sort(
-            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-          );
-        });
+    // 🚫 éviter les doublons
+    if (
+      prev.some(m =>
+        m._id === normalized._id ||
+        m._id === normalized.tempId
+      )
+    ) {
+      return prev;
+    }
+
+    return [...prev, normalized].sort(
+      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    );
+  });
+};
+
+
+
+    // ✅ Message envoyé confirmé par le serveur
+  // ✅ Message envoyé confirmé par le serveur - VERSION CORRIGÉE
+const handleMessageSent = (response) => {
+  console.log("✅ Message envoyé confirmé:", response);
+
+  if (!response?.success || !response?.data) return;
+
+  const serverMessage = response.data;
+  const tempId = response.tempId; // ← IMPORTANT : tempId vient de response, pas de data
+
+  console.log("🔍 Recherche message temporaire:", {
+    tempId,
+    serverMessageId: serverMessage._id,
+    typeMessage: serverMessage.typeMessage
+  });
+
+  setMessages(prev => {
+    // 🔍 Chercher le message temporaire par tempId
+    const tempIndex = prev.findIndex(m => m._id === tempId);
+
+    console.log("📊 Index trouvé:", tempIndex, "| Total messages:", prev.length);
+
+    // ❌ Si aucun message temporaire trouvé
+    if (tempIndex === -1) {
+      console.log("⚠️ Aucun message temporaire trouvé, ajout du message");
+      
+      // Vérifier qu'on n'a pas déjà le message réel
+      if (prev.some(m => m._id === serverMessage._id)) {
+        console.log("⏭️ Message réel déjà présent, skip");
+        return prev;
       }
+      
+      // Ajouter le nouveau message
+      const normalized = normalizeMessage(serverMessage);
+      return [...prev, { ...normalized, status: "sent" }].sort(
+        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+      );
+    }
+
+    // ✅ Remplacer le message temporaire par le message réel
+    console.log("✅ Remplacement du message temporaire:", tempId, "→", serverMessage._id);
+    
+    const updated = [...prev];
+    const normalized = normalizeMessage(serverMessage);
+    
+    updated[tempIndex] = {
+      ...normalized,
+      status: "sent", // ← 2 FLÈCHES GRISES
     };
 
-    const handleMessageSent = (response) => {
-      console.log("✅ Message envoyé confirmé:", response);
+    return updated.sort(
+      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    );
+  });
+};
 
-      if (response.success && response.data) {
-        const normalized = normalizeMessage(response.data);
-
-        setMessages((prev) => {
-          if (prev.some((m) => m._id === normalized._id)) {
-            return prev;
-          }
-          const merged = [...prev, normalized];
-          return merged.sort(
-            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-          );
-        });
-      }
-    };
-
+    // ❌ Erreur lors de l'envoi
     const handleMessageError = (err) => {
       console.error("❌ Erreur message:", err);
+      
+      // Marquer les messages temporaires comme "failed"
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg._id.startsWith("temp_") && msg.status === "sending") {
+            return { ...msg, status: "failed" };
+          }
+          return msg;
+        })
+      );
+      
       setError(err.error || "Erreur envoi message");
     };
 
+    // 📌 Message épinglé
     const handleMessagePinned = (data) => {
       console.log("📌 Message épinglé:", data);
 
@@ -319,6 +477,7 @@ const normalizeMessage = (message) => {
       }
     };
 
+    // 📌 Message désépinglé
     const handleMessageUnpinned = (data) => {
       console.log("📌 Message désépinglé:", data);
 
@@ -331,6 +490,7 @@ const normalizeMessage = (message) => {
       }
     };
 
+    // 🎧 ENREGISTREMENT DES LISTENERS
     socketService.onNewMessage(handleNewMessage);
     socketService.onMessageSent(handleMessageSent);
     socketService.onMessageError(handleMessageError);
