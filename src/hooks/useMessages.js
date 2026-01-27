@@ -12,18 +12,28 @@ export const useMessages = (conversationId) => {
   const isLoadingRef = useRef(false);
 
   // ✅ Normaliser un message pour être sûr d'avoir createdAt et status
-  const normalizeMessage = (message) => {
-    const baseDate = message.createdAt || message.timestamp || new Date();
-    const d = new Date(baseDate);
-    const safeDate = isNaN(d.getTime()) ? new Date() : d;
+  // Dans useMessages.js, modifie normalizeMessage
+const normalizeMessage = (message) => {
+  const baseDate = message.createdAt || message.timestamp || new Date();
+  const d = new Date(baseDate);
+  const safeDate = isNaN(d.getTime()) ? new Date() : d;
 
-    return {
-      ...message,
-      createdAt: safeDate.toISOString(),
-      status: message.status || "sent", // Par défaut "sent" pour les anciens messages
-      tempId: message.tempId || null, // 🔥 Garder le tempId pour retrouver le message
-    };
+  // Déterminer le statut
+  let status = message.status || "sent";
+  
+  // Si readBy existe et contient au moins 1 personne → "seen"
+  if (message.readBy && Array.isArray(message.readBy) && message.readBy.length > 0) {
+    status = "seen";
+  }
+
+  return {
+    ...message,
+    createdAt: safeDate.toISOString(),
+    status: status,
+    tempId: message.tempId || null,
+    readBy: message.readBy || []
   };
+};
 
   // Charger les messages (API)
   const loadMessages = useCallback(
@@ -490,12 +500,40 @@ const handleMessageSent = (response) => {
       }
     };
 
+
+    // 👁️ Message vu
+const handleMessageSeen = (data) => {
+  const { messageId, seenBy } = data;
+  
+  console.log("👁️ Message marqué comme vu:", { messageId, seenBy });
+
+  setMessages(prev => 
+    prev.map(msg => {
+      if (msg._id === messageId) {
+        const readBy = msg.readBy || [];
+        
+        // Éviter les doublons
+        if (!readBy.some(r => r.userId === seenBy)) {
+          return {
+            ...msg,
+            readBy: [...readBy, { userId: seenBy, readAt: new Date() }],
+            status: "seen" // ← DOUBLE COCHE BLEUE
+          };
+        }
+      }
+      return msg;
+    })
+  );
+};
+    
+
     // 🎧 ENREGISTREMENT DES LISTENERS
     socketService.onNewMessage(handleNewMessage);
     socketService.onMessageSent(handleMessageSent);
     socketService.onMessageError(handleMessageError);
     socketService.onMessagePinned(handleMessagePinned);
     socketService.onMessageUnpinned(handleMessageUnpinned);
+    socketService.onMessageSeen(handleMessageSeen);
 
     return () => {
       socketService.off("new_message", handleNewMessage);

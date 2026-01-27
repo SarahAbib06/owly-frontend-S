@@ -120,7 +120,7 @@ const TypingIndicator = ({ avatar, username }) => (
         className="w-8 h-8 rounded-full object-cover"
       />
     </div>
-   
+    
     {/* Bulle de message avec animation */}
     <div className="flex flex-col max-w-[70%]">
       {username && !selectedChat?.isGroup && (
@@ -128,27 +128,27 @@ const TypingIndicator = ({ avatar, username }) => (
           {username}
         </p>
       )}
-     
+      
       <div className="bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-3">
         <div className="flex items-center gap-1">
           {/* Animation des trois points */}
           <div className="flex items-center gap-1">
-            <div
+            <div 
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
               style={{ animationDelay: '0ms' }}
             ></div>
-            <div
+            <div 
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
               style={{ animationDelay: '150ms' }}
             ></div>
-            <div
+            <div 
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
               style={{ animationDelay: '300ms' }}
             ></div>
           </div>
         </div>
       </div>
-     
+      
       {/* Timestamp (optionnel) */}
       <div className="text-[10px] mt-1 text-gray-500 dark:text-gray-400">
         {new Date().toLocaleTimeString("fr-FR", {
@@ -183,10 +183,10 @@ const [showEmojiPicker, setShowEmojiPicker] = useState(false); //imojie
 const { conversations: myConversations, loading: convLoading } = useConversations();
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
- 
+  
   // Récupérer le userId de l'autre utilisateur
-  const otherUserId = selectedChat?.isGroup
-    ? null
+  const otherUserId = selectedChat?.isGroup 
+    ? null 
     : selectedChat?.participants?.find(
         participant => {
           const participantId = participant._id || participant.id;
@@ -221,8 +221,8 @@ console.log('🔍 DEBUG MESSAGE REQUEST:', {
 });
 
 // ✅ CORRECTION ICI : Vérifier que JE SUIS le destinataire (messageRequestFor)
-const isIncomingMessageRequest =
-  selectedChat?.isMessageRequest === true &&
+const isIncomingMessageRequest = 
+  selectedChat?.isMessageRequest === true && 
   selectedChat?.messageRequestFor?.toString() === user?.id?.toString();
 
 console.log('🚨 isIncomingMessageRequest =', isIncomingMessageRequest);
@@ -320,7 +320,7 @@ const contactId = React.useMemo(() => {
 
  const otherUserName = React.useMemo(() => {
   if (selectedChat?.isGroup) return null;
- 
+  
   // Essayer de trouver dans participants
   const otherParticipant = selectedChat?.participants?.find(
     participant => {
@@ -330,21 +330,21 @@ const contactId = React.useMemo(() => {
     }
 
   );
- 
+  
   if (otherParticipant?.username) {
     return otherParticipant.username;
   }
- 
+  
   // Sinon, utiliser le nom de la conversation
   if (selectedChat?.name) {
     return selectedChat.name;
   }
- 
+  
   // Sinon, utiliser targetUser s'il existe
   if (selectedChat?.targetUser?.username) {
     return selectedChat.targetUser.username;
   }
- 
+  
   return null;
 }, [selectedChat, user]);
 
@@ -361,7 +361,7 @@ useEffect(() => {
   return () => document.removeEventListener('mousedown', handleClickOutside);
 }, [showEmojiPicker]);
 // Après les autres useEffect (vers la fin du composant, avant les returns), ajoute :
-// ajouter pour supprimer
+// ajouter pour supprimer 
 
   // Sauvegarder les messages supprimés
   useEffect(() => {
@@ -390,10 +390,10 @@ useEffect(() => {
   // Écouter les changements en temps réel via socket
   useEffect(() => {
     if (!socketService.socket || !contactId) return;
-   
+    
     window.socket = socketService.socket;
     console.log("🌐 Socket accessible via window.socket");
-   
+    
     const handleOnline = ({ userId }) => {
       if (!contactId) return;
       if (String(userId) === String(contactId)) {
@@ -427,7 +427,7 @@ useEffect(() => {
 
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
- 
+  
   // Écoute les thèmes envoyés par l'autre participant
   useEffect(() => {
     if (!socketService.socket || !selectedChat) return;
@@ -450,8 +450,8 @@ useEffect(() => {
   const [sendBtnColor, setSendBtnColor] = useState("");
   const [themeEmojis, setThemeEmojis] = useState([]);
   const [inputText, setInputText] = useState("");
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null); 
+  const [filePreview, setFilePreview] = useState(null); 
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState([]);
@@ -459,7 +459,7 @@ useEffect(() => {
   const [searchTerm, setSearchTerm] = useState("");
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showPinnedSection, setShowPinnedSection] = useState(false);
- 
+  
   // États pour les interactions
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
@@ -574,7 +574,7 @@ useEffect(() => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesContainerRef = useRef(null);
- 
+  
   const [isConfirmUnblockModalOpen, setIsConfirmUnblockModalOpen] = useState(false);
 
   // Hooks pour la messagerie
@@ -615,6 +615,103 @@ useEffect(() => {
     // Ce useEffect vide dépend de selectedChat et archivedConversations
   }, [selectedChat, archivedConversations]);
 
+
+  // Dans ChatWindow.jsx, ajoute ce useEffect pour écouter les "vu"
+
+// Dans ChatWindow.jsx, REMPLACE complètement l'ancien useEffect par celui-ci :
+
+// ✅ MARQUER LES MESSAGES COMME VUS - VERSION INSTANTANÉE
+useEffect(() => {
+  if (!selectedChat?._id || !user?.id || !messages.length) return;
+
+  const markMessagesAsSeen = async () => {
+    try {
+      // 🔍 Trouver les messages NON VUS de l'autre utilisateur
+      const unreadMessages = messages.filter(msg => {
+        const isFromOther = String(msg.senderId || msg.Id_sender) !== String(user.id);
+        const notSeenByMe = !msg.readBy?.some(r => String(r.userId) === String(user.id));
+        return isFromOther && notSeenByMe;
+      });
+
+      if (unreadMessages.length === 0) {
+        console.log("✅ Aucun message à marquer comme vu");
+        return;
+      }
+
+      console.log(`👁️ ${unreadMessages.length} messages à marquer comme vus`);
+
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(
+        `http://localhost:5000/api/messages/${selectedChat._id}/mark-all-seen`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log(`✅ ${data.messagesMarked} messages marqués comme vus`);
+      }
+    } catch (error) {
+      console.error("❌ Erreur marquer messages vus:", error);
+    }
+  };
+
+  // 🔥 MARQUER IMMÉDIATEMENT au chargement
+  const initialTimeout = setTimeout(markMessagesAsSeen, 500);
+
+  // 🔥 RÉÉCOUTER À CHAQUE NOUVEAU MESSAGE
+  const messageCheckInterval = setInterval(() => {
+    markMessagesAsSeen();
+  }, 1000); // Vérifier toutes les secondes
+
+  return () => {
+    clearTimeout(initialTimeout);
+    clearInterval(messageCheckInterval);
+  };
+}, [selectedChat?._id, user?.id, messages]); // ← IMPORTANT : dépend de messages
+
+// Marquer les messages comme vus quand on entre dans la conversation
+useEffect(() => {
+  if (!selectedChat?._id || !user?.id) return;
+
+  const markMessagesAsSeen = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(
+        `http://localhost:5000/api/messages/${selectedChat._id}/mark-all-seen`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log(`✅ ${data.messagesMarked} messages marqués comme vus`);
+      }
+    } catch (error) {
+      console.error("❌ Erreur marquer messages vus:", error);
+    }
+  };
+
+  // Attendre 500ms avant de marquer comme vu (pour être sûr que l'UI est chargée)
+  const timeout = setTimeout(markMessagesAsSeen, 500);
+
+  return () => clearTimeout(timeout);
+}, [selectedChat?._id, user?.id]);
+
   // Gérer la saisie avec typing indicator
   const handleInputChange = (e) => {
     setInputText(e.target.value);
@@ -649,17 +746,17 @@ useEffect(() => {
   };
 
   // Gérer l'upload de fichiers
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-   
-    setSelectedFile(file);
-   
-    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
-      setFilePreview(URL.createObjectURL(file));
-    } else {
-      setFilePreview(null);
-    }
+  const handleFileSelect = (e) => { 
+    const file = e.target.files[0]; 
+    if (!file) return; 
+    
+    setSelectedFile(file); 
+    
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) { 
+      setFilePreview(URL.createObjectURL(file)); 
+    } else { 
+      setFilePreview(null); 
+    } 
   };
 
   // Enregistrement audio
@@ -692,7 +789,7 @@ useEffect(() => {
  
  
 
- 
+  
 
   // Gestion upload fichier
   if (theme.type === "upload" && theme.value instanceof File) {
@@ -706,7 +803,7 @@ useEffect(() => {
     setThemeStyle(style);
     setSendBtnColor("");
     setBubbleBg("");
-   
+    
     if (save) {
       localStorage.setItem(chatKey, JSON.stringify({ ...theme, value: base64 }));
       // 🆕 SAUVEGARDER DANS LE BACKEND
@@ -726,7 +823,7 @@ useEffect(() => {
     setThemeStyle(style);
     setSendBtnColor("");
     setBubbleBg("");
-   
+    
     if (save) {
       localStorage.setItem(chatKey, JSON.stringify(theme));
       // 🆕 SAUVEGARDER DANS LE BACKEND
@@ -777,7 +874,7 @@ useEffect(() => {
 const saveThemeToBackend = async (theme) => {
   try {
     const token = localStorage.getItem("token");
-   
+    
     console.log("💾 Sauvegarde thème backend:", {
       conversationId: selectedChat._id,
       type: theme.type,
@@ -816,7 +913,7 @@ const saveThemeToBackend = async (theme) => {
 const loadThemeFromBackend = React.useCallback(async () => {
   try {
     const token = localStorage.getItem("token");
-   
+    
     console.log("📥 Chargement thème backend pour:", selectedChat._id);
 
     const response = await fetch(
@@ -830,7 +927,7 @@ const loadThemeFromBackend = React.useCallback(async () => {
 
     if (!response.ok) {
       console.log("ℹ️ Pas de thème en backend, utilisation localStorage");
-     
+      
       // Fallback sur localStorage
       const savedTheme = localStorage.getItem(chatKey);
       if (savedTheme) {
@@ -850,16 +947,16 @@ const loadThemeFromBackend = React.useCallback(async () => {
         emojis: data.data.emojis,
         name: data.data.name,
       };
-     
+      
       // Appliquer le thème SANS sauvegarder (déjà en DB)
       applyTheme(theme, false);
-     
+      
       // Sync localStorage pour cohérence
       localStorage.setItem(chatKey, JSON.stringify(theme));
     }
   } catch (error) {
     console.error("💥 Erreur chargement thème:", error);
-   
+    
     // Fallback sur localStorage
     const savedTheme = localStorage.getItem(chatKey);
     if (savedTheme) {
@@ -877,11 +974,11 @@ const removeTheme = async () => {
   setThemeEmojis([]);
   setFloatingEmojis([]);
   localStorage.removeItem(chatKey);
- 
+  
   // 🆕 SUPPRIMER AUSSI DU BACKEND
   try {
     const token = localStorage.getItem("token");
-   
+    
     const response = await fetch(
       `http://localhost:5000/api/themes/${selectedChat._id}`,
       {
@@ -916,10 +1013,10 @@ useEffect(() => {
   const handleThemeChanged = ({ conversationId, theme }) => {
     if (conversationId === selectedChat._id) {
       console.log("🎨 Thème reçu via socket:", theme);
-     
+      
       // Appliquer le thème reçu SANS sauvegarder (déjà fait par l'émetteur)
       applyTheme(theme, false);
-     
+      
       // Sync localStorage
       localStorage.setItem(chatKey, JSON.stringify(theme));
     }
@@ -929,7 +1026,7 @@ useEffect(() => {
   const handleThemeRemoved = ({ conversationId }) => {
     if (conversationId === selectedChat._id) {
       console.log("🗑️ Thème supprimé via socket");
-     
+      
       // Réinitialiser
       setThemeStyle({});
       setBubbleBg("");
@@ -956,12 +1053,12 @@ const handleAcceptCall = () => {
   }
 
   console.log('✅ Acceptation de l\'appel:', incomingCall);
- 
+  
   // ⚠️ NE ÉMETTRE call:accept QU'UNE SEULE FOIS
   // Désactiver immédiatement pour éviter les doubles clics
   const callToAccept = { ...incomingCall };
   setIncomingCall(null); // Fermer la modal AVANT d'émettre
- 
+  
   socketService.socket.emit('call:accept', {
     callId: callToAccept.callId,
     callerId: callToAccept.callerId
@@ -1066,15 +1163,15 @@ const conversationAvatar = React.useMemo(() => {
   console.log("1. selectedChat:", selectedChat);
   console.log("2. targetUser:", selectedChat?.targetUser);
   console.log("3. targetUser.profilePicture:", selectedChat?.targetUser?.profilePicture);
- 
+  
   if (selectedChat?.isGroup) return "/group-avatar.png";
- 
+  
   // 1. Chercher dans targetUser (vient de SearchModal)
   if (selectedChat?.targetUser?.profilePicture) {
     console.log("✅ Photo trouvée dans targetUser:", selectedChat.targetUser.profilePicture);
     return selectedChat.targetUser.profilePicture;
   }
- 
+  
   // 2. Chercher dans participants
   const fromParticipants = selectedChat?.participants?.find(
     p => {
@@ -1083,12 +1180,12 @@ const conversationAvatar = React.useMemo(() => {
       return pid && uid && String(pid) === String(uid);
     }
   )?.profilePicture;
- 
+  
   if (fromParticipants) {
     console.log("✅ Photo trouvée dans participants:", fromParticipants);
     return fromParticipants;
   }
- 
+  
   console.log("❌ Aucune photo trouvée, utilisation par défaut");
   return "/default-avatar.png";
 }, [selectedChat, otherUserId]);
@@ -1178,7 +1275,7 @@ const conversationAvatar = React.useMemo(() => {
         console.error("Erreur épinglage:", error);
       }
     };
-   
+    
     const handleDeleteMessage = (msgId) => {
       if (window.confirm("Supprimer ce message pour moi ?")) {
         setDeletedMessages(prev => [...prev, msgId]);
@@ -1225,7 +1322,7 @@ const conversationAvatar = React.useMemo(() => {
 
               {msg.typeMessage === "image" && (
                 <img
-                  src={msg.content}
+                  src={msg.content} 
                   alt="image"
                   className="max-w-full rounded mt-1"
                   style={{ maxHeight: "300px" }}
@@ -1234,7 +1331,7 @@ const conversationAvatar = React.useMemo(() => {
 
               {msg.typeMessage === "video" && (
                 <video
-                  src={msg.content}
+                  src={msg.content} 
                   controls
                   className="max-w-full rounded mt-1"
                   style={{ maxHeight: "300px" }}
@@ -1341,25 +1438,30 @@ const conversationAvatar = React.useMemo(() => {
             </div>
           )}
 
-          <div
-            className={`text-[10px] mt-1 flex items-center gap-1.5 ${
-              fromMe ? "justify-end" : "justify-start"
-            } text-gray-500 dark:text-gray-400`}
-          >
-            <span>{messageTime}</span>
+          
+<div
+  className={`text-[10px] mt-1 flex items-center gap-1.5 ${
+    fromMe ? "justify-end" : "justify-start"
+  } text-gray-500 dark:text-gray-400`}
+>
+  <span>{messageTime}</span>
 
-            {fromMe && (
-              <span className="flex items-center gap-1">
-    {msg.status === "sending" ? (
-      // 1 flèche grise (en cours d'envoi)
-      <span className="text-gray-400">✓</span>
+  {fromMe && (
+  <span className="flex items-center gap-1">
+    {msg._id.startsWith("pending_") || msg.status === "sending" ? (
+      <span className="flex items-center gap-1 text-gray-400">
+        ✓
+      </span>
+    ) : msg.status === "seen" || (msg.readBy && msg.readBy.length > 0) ? (
+      // 👁️ VU - DOUBLE COCHE BLEUE
+      <span className="text-blue-500">✓✓✓</span>
     ) : (
-      // 2 flèches grises (envoyé avec succès)
-      <span className="text-gray-500">✓✓</span>
+      // Envoyé - DOUBLE COCHE GRISE
+      <span className="text-gray-400">✓✓</span>
     )}
   </span>
-            )}
-          </div>
+)}
+</div>
         </div>
       </div>
     );
@@ -1453,7 +1555,7 @@ const conversationAvatar = React.useMemo(() => {
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
             onClick={() => alert("Fonctionnalité d'appel vidéo bientôt disponible!")}
           />
-         
+          
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
               size={16}
@@ -1472,7 +1574,7 @@ const conversationAvatar = React.useMemo(() => {
             const token = localStorage.getItem("token");
             try {
               console.log('🟢 Acceptation demande pour conversation:', selectedChat._id);
-             
+              
               const res = await fetch("http://localhost:5000/api/relations/accept-request", {
                 method: "POST",
                 headers: {
@@ -1502,7 +1604,7 @@ const conversationAvatar = React.useMemo(() => {
             const token = localStorage.getItem("token");
             try {
               console.log('🔴 Suppression demande pour conversation:', selectedChat._id);
-             
+              
               const res = await fetch("http://localhost:5000/api/relations/delete-request", {
                 method: "POST",
                 headers: {
@@ -1638,8 +1740,8 @@ const conversationAvatar = React.useMemo(() => {
           <div
             className={`
               max-w-[85%] px-4 py-3 rounded-lg text-sm italic text-gray-500 dark:text-gray-400
-              ${wasFromMe
-                ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none"
+              ${wasFromMe 
+                ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none" 
                 : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"}
             `}
           >
@@ -1672,7 +1774,7 @@ const conversationAvatar = React.useMemo(() => {
 
         {/* 🔥 INDICATEUR "EN TRAIN D'ÉCRIRE" */}
         {isTyping && typingUsers.length > 0 && (
-          <TypingIndicator
+          <TypingIndicator 
             avatar={otherUserAvatar}
             username={selectedChat?.isGroup ? typingUsers[0]?.username : null}
           />
@@ -1779,8 +1881,8 @@ const conversationAvatar = React.useMemo(() => {
               <Smile
                 size={18}
                 className={`cursor-pointer transition-colors ${
-                  showEmojiPicker
-                    ? 'text-myYellow'
+                  showEmojiPicker 
+                    ? 'text-myYellow' 
                     : 'text-gray-700 dark:text-gray-300'
                 }`}
               />
@@ -1818,7 +1920,6 @@ const conversationAvatar = React.useMemo(() => {
                 ? handleSendMessage
                 : inputText.trim() === ""
                 ? handleMicClick
-                
                 : handleSendMessage
             }
           >
@@ -1963,7 +2064,7 @@ const conversationAvatar = React.useMemo(() => {
       selectedChat={{
         ...selectedChat,
         //  AJOUTER le userId de l'autre utilisateur
-        userId: selectedChat?.isGroup
+        userId: selectedChat?.isGroup 
           ? null // Pas de blocage pour les groupes
           : selectedChat?.participants?.find(
               participant => {
