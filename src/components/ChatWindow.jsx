@@ -160,7 +160,7 @@ const TypingIndicator = ({ avatar, username }) => (
   </div>
 );
 
-export default function ChatWindow({ selectedChat, onBack }) {
+export default function ChatWindow({ selectedChat, onBack, onConversationDeleted }) {
   const { t } = useTranslation();
   const isFromArchived = selectedChat?.isFromArchived === true;
   const { conversations, archivedConversations } = useChat();
@@ -1982,6 +1982,7 @@ const conversationAvatar = React.useMemo(() => {
       onOpenSearch={() => setOpenSearch(true)}
       // ✅ Ajouter le callback pour refresh
       onBlockStatusChange={() => refresh()}
+      onConversationDeleted={onConversationDeleted}
     />
   </>
 )}
@@ -1994,9 +1995,18 @@ const conversationAvatar = React.useMemo(() => {
       onArchive: async () => {
         try {
           if (isArchived) {
+            // Désarchivage
             await unarchiveConversation(selectedChat._id);
+            
+            // ← AJOUTE ÇA : on rafraîchit la liste + ferme le chat
+            if (typeof onConversationDeleted === 'function') {
+              onConversationDeleted();
+            }
           } else {
+            // Archivage → on laisse le comportement actuel
             await archiveConversation(selectedChat._id);
+            
+            // Si tu veux aussi rafraîchir ici : onConversationDeleted?.();
           }
         } catch (err) {
           alert("Erreur lors de l'opération");
@@ -2005,7 +2015,8 @@ const conversationAvatar = React.useMemo(() => {
       isArchived: isArchived,
     }}
     onClose={() => setIsInfoOpen(false)}
-      onBlockStatusChange={() => refresh()}
+    onBlockStatusChange={() => refresh()}
+    onConversationDeleted={onConversationDeleted}   // ← AJOUTE CETTE PROP ICI
   />
 )}
 

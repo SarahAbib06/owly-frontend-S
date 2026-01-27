@@ -10,7 +10,7 @@ import ConfirmBlockModal from "./ConfirmBlockModal";
 import { userService } from "../services/userService";
 import { addFavorite, removeFavorite, getFavorites } from "../services/favoritesService";
 
-export default function InfoContactModal({ chat, onClose, onBlockStatusChange }) {
+export default function InfoContactModal({ chat, onClose, onBlockStatusChange, onConversationDeleted }) {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState("info");
   const { user } = useAuth();
@@ -172,30 +172,37 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
   };
 
   // Toggle favoris
-  const toggleFavorite = async () => {
-    const userId = getUserId(user);
-    console.log('⭐ Clic sur toggleFavorite | isFavorite=', isFavorite, 'userId=', userId, 'chatId=', chat?._id);
-    
-    if (!userId || !chat?._id || loadingFavorite) return;
+  // Toggle favoris
+const toggleFavorite = async () => {
+  const userId = getUserId(user);
+  console.log('⭐ Clic sur toggleFavorite | isFavorite=', isFavorite, 'userId=', userId, 'chatId=', chat?._id);
+  
+  if (!userId || !chat?._id || loadingFavorite) return;
 
-    setLoadingFavorite(true);
+  setLoadingFavorite(true);
 
-    try {
-      if (isFavorite) {
-        await removeFavorite(userId, chat._id);
-        console.log('✅ Favori supprimé');
-      } else {
-        await addFavorite(userId, chat._id);
-        console.log('✅ Favori ajouté');
-      }
-      setIsFavorite(!isFavorite);
-    } catch (error) {
-      console.error("Erreur favoris :", error);
-      alert("Erreur lors de la mise à jour des favoris");
-    } finally {
-      setLoadingFavorite(false);
+  try {
+    if (isFavorite) {
+      await removeFavorite(userId, chat._id);
+      console.log('✅ Favori supprimé');
+    } else {
+      await addFavorite(userId, chat._id);
+      console.log('✅ Favori ajouté');
     }
-  };
+    setIsFavorite(!isFavorite);
+
+    // ← AJOUTE ÇA : rafraîchit la liste après succès
+    if (typeof onConversationDeleted === 'function') {
+      onConversationDeleted();
+    }
+
+  } catch (error) {
+    console.error("Erreur favoris :", error);
+    alert("Erreur lors de la mise à jour des favoris");
+  } finally {
+    setLoadingFavorite(false);
+  }
+};
 
   // Ouvrir le modal de confirmation de blocage
   const handleBlockClick = () => {
@@ -376,9 +383,15 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange })
                   if (window.confirm(message)) {
                     try {
                       await chat.onArchive?.();
+
+                      // ← AJOUTE ÇA : si on vient de désarchiver → rafraîchir la liste
+                      if (chat.isArchived && typeof onConversationDeleted === 'function') {
+                        onConversationDeleted();
+                      }
+
                       onClose();
                     } catch (err) {
-                      alert("Erreur lors de l'archivage");
+                      alert("Erreur lors de l'archivage/désarchivage");
                     }
                   }
                 }}

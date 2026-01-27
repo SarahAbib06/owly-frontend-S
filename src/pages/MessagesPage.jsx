@@ -12,6 +12,7 @@ export default function Messages() {
   const [selectedChat, setSelectedChat] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [panelWidth, setPanelWidth] = useState(360);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const { setChatOpen } = useOutletContext();
 
@@ -32,6 +33,11 @@ export default function Messages() {
     setPanelWidth(newWidth);
   };
 
+  const handleConversationDeleted = () => {
+  setSelectedChat(null);               // on ferme la fenêtre de discussion
+  setRefreshTrigger(prev => prev + 1); // on force le rechargement de ConversationList
+};
+
   return (
     <div className="flex h-screen relative">
       {/* LISTE DES CONVERSATIONS */}
@@ -43,8 +49,10 @@ export default function Messages() {
         {/* Version mobile : ConversationList normal */}
         <div className="md:hidden h-full">
           <ConversationList
+            key={refreshTrigger}
             onSelect={openChat}
             onNewChat={() => setShowSearchModal(true)}
+            onConversationDeleted={handleConversationDeleted}
           />
         </div>
         
@@ -57,8 +65,10 @@ export default function Messages() {
             onResize={handleResize}
           >
             <ConversationList
+              key={refreshTrigger}
               onSelect={openChat}
               onNewChat={() => setShowSearchModal(true)}
+              onConversationDeleted={handleConversationDeleted}
             />
           </ResizablePanel>
         </div>
@@ -71,6 +81,8 @@ export default function Messages() {
             <ChatWindow
               selectedChat={selectedChat}
               onBack={closeChat}
+              onConversationDeleted={handleConversationDeleted}
+              onConversationListRefresh={handleConversationDeleted}
             />
             {/* Bouton retour sur mobile */}
             <button
