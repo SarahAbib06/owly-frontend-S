@@ -18,6 +18,7 @@ export default function ChatOptionsMenu({
   onClose,
   onOpenSearch,
   onBlockStatusChange,
+  onConversationDeleted,
 }) {
   const { t } = useTranslation();
   const { archiveConversation, unarchiveConversation } = useChat();
@@ -87,30 +88,38 @@ export default function ChatOptionsMenu({
   }, [selectedChat?._id, user]);
 
   // Toggle favoris
-  const toggleFavorite = async () => {
-    const currentUserId = getUserId(user);
-    console.log('⭐ Clic sur toggleFavorite | isFavorite=', isFavorite, 'userId=', currentUserId, 'chatId=', selectedChat?._id);
+  // Toggle favoris
+const toggleFavorite = async () => {
+  const currentUserId = getUserId(user);
+  console.log('⭐ Clic sur toggleFavorite | isFavorite=', isFavorite, 'userId=', currentUserId, 'chatId=', selectedChat?._id);
 
-    if (!currentUserId || !selectedChat?._id || loadingFavorite) return;
+  if (!currentUserId || !selectedChat?._id || loadingFavorite) return;
 
-    setLoadingFavorite(true);
+  setLoadingFavorite(true);
 
-    try {
-      if (isFavorite) {
-        await removeFavorite(currentUserId, selectedChat._id);
-        console.log('✅ Favori supprimé');
-      } else {
-        await addFavorite(currentUserId, selectedChat._id);
-        console.log('✅ Favori ajouté');
-      }
-      setIsFavorite(!isFavorite);
-    } catch (error) {
-      console.error("Erreur favoris :", error);
-      alert("Erreur lors de la mise à jour des favoris");
-    } finally {
-      setLoadingFavorite(false);
+  try {
+    if (isFavorite) {
+      await removeFavorite(currentUserId, selectedChat._id);
+      console.log('✅ Favori supprimé');
+    } else {
+      await addFavorite(currentUserId, selectedChat._id);
+      console.log('✅ Favori ajouté');
     }
-  };
+
+    setIsFavorite(!isFavorite);
+
+    // ← AJOUTE ÇA : rafraîchit la liste après ajout/retrait
+    if (typeof onConversationDeleted === 'function') {
+      onConversationDeleted();  // ferme le chat + refresh via refreshTrigger
+    }
+
+  } catch (error) {
+    console.error("Erreur favoris :", error);
+    alert("Erreur lors de la mise à jour des favoris");
+  } finally {
+    setLoadingFavorite(false);
+  }
+};
 
   const handleBlockClick = () => {
     setActionType(localIsBlocked ? "unblock" : "block");
@@ -146,51 +155,59 @@ export default function ChatOptionsMenu({
   };
 
   const handleConfirmDelete = async () => {
-    setIsDeleteModalOpen(false);
+  setIsDeleteModalOpen(false);
 
-    if (!selectedChat?._id) {
-      alert("Impossible : conversation non identifiée");
-      return;
+  if (!selectedChat?._id) {
+    alert("Impossible : conversation non identifiée");
+    return;
+  }
+
+  try {
+    await conversationService.deleteConversationForMe(selectedChat._id);
+    
+    onClose();  // ferme le menu d'options
+
+    // ← Ajoute ces 3 lignes
+    if (typeof onConversationDeleted === 'function') {
+      onConversationDeleted();
     }
 
-    try {
-      await conversationService.deleteConversationForMe(selectedChat._id);
-      
-      onClose();
-
-      // Rafraîchissement de la liste
-      if (typeof window.refreshConversations === 'function') {
-        window.refreshConversations();
-      }
-    } catch (err) {
-      console.error("Suppression échouée", err);
-      const msg = err.response?.data?.error || err.message || "Erreur serveur";
-      alert(`Échec suppression : ${msg}`);
-    }
-  };
+  } catch (err) {
+    console.error("Suppression échouée", err);
+    const msg = err.response?.data?.error || err.message || "Erreur serveur";
+    alert(`Échec suppression : ${msg}`);
+  }
+};
 
   const handleArchiveClick = () => {
     setIsArchiveModalOpen(true);
   };
 
   const handleConfirmArchive = async () => {
-    setIsArchiveModalOpen(false);
-    
-    try {
-      if (selectedChat.isArchived) {
-        await unarchiveConversation(selectedChat._id);
-      } else {
-        await archiveConversation(selectedChat._id);
-      }
-      
-      onClose();
-      window.location.reload();
-      
-    } catch (err) {
-      console.error("Erreur lors de l'opération:", err);
-      alert("Erreur lors de l'opération");
+  setIsArchiveModalOpen(false);
+
+  try {
+    if (selectedChat.isArchived) {
+      // Désarchiver
+      await unarchiveConversation(selectedChat._id);
+    } else {
+      // Archiver ← IL FALLAIT ÇA !
+      await archiveConversation(selectedChat._id);
     }
-  };
+
+    onClose();
+
+    // Rafraîchit la liste + ferme le chat dans LES DEUX CAS
+    if (typeof onConversationDeleted === 'function') {
+      onConversationDeleted();
+    }
+
+  } catch (err) {
+    console.error("Erreur archive/désarchive :", err);
+    const msg = err.response?.data?.error || err.message || "Erreur serveur";
+    alert(`Échec : ${msg}`);
+  }
+};
 
   return (
     <>

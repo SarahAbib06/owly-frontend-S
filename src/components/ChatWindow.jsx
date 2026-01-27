@@ -22,19 +22,25 @@ import { useAuth } from "../hooks/useAuth";
 import { useCall } from "../context/CallContext";
 import socketService from "../services/socketService";
 
-import VideoCallScreen from "./VideoCallScreen"; // Seul écran d'appel
+import VideoCallScreen from "./VideoCallScreen";
 import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
 import InfoContactModal from "./InfoContactModal";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
+
+import { Archive } from "lucide-react";
 import { useChat } from "../context/ChatContext";
+import EmojiPicker from 'emoji-picker-react';
+
+
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
 import MessageRequestBanner from "./MessageRequestBanner";
+import Modal from "./Modal";
 
 
 const SeenIconGray = () => (
@@ -119,7 +125,7 @@ const TypingIndicator = ({ avatar, username }) => (
     
     {/* Bulle de message avec animation */}
     <div className="flex flex-col max-w-[70%]">
-      {username && !selectedChat?.isGroup && (
+      {username && (
         <p className="text-[10px] ml-1 mb-1 text-gray-700 dark:text-gray-300">
           {username}
         </p>
@@ -155,6 +161,7 @@ const TypingIndicator = ({ avatar, username }) => (
     </div>
   </div>
 );
+
 
 // 🔥 COMPOSANT POUR AFFICHER UN MESSAGE D'APPEL
 const CallMessage = ({ callType, callResult, duration, fromMe }) => {
@@ -224,9 +231,8 @@ const CallMessage = ({ callType, callResult, duration, fromMe }) => {
   );
 };
 
-export default function ChatWindow({ selectedChat, onBack }) {
+export default function ChatWindow({ selectedChat, onBack, onConversationDeleted }) {
   const { t } = useTranslation();
-   // 🎥 ÉTAT POUR LA FONCTIONNALITÉ AGORA
   const {
     incomingCall,
     getActiveCall,
@@ -237,22 +243,26 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const isArchived = isFromArchived || archivedConversations.some(c => c._id === selectedChat?._id);
   console.log("isArchived ?", isArchived, selectedChat?._id);
   const { archiveConversation, unarchiveConversation } = useChat();
-  const { user, socketConnected } = useAuth();
+
   
- 
+
+  const { user, socketConnected } = useAuth();
   const [selectedTargetConversation, setSelectedTargetConversation] = useState(null);
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [messageToForward, setMessageToForward] = useState(null);
   const [deletedMessages, setDeletedMessages] = useState([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState(null);
+  const [deletedForEveryone, setDeletedForEveryone] = useState([]);
+
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const { conversations: myConversations, loading: convLoading } = useConversations();
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
   
-  // ✅ ÉTAPE 2 — UNIFIER L'ÉTAT D'APPEL
-  const [startOutgoingCallType, setStartOutgoingCallType] = useState(null); // null | "audio" | "video"
+  const [startOutgoingCallType, setStartOutgoingCallType] = useState(null);
   
-  // Récupérer le userId de l'autre utilisateur
   const otherUserId = selectedChat?.isGroup 
     ? null 
     : selectedChat?.participants?.find(
@@ -272,35 +282,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
           return String(participantId) !== String(currentUserId);
         }
       );
-
-  const otherUserName = React.useMemo(() => {
-    if (selectedChat?.isGroup) return null;
-    
-    // Essayer de trouver dans participants
-    const otherParticipant = selectedChat?.participants?.find(
-      participant => {
-        const participantId = participant._id || participant.id || participant.userId;
-        const currentUserId = user?._id || user?.id || user?.userId;
-        return participantId && currentUserId && String(participantId) !== String(currentUserId);
-      }
-    );
-    
-    if (otherParticipant?.username) {
-      return otherParticipant.username;
-    }
-    
-    // Sinon, utiliser le nom de la conversation
-    if (selectedChat?.name) {
-      return selectedChat.name;
-    }
-    
-    // Sinon, utiliser targetUser s'il existe
-    if (selectedChat?.targetUser?.username) {
-      return selectedChat.targetUser.username;
-    }
-    
-    return null;
-  }, [selectedChat, user]);
 
   const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
 
@@ -327,7 +308,9 @@ export default function ChatWindow({ selectedChat, onBack }) {
     if (contactStatus.isOnline) {
       return "En ligne";
     }
-
+    if (!contactStatus.lastSeen) {
+      return "";
+    }
     if (contactStatus.lastSeen) {
       const last = new Date(contactStatus.lastSeen);
       const now = new Date();
@@ -357,7 +340,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
   }, [contactStatus.lastSeen, contactStatus.isOnline]);
 
   console.log("selectedChat:", selectedChat, "user:", user);
-  
   const contactId = React.useMemo(() => {
     if (!selectedChat || selectedChat.isGroup || !user) return null;
     const other = selectedChat.participants.find(
@@ -368,7 +350,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
 
   console.log("contactId:", contactId);
 
-  // Récupérer le statut initial
   useEffect(() => {
     if (!contactId) return;
     console.log("🧪 TEST contactId =", contactId);
@@ -385,7 +366,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
       .catch(err => console.error("Erreur statut:", err));
   }, [contactId]);
 
-  // Sauvegarder les messages supprimés
   useEffect(() => {
     if (selectedChat?._id && deletedMessages.length > 0) {
       localStorage.setItem(
@@ -395,7 +375,52 @@ export default function ChatWindow({ selectedChat, onBack }) {
     }
   }, [deletedMessages, selectedChat?._id]);
 
-  // Charger les messages supprimés au démarrage
+  const otherUserName = React.useMemo(() => {
+    if (selectedChat?.isGroup) return null;
+    
+    const otherParticipant = selectedChat?.participants?.find(
+      participant => {
+        const participantId = participant._id || participant.id || participant.userId;
+        const currentUserId = user?._id || user?.id || user?.userId;
+        return participantId && currentUserId && String(participantId) !== String(currentUserId);
+      }
+    );
+    
+    if (otherParticipant?.username) {
+      return otherParticipant.username;
+    }
+    
+    if (selectedChat?.name) {
+      return selectedChat.name;
+    }
+    
+    if (selectedChat?.targetUser?.username) {
+      return selectedChat.targetUser.username;
+    }
+    
+    return null;
+  }, [selectedChat, user]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showEmojiPicker && !event.target.closest('.EmojiPickerReact')) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmojiPicker]);
+
+  useEffect(() => {
+    if (selectedChat?._id && deletedMessages.length > 0) {
+      localStorage.setItem(
+        `deleted_${selectedChat._id}`,
+        JSON.stringify(deletedMessages)
+      );
+    }
+  }, [deletedMessages, selectedChat?._id]);
+
   useEffect(() => {
     if (selectedChat?._id) {
       const saved = localStorage.getItem(`deleted_${selectedChat._id}`);
@@ -409,7 +434,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
     }
   }, [selectedChat?._id]);
 
-  // Écouter les changements en temps réel via socket
   useEffect(() => {
     if (!socketService.socket || !contactId) return;
     
@@ -447,11 +471,9 @@ export default function ChatWindow({ selectedChat, onBack }) {
     };
   }, [contactId]);
 
-  // Reste de votre code...
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
   
-  // Écoute les thèmes envoyés par l'autre participant
   useEffect(() => {
     if (!socketService.socket || !selectedChat) return;
 
@@ -483,10 +505,99 @@ export default function ChatWindow({ selectedChat, onBack }) {
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showPinnedSection, setShowPinnedSection] = useState(false);
   
-  // États pour les interactions
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
+
+  const handleDeleteForMe = (messageId) => {
+    setDeletedMessages((prev) => {
+      if (prev.includes(messageId)) return prev;
+      return [...prev, messageId];
+    });
+    setShowMessageMenu(null);
+    setShowDeleteModal(false);
+  };
+
+  const handleDeleteForEveryone = async (messageId) => {
+    try {
+      setDeletedForEveryone((prev) => [...new Set([...prev, messageId])]);
+
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/messages/${messageId}/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setDeletedForEveryone((prev) => prev.filter((id) => id !== messageId));
+        throw new Error(data.error || "Erreur lors de la suppression");
+      }
+
+      console.log("Message supprimé pour tous :", data);
+      setShowDeleteModal(false);
+
+    } catch (err) {
+      console.error("Échec suppression pour tous :", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!socketService.socket || !selectedChat?._id) return;
+
+    const handleMessageDeleted = (data) => {
+      const { messageId, conversationId: convId } = data;
+
+      if (convId !== selectedChat._id) return;
+
+      setDeletedForEveryone((prev) => [...new Set([...prev, messageId])]);
+
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    };
+
+    socketService.socket.on("message:deleted", handleMessageDeleted);
+
+    return () => {
+      socketService.socket.off("message:deleted", handleMessageDeleted);
+    };
+  }, [selectedChat?._id]);
+
+  useEffect(() => {
+    if (selectedChat?._id && deletedForEveryone.length > 0) {
+      localStorage.setItem(
+        `deletedEveryone_${selectedChat._id}`,
+        JSON.stringify(deletedForEveryone)
+      );
+    }
+  }, [deletedForEveryone, selectedChat?._id]);
+
+  useEffect(() => {
+    if (selectedChat?._id) {
+      const saved = localStorage.getItem(`deletedEveryone_${selectedChat._id}`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setDeletedForEveryone(parsed);
+          }
+        } catch (e) {
+          console.error("Erreur chargement deletedEveryone :", e);
+        }
+      }
+    }
+  }, [selectedChat?._id]);
+
+  console.log("selectedChat:", selectedChat);
+  console.log("otherUserId:", otherUserId);
+
+  const isMessageRequest = selectedChat?.isMessageRequest === true ||
+    selectedChat?.messageRequestForMe === true;
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -494,7 +605,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
   
   const [isConfirmUnblockModalOpen, setIsConfirmUnblockModalOpen] = useState(false);
 
-  // Hooks pour la messagerie
   const {
     messages,
     loading,
@@ -512,11 +622,9 @@ export default function ChatWindow({ selectedChat, onBack }) {
 
   const { typingUsers, sendTyping, isTyping } = useTyping(selectedChat?._id);
 
-  // Hook pour l'enregistrement audio
   const { isRecording, recordingTime, startRecording, stopAndSend, cancelRecording } =
     useAudioRecorder(selectedChat?._id);
 
-  // 🔥 Gérer l'enregistrement du message côté client
   useEffect(() => {
     if (!selectedChat) return;
 
@@ -524,7 +632,6 @@ export default function ChatWindow({ selectedChat, onBack }) {
       console.log("💾 [ChatWindow] Enregistrement message d'appel:", data);
       
       try {
-        // Émettre vers le serveur pour enregistrer en DB
         socketService.emit("call-message", {
           ...data,
           chatId: selectedChat._id
@@ -534,31 +641,112 @@ export default function ChatWindow({ selectedChat, onBack }) {
       }
     };
 
-   socketService.socket?.on("save-call-message", handleSaveCallMessage);
+    socketService.socket?.on("save-call-message", handleSaveCallMessage);
 
-return () => {
-  socketService.socket?.off("save-call-message", handleSaveCallMessage);
-};
-
+    return () => {
+      socketService.socket?.off("save-call-message", handleSaveCallMessage);
+    };
   }, [selectedChat]);
 
-  // 🔥 Charger les messages épinglés
   useEffect(() => {
     const pinned = messages.filter((msg) => msg.isPinned);
     setPinnedMessages(pinned);
     setShowPinnedSection(pinned.length > 0);
   }, [messages]);
 
-  // Scroll automatique vers le bas
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
   useEffect(() => {
-    // Ce useEffect vide dépend de selectedChat et archivedConversations
   }, [selectedChat, archivedConversations]);
 
-  // Gérer la saisie avec typing indicator
+  useEffect(() => {
+    if (!selectedChat?._id || !user?.id || !messages.length) return;
+
+    const markMessagesAsSeen = async () => {
+      try {
+        const unreadMessages = messages.filter(msg => {
+          const isFromOther = String(msg.senderId || msg.Id_sender) !== String(user.id);
+          const notSeenByMe = !msg.readBy?.some(r => String(r.userId) === String(user.id));
+          return isFromOther && notSeenByMe;
+        });
+
+        if (unreadMessages.length === 0) {
+          console.log("✅ Aucun message à marquer comme vu");
+          return;
+        }
+
+        console.log(`👁️ ${unreadMessages.length} messages à marquer comme vus`);
+
+        const token = localStorage.getItem("token");
+        
+        const response = await fetch(
+          `http://localhost:5000/api/messages/${selectedChat._id}/mark-all-seen`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log(`✅ ${data.messagesMarked} messages marqués comme vus`);
+        }
+      } catch (error) {
+        console.error("❌ Erreur marquer messages vus:", error);
+      }
+    };
+
+    const initialTimeout = setTimeout(markMessagesAsSeen, 500);
+
+    const messageCheckInterval = setInterval(() => {
+      markMessagesAsSeen();
+    }, 1000);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(messageCheckInterval);
+    };
+  }, [selectedChat?._id, user?.id, messages]);
+
+  useEffect(() => {
+    if (!selectedChat?._id || !user?.id) return;
+
+    const markMessagesAsSeen = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        
+        const response = await fetch(
+          `http://localhost:5000/api/messages/${selectedChat._id}/mark-all-seen`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log(`✅ ${data.messagesMarked} messages marqués comme vus`);
+        }
+      } catch (error) {
+        console.error("❌ Erreur marquer messages vus:", error);
+      }
+    };
+
+    const timeout = setTimeout(markMessagesAsSeen, 500);
+
+    return () => clearTimeout(timeout);
+  }, [selectedChat?._id, user?.id]);
+
   const handleInputChange = (e) => {
     setInputText(e.target.value);
     if (e.target.value.length > 0) {
@@ -566,7 +754,6 @@ return () => {
     }
   };
 
-  // Envoyer un message
   const handleSendMessage = async () => {
     try {
       if (selectedFile) {
@@ -591,7 +778,6 @@ return () => {
     }
   };
 
-  // Gérer l'upload de fichiers
   const handleFileSelect = (e) => { 
     const file = e.target.files[0]; 
     if (!file) return; 
@@ -605,7 +791,6 @@ return () => {
     } 
   };
 
-  // Enregistrement audio
   const handleMicClick = async () => {
     if (isRecording) {
       try {
@@ -619,8 +804,11 @@ return () => {
     }
   };
 
-  // Gestion du thème
-  const applyTheme = async (theme, save = true) => {
+  const onEmojiClick = (emojiObject) => {
+    setInputText((prevInput) => prevInput + emojiObject.emoji);
+  };
+
+  const applyTheme = React.useCallback(async (theme, save = true) => {
     console.log("Thème sélectionné :", theme);
     let style = {};
     setThemeEmojis([]);
@@ -638,7 +826,11 @@ return () => {
       setThemeStyle(style);
       setSendBtnColor("");
       setBubbleBg("");
-      if (save) localStorage.setItem(chatKey, JSON.stringify({ ...theme, value: base64 }));
+      
+      if (save) {
+        localStorage.setItem(chatKey, JSON.stringify({ ...theme, value: base64 }));
+        await saveThemeToBackend({ ...theme, value: base64 });
+      }
       return;
     }
 
@@ -652,7 +844,11 @@ return () => {
       setThemeStyle(style);
       setSendBtnColor("");
       setBubbleBg("");
-      if (save) localStorage.setItem(chatKey, JSON.stringify(theme));
+      
+      if (save) {
+        localStorage.setItem(chatKey, JSON.stringify(theme));
+        await saveThemeToBackend(theme);
+      }
       return;
     }
 
@@ -685,20 +881,228 @@ return () => {
         setFloatingEmojis([]);
       }
 
-      if (save) localStorage.setItem(chatKey, JSON.stringify(theme));
+      if (save) {
+        localStorage.setItem(chatKey, JSON.stringify(theme));
+        await saveThemeToBackend(theme);
+      }
+    }
+  }, [selectedChat?._id, chatKey]);
+
+  const saveThemeToBackend = async (theme) => {
+    try {
+      const token = localStorage.getItem("token");
+      
+      console.log("💾 Sauvegarde thème backend:", {
+        conversationId: selectedChat._id,
+        type: theme.type,
+        hasEmojis: theme.emojis?.length > 0,
+      });
+
+      const response = await fetch("http://localhost:5000/api/themes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          conversationId: selectedChat._id,
+          type: theme.type,
+          value: theme.value,
+          emojis: theme.emojis || (theme.emoji ? [theme.emoji] : []),
+          name: theme.name || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("❌ Erreur sauvegarde thème:", error);
+        return;
+      }
+
+      const data = await response.json();
+      console.log("✅ Thème sauvegardé avec succès:", data);
+    } catch (error) {
+      console.error("💥 Erreur réseau sauvegarde thème:", error);
     }
   };
 
-  const removeTheme = () => {
+  const loadThemeFromBackend = React.useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      
+      console.log("📥 Chargement thème backend pour:", selectedChat._id);
+
+      const response = await fetch(
+        `http://localhost:5000/api/themes/${selectedChat._id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.log("ℹ️ Pas de thème en backend, utilisation localStorage");
+        
+        const savedTheme = localStorage.getItem(chatKey);
+        if (savedTheme) {
+          const parsed = JSON.parse(savedTheme);
+          applyTheme(parsed, false);
+        }
+        return;
+      }
+
+      const data = await response.json();
+      console.log("✅ Thème chargé depuis backend:", data);
+
+      if (data.success && data.data) {
+        const theme = {
+          type: data.data.type,
+          value: data.data.value,
+          emojis: data.data.emojis,
+          name: data.data.name,
+        };
+        
+        applyTheme(theme, false);
+        
+        localStorage.setItem(chatKey, JSON.stringify(theme));
+      }
+    } catch (error) {
+      console.error("💥 Erreur chargement thème:", error);
+      
+      const savedTheme = localStorage.getItem(chatKey);
+      if (savedTheme) {
+        const parsed = JSON.parse(savedTheme);
+        applyTheme(parsed, false);
+      }
+    }
+  }, [selectedChat?._id, chatKey, applyTheme]);
+
+  const removeTheme = async () => {
     setThemeStyle({});
     setBubbleBg("");
     setSendBtnColor("");
     setThemeEmojis([]);
     setFloatingEmojis([]);
     localStorage.removeItem(chatKey);
+    
+    try {
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(
+        `http://localhost:5000/api/themes/${selectedChat._id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        console.log("✅ Thème supprimé du backend");
+      } else {
+        console.error("❌ Erreur suppression thème backend");
+      }
+    } catch (error) {
+      console.error("💥 Erreur réseau suppression thème:", error);
+    }
   };
 
-  // Charger le thème sauvegardé
+  useEffect(() => {
+    if (selectedChat?._id) {
+      loadThemeFromBackend();
+    }
+  }, [selectedChat?._id, loadThemeFromBackend]);
+
+  useEffect(() => {
+    if (!socketService.socket || !selectedChat) return;
+
+    const handleThemeChanged = ({ conversationId, theme }) => {
+      if (conversationId === selectedChat._id) {
+        console.log("🎨 Thème reçu via socket:", theme);
+        
+        applyTheme(theme, false);
+        
+        localStorage.setItem(chatKey, JSON.stringify(theme));
+      }
+    };
+
+    const handleThemeRemoved = ({ conversationId }) => {
+      if (conversationId === selectedChat._id) {
+        console.log("🗑️ Thème supprimé via socket");
+        
+        setThemeStyle({});
+        setBubbleBg("");
+        setSendBtnColor("");
+        setThemeEmojis([]);
+        setFloatingEmojis([]);
+        localStorage.removeItem(chatKey);
+      }
+    };
+
+    socketService.socket.on("themeChanged", handleThemeChanged);
+    socketService.socket.on("themeRemoved", handleThemeRemoved);
+
+    return () => {
+      socketService.socket.off("themeChanged", handleThemeChanged);
+      socketService.socket.off("themeRemoved", handleThemeRemoved);
+    };
+  }, [selectedChat, chatKey, applyTheme]);
+
+  const handleAcceptCall = () => {
+    if (!socketService.socket || !incomingCall) {
+      console.error('Socket non disponible ou appel inexistant');
+      return;
+    }
+
+    console.log('✅ Acceptation de l\'appel:', incomingCall);
+    
+    const callToAccept = { ...incomingCall };
+    setIncomingCall(null);
+    
+    socketService.socket.emit('call:accept', {
+      callId: callToAccept.callId,
+      callerId: callToAccept.callerId
+    });
+
+    setActiveCall({
+      ...callToAccept,
+      status: 'accepted'
+    });
+  };
+
+  const handleRejectCall = async () => {
+    if (!socketService.socket || !incomingCall) {
+      console.error('Socket non disponible ou appel inexistant');
+      return;
+    }
+
+    console.log('❌ Rejet de l\'appel:', incomingCall);
+    socketService.socket.emit('call:reject', {
+      callId: incomingCall.callId,
+      callerId: incomingCall.callerId
+    });
+
+    setIncomingCall(null);
+  };
+
+  useEffect(() => {
+    const resetTheme = () => {
+      setThemeStyle({});
+      setBubbleBg("");
+      setSendBtnColor("");
+      setThemeEmojis([]);
+      setFloatingEmojis([]);
+    };
+
+    resetTheme();
+
+    if (selectedChat?._id) {
+      loadThemeFromBackend();
+    }
+  }, [selectedChat?._id, loadThemeFromBackend]);
+
   useEffect(() => {
     const savedTheme = localStorage.getItem(chatKey);
     if (savedTheme) {
@@ -711,7 +1115,6 @@ return () => {
     }
   }, [selectedChat]);
 
-  // Animation des emojis flottants
   useEffect(() => {
     if (!themeEmojis || themeEmojis.length === 0) return;
 
@@ -743,45 +1146,40 @@ return () => {
       ? "bg-myYellow2 dark:bg-mydarkYellow text-myBlack rounded-t-lg rounded-bl-lg rounded-br-none px-4 py-4 text-xs"
       : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:!text-white rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-4 text-xs";
 
-  // Nom de la conversation
- const conversationName = selectedChat?.isGroup
+  const conversationName = selectedChat?.isGroup
     ? selectedChat.groupName
     : otherUserName || selectedChat?.name || "Utilisateur";
 
-// Dans ChatWindow.jsx, remplacez la ligne 151 par :
-const conversationAvatar = React.useMemo(() => {
-  console.log("🖼️ DEBUG - Recherche photo de profil:");
-  console.log("1. selectedChat:", selectedChat);
-  console.log("2. targetUser:", selectedChat?.targetUser);
-  console.log("3. targetUser.profilePicture:", selectedChat?.targetUser?.profilePicture);
-  
-  if (selectedChat?.isGroup) return "/group-avatar.png";
-  
-  // 1. Chercher dans targetUser (vient de SearchModal)
-  if (selectedChat?.targetUser?.profilePicture) {
-    console.log("✅ Photo trouvée dans targetUser:", selectedChat.targetUser.profilePicture);
-    return selectedChat.targetUser.profilePicture;
-  }
-  
-  // 2. Chercher dans participants
-  const fromParticipants = selectedChat?.participants?.find(
-    p => {
-      const pid = p._id || p.id;
-      const uid = otherUserId;
-      return pid && uid && String(pid) === String(uid);
+  const conversationAvatar = React.useMemo(() => {
+    console.log("🖼️ DEBUG - Recherche photo de profil:");
+    console.log("1. selectedChat:", selectedChat);
+    console.log("2. targetUser:", selectedChat?.targetUser);
+    console.log("3. targetUser.profilePicture:", selectedChat?.targetUser?.profilePicture);
+    
+    if (selectedChat?.isGroup) return "/group-avatar.png";
+    
+    if (selectedChat?.targetUser?.profilePicture) {
+      console.log("✅ Photo trouvée dans targetUser:", selectedChat.targetUser.profilePicture);
+      return selectedChat.targetUser.profilePicture;
     }
-  )?.profilePicture;
-  
-  if (fromParticipants) {
-    console.log("✅ Photo trouvée dans participants:", fromParticipants);
-    return fromParticipants;
-  }
-  
-  console.log("❌ Aucune photo trouvée, utilisation par défaut");
-  return "/default-avatar.png";
-}, [selectedChat, otherUserId]);
+    
+    const fromParticipants = selectedChat?.participants?.find(
+      p => {
+        const pid = p._id || p.id;
+        const uid = otherUserId;
+        return pid && uid && String(pid) === String(uid);
+      }
+    )?.profilePicture;
+    
+    if (fromParticipants) {
+      console.log("✅ Photo trouvée dans participants:", fromParticipants);
+      return fromParticipants;
+    }
+    
+    console.log("❌ Aucune photo trouvée, utilisation par défaut");
+    return "/default-avatar.png";
+  }, [selectedChat, otherUserId]);
 
-  // Avatar de l'autre utilisateur pour l'indicateur
   const otherUserAvatar = selectedChat?.isGroup
     ? "/group-avatar.png"
     : selectedChat?.participants?.find(
@@ -792,7 +1190,6 @@ const conversationAvatar = React.useMemo(() => {
         }
       )?.profilePicture || "/default-avatar.png";
 
-  // Composant MessageBubble
   const MessageBubble = ({ msg, deletedMessages, setDeletedMessages }) => {
     const longPressTimer = useRef(null);
 
@@ -809,7 +1206,6 @@ const conversationAvatar = React.useMemo(() => {
       }
     };
 
-    // Détermination robuste de l'expéditeur
     const currentUserId = user?._id || user?.id || user?.userId;
 
     const rawSender =
@@ -909,10 +1305,8 @@ const conversationAvatar = React.useMemo(() => {
                 />
               )}
 
-              {/* ✅ MESSAGE TEXTE */}
               {msg.typeMessage === "text" && msg.content}
 
-              {/* ✅ MESSAGE IMAGE */}
               {msg.typeMessage === "image" && (
                 <img
                   src={msg.content} 
@@ -922,7 +1316,6 @@ const conversationAvatar = React.useMemo(() => {
                 />
               )}
 
-              {/* ✅ MESSAGE VIDÉO */}
               {msg.typeMessage === "video" && (
                 <video
                   src={msg.content} 
@@ -932,12 +1325,10 @@ const conversationAvatar = React.useMemo(() => {
                 />
               )}
 
-              {/* ✅ MESSAGE AUDIO */}
               {msg.typeMessage === "audio" && (
                 <AudioMessage src={msg.content || msg.fileUrl} />
               )}
 
-              {/* ✅ MESSAGE FICHIER */}
               {msg.typeMessage === "file" && (
                 <a
                   href={msg.content}
@@ -948,7 +1339,6 @@ const conversationAvatar = React.useMemo(() => {
                 </a>
               )}
 
-              {/* 🔥 NOUVEAU : MESSAGE APPEL */}
               {msg.typeMessage === "call" && (
                 <CallMessage
                   callType={msg.callType}
@@ -995,8 +1385,12 @@ const conversationAvatar = React.useMemo(() => {
                 </button>
                 {fromMe && (
                   <button
-                    onClick={() => handleDeleteMessage(msg._id)}
-                    className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-500"
+                    onClick={() => {
+                      setMessageToDelete(msg._id);
+                      setShowDeleteModal(true);
+                      setShowMessageMenu(null);
+                    }}
+                    className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
                   >
                     <Trash2 size={16} /> Supprimer
                   </button>
@@ -1054,6 +1448,8 @@ const conversationAvatar = React.useMemo(() => {
                   <span className="flex items-center gap-1 text-gray-400">
                     ✓
                   </span>
+                ) : msg.status === "seen" || (msg.readBy && msg.readBy.length > 0) ? (
+                  <span className="text-blue-500">✓✓✓</span>
                 ) : (
                   <span className="text-gray-400">✓✓</span>
                 )}
@@ -1142,35 +1538,31 @@ const conversationAvatar = React.useMemo(() => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-         {/* BOUTON APPEL AUDIO */}
-<Phone
-  size={16}
-  className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
-  onClick={() => {
-    console.log('📞 [ChatWindow] Lancement appel AUDIO');
-    
-    // Reset + force réouverture même si déjà "audio"
-    setStartOutgoingCallType(null);
-    setTimeout(() => {
-      setStartOutgoingCallType("audio");
-    }, 0);
-  }}
-/>
+          <Phone
+            size={16}
+            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
+            onClick={() => {
+              console.log('📞 [ChatWindow] Lancement appel AUDIO');
+              
+              setStartOutgoingCallType(null);
+              setTimeout(() => {
+                setStartOutgoingCallType("audio");
+              }, 0);
+            }}
+          />
 
-{/* BOUTON APPEL VIDÉO */}
-<Video
-  size={16}
-  className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-  onClick={() => {
-    console.log('🎬 [ChatWindow] Lancement appel VIDÉO');
-    
-    // Reset + force réouverture même si déjà "video"
-    setStartOutgoingCallType(null);
-    setTimeout(() => {
-      setStartOutgoingCallType("video");
-    }, 0);
-  }}
-/>
+          <Video
+            size={16}
+            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+            onClick={() => {
+              console.log('🎬 [ChatWindow] Lancement appel VIDÉO');
+              
+              setStartOutgoingCallType(null);
+              setTimeout(() => {
+                setStartOutgoingCallType("video");
+              }, 0);
+            }}
+          />
           
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
@@ -1181,7 +1573,7 @@ const conversationAvatar = React.useMemo(() => {
         </div>
       </header>
 
-      {/* DEMANDE DE MESSAGE */}
+      {/* MESSAGE REQUEST BANNER */}
       {isIncomingMessageRequest && (
         <MessageRequestBanner
           conversationName={conversationName}
@@ -1247,7 +1639,7 @@ const conversationAvatar = React.useMemo(() => {
         />
       )}
 
-      {/* SECTION MESSAGES ÉPINGLÉS */}
+      {/* PINNED MESSAGES SECTION */}
       {showPinnedSection && pinnedMessages.length > 0 && (
         <div className="border-b border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/40 z-20">
           <div className="flex items-center justify-between px-3 py-1.5">
@@ -1324,35 +1716,64 @@ const conversationAvatar = React.useMemo(() => {
           setShowReactionPicker(null);
         }}
       >
-        {/* Messages normaux */}
-        {messages
-          .filter(msg => !deletedMessages.includes(msg._id))
-          .map((msg, i) => {
-            const showDate =
-              i === 0 ||
-              messages[i - 1].createdAt?.split("T")[0] !==
-                msg.createdAt?.split("T")[0];
+        {messages.map((msg, i) => {
+          const showDate =
+            i === 0 ||
+            messages[i - 1]?.createdAt?.split("T")[0] !== msg.createdAt?.split("T")[0];
 
+          const isDeletedByMe = deletedMessages.includes(msg._id);
+          const isDeletedForEveryone = deletedForEveryone.includes(msg._id);
+
+          const currentUserId = user?._id || user?.id || user?.userId;
+          const rawSender = msg.senderId || msg.sender || msg.Id_sender || msg.Id_User || msg.userId;
+          const messageSenderId = typeof rawSender === "object" && rawSender?._id ? rawSender._id : rawSender;
+          const wasFromMe = currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
+
+          if (isDeletedByMe || isDeletedForEveryone) {
             return (
               <div key={msg._id}>
                 {showDate && (
-                  <div className="text-center text-[10px] text-gray-700 dark:text-myBlack my-2">
+                  <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
                     <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
                       {formatDateLabel(msg.createdAt, t)}
                     </span>
                   </div>
                 )}
-                <MessageBubble 
-                  msg={msg} 
-                  index={i}
-                  deletedMessages={deletedMessages}
-                  setDeletedMessages={setDeletedMessages}
-                />
+                <div className={`flex ${wasFromMe ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`
+                      max-w-[85%] px-4 py-3 rounded-lg text-sm italic text-gray-500 dark:text-gray-400
+                      ${wasFromMe 
+                        ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none" 
+                        : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"}
+                    `}
+                  >
+                    Vous avez supprimé un message
+                  </div>
+                </div>
               </div>
             );
-          })}
+          }
 
-        {/* 🔥 INDICATEUR "EN TRAIN D'ÉCRIRE" */}
+          return (
+            <div key={msg._id}>
+              {showDate && (
+                <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
+                  <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
+                    {formatDateLabel(msg.createdAt, t)}
+                  </span>
+                </div>
+              )}
+              <MessageBubble
+                msg={msg}
+                index={i}
+                deletedMessages={deletedMessages}
+                setDeletedMessages={setDeletedMessages}
+              />
+            </div>
+          );
+        })}
+
         {isTyping && typingUsers.length > 0 && (
           <TypingIndicator 
             avatar={otherUserAvatar}
@@ -1363,7 +1784,7 @@ const conversationAvatar = React.useMemo(() => {
         <div ref={messagesEndRef} />
       </main>
 
-      {/* INPUT */}
+      {/* ✅ FOOTER CORRIGÉ */}
       <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
         {isBlocked && blockedBy === 'me' ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
@@ -1402,6 +1823,7 @@ const conversationAvatar = React.useMemo(() => {
                 </button>
               </div>
             )}
+
             {selectedFile && (
               <div className="mb-2 p-2 border rounded bg-white dark:bg-neutral-800">
                 {selectedFile.type.startsWith("image/") && (
@@ -1413,7 +1835,7 @@ const conversationAvatar = React.useMemo(() => {
                 )}
 
                 {!selectedFile.type.startsWith("image/") &&
-                !selectedFile.type.startsWith("video/") && (
+                 !selectedFile.type.startsWith("video/") && (
                   <p className="text-sm">📎 {selectedFile.name}</p>
                 )}
 
@@ -1429,131 +1851,98 @@ const conversationAvatar = React.useMemo(() => {
               </div>
             )}
 
-            <div className="flex items-center gap-2 w-full">
-              <div className="flex-1 flex items-center gap-2 px-4 py-4 rounded-xl bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
-                <Smile
-                  size={18}
-                  className="text-gray-700 dark:text-gray-300 cursor-pointer"
-                />
-                <Paperclip
-                  size={18}
-                  className="text-gray-700 dark:text-gray-300 cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
-                />
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  accept="image/*,video/*,application/*"
-                />
-                <input
-                  type="text"
-                  className="flex items-center flex-1 bg-transparent outline-none text-xs text-myBlack dark:text-white"
-                  placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
-                  value={inputText}
-                  onChange={handleInputChange}
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && !isRecording && handleSendMessage()
-                  }
-                  disabled={isRecording}
-                />
-              </div>
-              <button
-                className={`
-                  w-12 h-12 flex items-center justify-center rounded-xl
-                  text-sm font-bold text-myBlack
-                  bg-myYellow2 dark:bg-mydarkYellow 
-                `}
-                onClick={
-                  selectedFile
-                    ? handleSendMessage
-                    : inputText.trim() === ""
-                    ? handleMicClick
-                    : handleSendMessage
-                }
-              >
-                {selectedFile || inputText.trim() !== "" ? (
-                  <Send size={18} />
-                ) : (
-                  <Mic
-                    size={18}
-                    className={`text-gray-700 dark:myBlack ${
-                      isRecording ? "animate-pulse text-red-500" : ""
-                    }`}
+            <div className="relative">
+              {showEmojiPicker && (
+                <div className="absolute bottom-16 left-0 z-50">
+                  <EmojiPicker
+                    onEmojiClick={onEmojiClick}
+                    theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+                    searchDisabled={false}
+                    skinTonesDisabled={false}
+                    height={400}
+                    width={320}
                   />
-                )}
-              </button>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 w-full">
+                <div className="flex-1 flex items-center gap-2 px-4 py-4 rounded-xl bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
+                  <button
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    type="button"
+                  >
+                    <Smile
+                      size={18}
+                      className={`cursor-pointer transition-colors ${
+                        showEmojiPicker 
+                          ? 'text-myYellow' 
+                          : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    />
+                  </button>
+
+                  <Paperclip
+                    size={18}
+                    className="text-gray-700 dark:text-gray-300 cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    accept="image/*,video/*,application/*"
+                  />
+                  <input
+                    type="text"
+                    className="flex items-center flex-1 bg-transparent outline-none text-xs text-myBlack dark:text-white"
+                    placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
+                    value={inputText}
+                    onChange={handleInputChange}
+                    onKeyPress={(e) =>
+                      e.key === "Enter" && !isRecording && handleSendMessage()
+                    }
+                    disabled={isRecording}
+                  />
+                </div>
+
+                <button
+                  className="w-12 h-12 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack bg-myYellow2 dark:bg-mydarkYellow"
+                  onClick={
+                    selectedFile
+                      ? handleSendMessage
+                      : inputText.trim() === ""
+                      ? handleMicClick
+                      : handleSendMessage
+                  }
+                >
+                  {selectedFile || inputText.trim() !== "" ? (
+                    <Send size={18} />
+                  ) : (
+                    <Mic
+                      size={18}
+                      className={`text-gray-700 dark:myBlack ${
+                        isRecording ? "animate-pulse text-red-500" : ""
+                      }`}
+                    />
+                  )}
+                </button>
+              </div>
             </div>
           </>
         )}
       </footer>
 
-      {/* UN SEUL MODAL D'APPEL */}
+      {/* ✅ VIDEO CALL SCREEN - UNE SEULE FOIS */}
       {startOutgoingCallType && selectedChat && (
         <VideoCallScreen
           selectedChat={selectedChat}
-          callType={startOutgoingCallType}  // "audio" ou "video"
+          callType={startOutgoingCallType}
           onClose={() => {
             console.log(`📞 [ChatWindow] Fermeture appel sortant`);
             setStartOutgoingCallType(null);
             clearActiveCall();
           }}
-        />
-      )}
-
-      {isOptionsOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/30 z-30"
-            onClick={() => setIsOptionsOpen(false)}
-          ></div>
-          <ChatOptionsMenu
-            selectedChat={{
-              ...selectedChat,
-              userId: selectedChat?.isGroup 
-                ? null
-                : selectedChat?.participants?.find(
-                    participant => {
-                      const participantId = participant._id || participant.id;
-                      const currentUserId = user?._id || user?.id || user?.userId;
-                      return String(participantId) !== String(currentUserId);
-                    }
-                  )?._id,
-              openInfo: () => setIsInfoOpen(true),
-              openTheme: () => {
-                setShowThemeSelector(true);
-                setIsOptionsOpen(false);
-              },
-            }}
-            onClose={() => setIsOptionsOpen(false)}
-            onOpenSearch={() => setOpenSearch(true)}
-            onBlockStatusChange={() => refresh()}
-          />
-        </>
-      )}
-
-      {/* Info Contact Modal */}
-      {isInfoOpen && (
-        <InfoContactModal
-          chat={{
-            ...selectedChat,
-            openTheme: () => setShowThemeSelector(true),
-            onArchive: async () => {
-              try {
-                if (isArchived) {
-                  await unarchiveConversation(selectedChat._id);
-                } else {
-                  await archiveConversation(selectedChat._id);
-                }
-              } catch (err) {
-                alert("Erreur lors de l'opération");
-              }
-            },
-            isArchived: isArchived,
-          }}
-          onClose={() => setIsInfoOpen(false)}
-          onBlockStatusChange={() => refresh()}
         />
       )}
 
@@ -1610,6 +1999,123 @@ const conversationAvatar = React.useMemo(() => {
           forwardMessage(messageToForward?._id, targetConversationId);
         }}
       />
+
+      {/* Delete Modal */}
+      {showDeleteModal && (
+        <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-200 dark:border-neutral-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Supprimer le message
+              </h3>
+            </div>
+
+            <div className="px-6 py-6 space-y-6">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Que voulez-vous faire ?
+              </p>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    handleDeleteForMe(messageToDelete);
+                    setShowDeleteModal(false);
+                  }}
+                  className="w-full px-4 py-3 text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+                >
+                  <div className="font-medium">Supprimer pour moi</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    Vous ne verrez plus ce message, mais les autres le verront toujours.
+                  </div>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    await handleDeleteForEveryone(messageToDelete);
+                    setShowDeleteModal(false);
+                  }}
+                  className="w-full px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                >
+                  <div className="font-medium">Supprimer pour tout le monde</div>
+                  <div className="text-xs text-red-500/80 dark:text-red-400/80">
+                    Ce message sera supprimé pour vous et les autres participants.
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 dark:bg-neutral-900 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ✅ OPTIONS MENU - CORRIGÉ */}
+      {isOptionsOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/30 z-30"
+            onClick={() => setIsOptionsOpen(false)}
+          ></div>
+          <ChatOptionsMenu
+            selectedChat={{
+              ...selectedChat,
+              userId: selectedChat?.isGroup 
+                ? null
+                : selectedChat?.participants?.find(
+                    participant => {
+                      const participantId = participant._id || participant.id;
+                      const currentUserId = user?._id || user?.id || user?.userId;
+                      return String(participantId) !== String(currentUserId);
+                    }
+                  )?._id,
+              openInfo: () => setIsInfoOpen(true),
+              openTheme: () => {
+                setShowThemeSelector(true);
+                setIsOptionsOpen(false);
+              },
+            }}
+            onClose={() => setIsOptionsOpen(false)}
+            onOpenSearch={() => setOpenSearch(true)}
+            onBlockStatusChange={() => refresh()}
+            onConversationDeleted={onConversationDeleted}
+          />
+        </>
+      )}
+
+      {/* Info Contact Modal */}
+      {isInfoOpen && (
+        <InfoContactModal
+          chat={{
+            ...selectedChat,
+            openTheme: () => setShowThemeSelector(true),
+            onArchive: async () => {
+              try {
+                if (isArchived) {
+                  await unarchiveConversation(selectedChat._id);
+                  if (typeof onConversationDeleted === 'function') {
+                    onConversationDeleted();
+                  }
+                } else {
+                  await archiveConversation(selectedChat._id);
+                }
+              } catch (err) {
+                alert("Erreur lors de l'opération");
+              }
+            },
+            isArchived: isArchived,
+          }}
+          onClose={() => setIsInfoOpen(false)}
+          onBlockStatusChange={() => refresh()}
+          onConversationDeleted={onConversationDeleted}
+        />
+      )}
     </div>
   );
 }

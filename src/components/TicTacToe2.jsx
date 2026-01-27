@@ -80,9 +80,9 @@ const navigate = useNavigate();
       let hint = "";
 
       if (distance <= 5)hint = t("guessNumber.hot");
-      else if (distance <= 10) hint = t("guessNumber. cool ");
+      else if (distance <= 10) hint = t("guessNumber.cool");
       else if (distance <= 20) hint = t("guessNumber.cold");
-      hint = t("guessNumber.cold");
+      else hint = t("guessNumber.cold");
 
       if (userGuess < targetNumber)  setMessage(`${hint} 📈 ${t("guessNumber.higher")}`);
       else  setMessage(`${hint} 📉 ${t("guessNumber.lower")}`);

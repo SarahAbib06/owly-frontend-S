@@ -86,7 +86,10 @@
     "noGroupe": "No groups",
     "all": "All",
     "groups": "Groups",
-    "searchGroupe": "Search a Groupe..."
+    "searchGroupe": "Search a Groupe...",
+    "favorites": "Favorite conversations",
+    "archived": "Archived conversations",
+    "showAll": "Show all"
     
   },
    "buttons": {
@@ -125,7 +128,10 @@
     "changePhoto": "Change photo",
     "deleteAccount": "Delete account",
     "username": "Username",
-    "email": "Email"
+    "email": "Email",
+     "votreqrcode": "Your QR code",
+    "Telecharger": "Download",
+    "Fermer": "Close"
 
   },
   "parametresMenu": {

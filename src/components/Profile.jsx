@@ -476,7 +476,7 @@ return (
             className="bg-white dark:bg-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl "
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-xl sm:text-2xl font-bold mb-14 sm:mb-16">Votre QR Code</h3>
+            <h3 className="text-xl sm:text-2xl font-bold mb-14 sm:mb-16">{t("profile.votreqrcode")}</h3>
 
             <div className="relative mb-6">
               {/* Photo de profil - moitié sur le carré blanc, moitié en haut */}
@@ -515,13 +515,13 @@ return (
                 className="w-full sm:flex-1 bg-myYellow hover:bg-myYellow2 text-black py-3 rounded-lg font-bold text-base flex items-center justify-center gap-2 transition-colors"
               >
                 <Download size={20} />
-                Télécharger
+                 {t("profile.Telecharger")}
               </button>
               <button
                 onClick={() => setShowQRModal(false)}
                 className="w-full sm:flex-1 bg-myGray border-1 border-black hover:bg-gray-200 dark:bg-neutral-700 dark:hover:bg-neutral-600 py-3 rounded-lg font-bold transition-colors"
               >
-                Fermer
+                {t("profile.Fermer")}
               </button>
                  
             </div>
