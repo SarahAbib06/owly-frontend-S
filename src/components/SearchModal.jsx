@@ -417,7 +417,7 @@ const handleOpenConversation = async (targetUser) => {
             onClick={() => setActiveTab('group')}
           >
             <Users size={16} className="inline mr-1" />
-            Nouveau groupe
+            Groupes
           </button>
           </div>
 
