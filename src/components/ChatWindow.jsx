@@ -13,6 +13,8 @@ import {
   CornerUpRight,
   Pin,
   Trash2,
+  ChevronLeft, 
+  ChevronRight, 
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMessages } from "../hooks/useMessages";
@@ -179,6 +181,11 @@ const [messageToDelete, setMessageToDelete] = useState(null);
 const [deletedForEveryone, setDeletedForEveryone] = useState([]);
 
 const [showEmojiPicker, setShowEmojiPicker] = useState(false); //imojie
+// États pour la lightbox média kenza 
+const [mediaLightboxOpen, setMediaLightboxOpen] = useState(false);
+const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+const [mediaList, setMediaList] = useState([]);
+
 
 const { conversations: myConversations, loading: convLoading } = useConversations();
 
@@ -532,6 +539,19 @@ useEffect(() => {
     socketService.socket.off("message:deleted", handleMessageDeleted);
   };
 }, [selectedChat?._id]);
+// 🔥 NAVIGATION CLAVIER POUR LIGHTBOX MÉDIA kenza 
+useEffect(() => {
+  const handleKeyDown = (e) => {
+    if (!mediaLightboxOpen) return;
+    
+    if (e.key === 'Escape') closeMediaLightbox();
+    if (e.key === 'ArrowLeft') goToPreviousMedia();
+    if (e.key === 'ArrowRight') goToNextMedia();
+  };
+
+  window.addEventListener('keydown', handleKeyDown);
+  return () => window.removeEventListener('keydown', handleKeyDown);
+}, [mediaLightboxOpen, mediaList.length]);
 
 // Sauvegarde permanente des suppressions "pour tout le monde"
 useEffect(() => {
@@ -647,6 +667,38 @@ useEffect(() => {
       console.error("Erreur envoi:", error);
     }
   };
+  // 🔥 OUVRIR LA LIGHTBOX POUR MÉDIA
+const openMediaLightbox = (mediaUrl, mediaType) => {
+  // Récupérer toutes les images et vidéos du chat
+  const allMedia = messages
+    .filter(msg => msg.typeMessage === 'image' || msg.typeMessage === 'video')
+    .map(msg => ({
+      url: msg.content,
+      type: msg.typeMessage
+    }));
+  
+  // Trouver l'index du média cliqué
+  const index = allMedia.findIndex(m => m.url === mediaUrl);
+  
+  setMediaList(allMedia);
+  setCurrentMediaIndex(index !== -1 ? index : 0);
+  setMediaLightboxOpen(true);
+};
+
+// 🔥 FERMER LA LIGHTBOX
+const closeMediaLightbox = () => {
+  setMediaLightboxOpen(false);
+};
+
+// 🔥 MÉDIA PRÉCÉDENT
+const goToPreviousMedia = () => {
+  setCurrentMediaIndex((prev) => (prev === 0 ? mediaList.length - 1 : prev - 1));
+};
+
+// 🔥 MÉDIA SUIVANT
+const goToNextMedia = () => {
+  setCurrentMediaIndex((prev) => (prev === mediaList.length - 1 ? 0 : prev + 1));
+};
 
   // Gérer l'upload de fichiers
   const handleFileSelect = (e) => {
@@ -663,18 +715,33 @@ useEffect(() => {
   };
 
   // Enregistrement audio
-  const handleMicClick = async () => {
-    if (isRecording) {
-      try {
-        await stopAndSend();
-      } catch (error) {
-        console.error("Erreur envoi vocal:", error);
-        alert("Erreur lors de l'envoi du message vocal");
+ // Enregistrement audio
+// Enregistrement audio
+const handleMicClick = async () => {
+  if (isRecording) {
+    // Arrêter et envoyer
+    try {
+      console.log('🛑 Arrêt de l\'enregistrement...');
+      
+      const result = await stopAndSend();
+      
+      if (result?.tempId) {
+        console.log('✅ Audio envoyé avec tempId:', result.tempId);
+        
+        // 🔥 Le message temporaire sera créé automatiquement via useMessages
+        // quand le serveur confirmera avec message_sent
       }
-    } else {
-      await startRecording();
+      
+    } catch (error) {
+      console.error('❌ Erreur envoi vocal:', error);
+      alert("Erreur lors de l'envoi du message vocal");
     }
-  };
+  } else {
+    // Démarrer l'enregistrement
+    console.log('▶️ Démarrage de l\'enregistrement...');
+    await startRecording();
+  }
+};
   //imoji
  const onEmojiClick = (emojiObject) => {
   setInputText((prevInput) => prevInput + emojiObject.emoji);
@@ -1105,21 +1172,22 @@ const conversationAvatar = React.useMemo(() => {
       )?.profilePicture || "/default-avatar.png";
 
   // Composant MessageBubble
-  const MessageBubble = ({ msg, deletedMessages, setDeletedMessages }) => {
-    const longPressTimer = useRef(null);
+  const MessageBubble = React.memo(({ msg, deletedMessages, setDeletedMessages }) => {
+     
+  const longPressTimer = useRef(null);
 
-    const startLongPress = () => {
-      longPressTimer.current = setTimeout(() => {
-        setShowMessageMenu(msg._id);
-      }, 500);
-    };
+  const startLongPress = () => {
+    longPressTimer.current = setTimeout(() => {
+      setShowMessageMenu(msg._id);
+    }, 500); // ← Retire le ); en trop ici
+  };
 
-    const cancelLongPress = () => {
-      if (longPressTimer.current) {
-        clearTimeout(longPressTimer.current);
-        longPressTimer.current = null;
-      }
-    };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
 
     // Détermination robuste de l'expéditeur
     const currentUserId = user?._id || user?.id || user?.userId;
@@ -1227,8 +1295,9 @@ const conversationAvatar = React.useMemo(() => {
                 <img
                   src={msg.content}
                   alt="image"
-                  className="max-w-full rounded mt-1"
+                  className="max-w-full rounded mt-1 cursor-pointer" 
                   style={{ maxHeight: "300px" }}
+                  onClick={() => openMediaLightbox(msg.content, 'image')} 
                 />
               )}
 
@@ -1236,13 +1305,16 @@ const conversationAvatar = React.useMemo(() => {
                 <video
                   src={msg.content}
                   controls
-                  className="max-w-full rounded mt-1"
+                   className="max-w-full rounded mt-1 cursor-pointer" 
                   style={{ maxHeight: "300px" }}
+                  onClick={() => openMediaLightbox(msg.content, 'video')} 
+
                 />
               )}
 
               {msg.typeMessage === "audio" && (
-                <AudioMessage src={msg.content || msg.fileUrl} />
+                 
+                <AudioMessage   key={msg._id} src={msg.content || msg.fileUrl} />
               )}
               {msg.typeMessage === "file" && (
                 <a
@@ -1363,7 +1435,27 @@ const conversationAvatar = React.useMemo(() => {
         </div>
       </div>
     );
-  };
+  },(prevProps, nextProps) => {
+    // 🔥 COMPARAISON STRICTE - ne re-render que si le message lui-même change
+    const msgUnchanged = 
+      prevProps.msg._id === nextProps.msg._id &&
+      prevProps.msg.content === nextProps.msg.content &&
+      prevProps.msg.status === nextProps.msg.status &&
+      prevProps.msg.typeMessage === nextProps.msg.typeMessage &&
+      prevProps.msg.isPinned === nextProps.msg.isPinned &&
+      prevProps.msg.createdAt === nextProps.msg.createdAt;
+    
+    // Ignorer deletedMessages pour les messages audio
+    if (prevProps.msg.typeMessage === 'audio') {
+      return msgUnchanged;
+    }
+    
+    // Pour les autres messages, vérifier aussi deletedMessages
+    return msgUnchanged && 
+      prevProps.deletedMessages.includes(prevProps.msg._id) === 
+      nextProps.deletedMessages.includes(nextProps.msg._id);
+  }
+   );
 
   if (loading) {
     return (
@@ -1811,28 +1903,29 @@ const conversationAvatar = React.useMemo(() => {
             />
           </div>
 
-          <button
-            className="w-12 h-12 flex items-center justify-center rounded-xl text-sm font-bold text-myBlack bg-myYellow2 dark:bg-mydarkYellow"
-            onClick={
-              selectedFile
-                ? handleSendMessage
-                : inputText.trim() === ""
-                ? handleMicClick
-                
-                : handleSendMessage
-            }
-          >
-            {selectedFile || inputText.trim() !== "" ? (
-              <Send size={18} />
-            ) : (
-              <Mic
-                size={18}
-                className={`text-gray-700 dark:myBlack ${
-                  isRecording ? "animate-pulse text-red-500" : ""
-                }`}
-              />
-            )}
-          </button>
+         <button
+  className={`w-12 h-12 flex items-center justify-center rounded-xl text-sm font-bold ${
+    isRecording 
+      ? 'bg-red-500 animate-pulse' 
+      : 'bg-myYellow2 dark:bg-mydarkYellow'
+  }`}
+  onClick={
+    isRecording
+      ? handleMicClick  // Si en train d'enregistrer → arrêter
+      : selectedFile || inputText.trim() !== ""
+      ? handleSendMessage
+      : handleMicClick  // Sinon → démarrer l'enregistrement
+  }
+  disabled={isRecording && recordingTime < 1} // Empêcher spam pendant 1ère seconde
+>
+  {isRecording ? (
+    <Send size={18} className="text-white" />
+  ) : selectedFile || inputText.trim() !== "" ? (
+    <Send size={18} />
+  ) : (
+    <Mic size={18} className="text-gray-700 dark:myBlack" />
+  )}
+</button>
         </div>
       </div>
     </>
@@ -2019,6 +2112,60 @@ const conversationAvatar = React.useMemo(() => {
     onConversationDeleted={onConversationDeleted}   // ← AJOUTE CETTE PROP ICI
   />
 )}
+{/* 🔥 LIGHTBOX MODAL POUR MÉDIAS */}
+      {mediaLightboxOpen && mediaList.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
+          {/* Bouton Fermer */}
+          <button
+            onClick={closeMediaLightbox}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-50"
+          >
+            <X className="w-8 h-8" />
+          </button>
+
+          {/* Bouton Précédent */}
+          {mediaList.length > 1 && (
+            <button
+              onClick={goToPreviousMedia}
+              className="absolute left-4 text-white hover:text-gray-300 transition-colors z-50"
+            >
+              <ChevronLeft className="w-10 h-10" />
+            </button>
+          )}
+
+          {/* Image ou Vidéo */}
+          <div className="max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+            {mediaList[currentMediaIndex]?.type === 'image' ? (
+              <img
+                src={mediaList[currentMediaIndex]?.url}
+                alt="Image en grand"
+                className="max-w-full max-h-[90vh] object-contain"
+              />
+            ) : (
+              <video
+                src={mediaList[currentMediaIndex]?.url}
+                controls
+                className="max-w-full max-h-[90vh] object-contain"
+              />
+            )}
+          </div>
+
+          {/* Bouton Suivant */}
+          {mediaList.length > 1 && (
+            <button
+              onClick={goToNextMedia}
+              className="absolute right-4 text-white hover:text-gray-300 transition-colors z-50"
+            >
+              <ChevronRight className="w-10 h-10" />
+            </button>
+          )}
+
+          {/* Compteur de médias */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black/50 px-4 py-2 rounded-lg">
+            {currentMediaIndex + 1} / {mediaList.length}
+          </div>
+        </div>
+      )}
 
     </div>
   );
