@@ -10,9 +10,21 @@
     "noAccount": "Vous n'avez pas de compte ?",
     "register": "S’inscrire",
     "loading": "Connexion en cours..."
+    
   },
+"errors": {
+  "invalidPassword": "Mot de passe incorrect",
+  "serverError": "Erreur du serveur",
+  "loginFailed": "Échec de la connexion"
+},
   
   "register": {
+     "errors": {
+      "allFieldsRequired": "Tous les champs sont requis",
+      "acceptTerms": "Vous devez accepter les conditions",
+       "passwordMismatch": "Les mots de passe ne correspondent pas",
+       "usernameLength": "Le nom d'utilisateur doit contenir entre 3 et 30 caractères"
+    },
     "createAccount": "Créez votre compte",
     "subtitle": "Faites partie de la révolution",
     "username": "Nom d'utilisateur",
@@ -59,8 +71,18 @@
 
 },
 "chat": {
-    "today": "Aujourd’hui",
+
+"today": "Aujourd'hui",
     "yesterday": "Hier",
+    "locale": "fr-FR",
+
+
+
+
+   "deleteConversation": "Supprimer la conversation ?",
+  "messageDeletedByYou": "Vous avez supprimé un message",
+   "new": "Nouvelle discussion",
+    
     "online": "En ligne",
     "inputPlaceholder": "Entrer un message...",
     "reactions": "Réactions",
@@ -71,8 +93,24 @@
     "blockMessage": "Vous ne pouvez pas contacter cette personne ni l’appeler dans cette discussion. Vous ne recevez pas ses messages ou appels.",
     "userUnblocked": "Utilisateur débloqué avec succès",
     "unblock": "Débloquer",
-    "blockedByOther": "Vous ne pouvez pas envoyer de message à cette personne"
-
+    "blockedByOther": "Vous ne pouvez pas envoyer de message à cette personne",
+      "infoOn": "Infos sur {{name}}",
+    "defaultConversation": "la conversation",
+     "addToFavorites": "Ajouter aux favoris",
+    "removeFromFavorites": "Retirer des favoris",
+      "search": "Recherche",
+      "wantsToChat": "veut discuter avec toi !",
+       "accept": "Accepter",
+        "decline": "Refuser",
+         "archive": "Archiver",
+    "unarchive": "Désarchiver",
+    "conversation": "la conversation",
+    "archiveMessage": "Archiver cette conversation ?",
+    "unarchiveMessage": "Désarchiver cette conversation ?",
+    "archiveError": "Erreur lors de l'archivage",
+    "loading": "Chargement...",
+    "addFavorite": "Ajouter aux favoris",
+    "removeFavorite": "Retirer des favoris"
   },
    
   "sidebar": {
@@ -187,6 +225,7 @@
     "Description": "Gérez votre statut de visibilité",
     "Everyone": "Tout le monde",
     "NoOne": "Personne"
+    
   },
 
   "privacy": {
@@ -305,7 +344,10 @@
     "memory_game": "Jeu de Mémoire",
     "tictac":"Devine le nombre"
   },
-
+"games": {
+    "selectGame": "Sélectionnez un jeu pour commencer l'aventure",
+     "play": "Jouer →"
+  },
 
   
   "Media":{
@@ -369,7 +411,9 @@
     "searchGroupe": "Rechercher un groupe",
      "favorites": "Conversations favorites",
     "archived": "Conversations archivées",
-    "showAll": "Tout voir"
+    "showAll": "Tout voir",
+     "pinned": "épinglé",
+  "plural": "s"
     
 
   },
@@ -432,9 +476,31 @@
     "lower": "C'est plus BAS !",
 
 "owlyQuiz": {
+    "replay": "Rejouer",
+   "fullStoryTitle": "🎉 Histoire complète d'Owly 🎉",
+  "nextChallenge": "Prochain défi",
     "title": "Owly Quiz",
-    "intro": "Ce jeu raconte l'histoire d'Owly. Pour la découvrir, réussis chaque défi.",
-
+   "intro": {
+    "description": "Ce jeu raconte l'histoire d'Owly. Pour la découvrir, réussis chaque défi.",
+    "startButton": "Commencer l'aventure"
+   
+  },"lost": {
+  "title": "💥 Fin de la partie",
+  "message": "Tu as échoué. Réessaye pour continuer l'histoire d'Owly.",
+  "retry": "🔁 Réessayer ce défi",
+  "restart": "Recommencer le jeu"
+},"memory": {
+      "title": "Défi mémoire"
+    },
+    "cups": {
+      "title": "Défi rapidité & logique — Trouve la boule !"
+    },
+"observation": {
+      "title": "Défi d'observation visuelle",
+       "question": "Quel symbole était à la position {{position}} ?"
+    }, "final": {
+      "title": "Question finale"
+    },
     "btn": {
       "start": "Commencer",
       "nextChallenge": "Prochain défi",
@@ -444,30 +510,15 @@
     },
 
     "puzzle": {
-      "title": "Puzzle — reconstitue l'image",
+     "title": "Puzzle — reconstitue l'image",
       "timer": "Temps"
     },
 
-    "memory": {
-      "title": "Défi mémoire"
-    },
+    
 
-    "cups": {
-      "title": "Défi rapidité & logique — Trouve la boule !"
-    },
+    
 
-    "observation": {
-      "title": "Défi d'observation visuelle",
-      "question": "Quel symbole était à la position {{pos}} ?"
-    },
-
-    "final": {
-   
-     "title": "Question finale",
-      "question": "Que symbolise Owly dans l’histoire ?",
-      "options": ["Pouvoir", "Connexion", "Richesse", "Secret"]
-  
-    },
+    
 
     "stages": {
       "gameOver": "💥 Game Over",
@@ -492,7 +543,130 @@
       "title": "Histoire complète d'Owly"
     }
   
-}
+},
+"lost": {
+  "title": "💥 Fin de la partie"
+},
+"help": {
+    "title": "Aide & Support",
+   "subtitle": "Trouvez des réponses à vos questions"
+  },
+   "about": {
+    "title": "À propos d'Owly",
+    "description": "Owly est votre application de messagerie complète avec chat sécurisé, appels, jeux intégrés et assistant IA. Version 1.0.0"
+  },
+  "faq": {
+    "title": "Questions fréquentes",
+    "messages": {
+      "question": "Comment envoyer une invitation à un contact ?",
+      "answer": "Pour ajouter un nouveau contact, recherchez son nom d'utilisateur dans la barre de recherche, puis envoyez-lui une invitation. L'autre personne devra accepter votre demande pour devenir votre contact."
+    },
+     "calls": {
+      "question": "Mes conversations sont-elles sécurisées ?",
+      "answer": "Oui ! Tous vos messages personnels sont chiffrés de bout en bout. Cela signifie que seuls vous et votre destinataire pouvez lire les messages échangés."
+    },
+     "block": {
+      "question": "Comment bloquer un utilisateur ?",
+      "answer": "Ouvrez une conversation avec l'utilisateur, cliquez sur les options (3 points), puis sélectionnez 'Bloquer'. Les utilisateurs bloqués ne pourront plus vous contacter."
+    },
+     "games": {
+      "question": "Comment accéder aux jeux ?",
+      "answer": "Cliquez sur l'icône 'Jeux' dans la barre latérale pour accéder à nos jeux intégrés : Owly Quiz, Pierre-Papier-Ciseaux, Jeu de Mémoire et Devine le nombre."
+    },
+     "ai": {
+      "question": "Qu'est-ce qu'Owly AI ?",
+      "answer": "Owly AI est notre assistant intelligent qui peut répondre à vos questions, vous aider et discuter avec vous. Accédez-y depuis la barre latérale."
+    }
+  },
+   "support": {
+    "contact": {
+      "title": "Nous contacter",
+      "description": "Besoin d'aide ? Envoyez-nous un e-mail",
+      "action": "owly.app.team@gmail.com"
+    },
+    "documentation": {
+      "title": "Documentation",
+      "description": "Guides et tutoriels complets",
+      "action": "Consulter les docs"
+    },
+     "moreHelp": "Besoin d'aide supplémentaire ?"
+  },
+  "status": {
+  "online": "En ligne",
+   "onlineSeconds": "En ligne il y a quelques secondes",
+  "onlineMinutes": "En ligne il y a {{count}} min",
+  "onlineHours": "En ligne il y a {{count}} h",
+  "onlineLong": "En ligne il y a longtemps",
+  "onlineMoment": "En ligne il y a un moment"
+},
+
+  "deleteConversationTitle": "Supprimer la conversation ?",
+  "deleteConversationWarning": "Tous vos messages  seront définitivement supprimés de votre côté. Cette action est irréversible.",
+ "cancelButton": "Annuler",
+ "deleteButton": "Supprimer",
+ "messageDeletedForYou": "Vous avez supprimé un message",
+ "deleteMessageTitle": "Supprimer le message",
+ "deleteMessageQuestion": "Que voulez-vous faire ?",
+ "deleteForMe": "Supprimer pour moi",
+ "deleteForMeInfo": "Vous ne verrez plus ce message, mais les autres le verront toujours.",
+ "deleteForEveryone": "Supprimer pour tout le monde",
+ "deleteWarningAll": "Ce message sera supprimé pour vous et les autres participants.",
+ "cancel": "Annuler",
+ "cancelRecording": "Annuler",
+ "network_error": "Erreur réseau",
+ "accept_error": "Erreur lors de l'acceptation",
+ "react": "Réagir",
+ "forward": "Transférer",
+ "delete": "Supprimer",
+ "pin": "Épingler",
+"unpin": "Désépingler",
+ "search_error": "Erreur de recherche",
+  "no_user_found": 
+    "Aucun utilisateur trouvé",
+    "suppression": "Erreur lors de la recherche",
+    "conversation_ouverture": "Impossible d'ouvrir la conversation",
+     "camera_access": "Impossible d'accéder à la caméra",
+  "qr_error": "QR code non reconnu",
+   "scan_error": "Erreur lors du scan",
+   "no_qr_detected": "Aucun QR code détecté dans l'image",
+   "search": "Recherche",
+  "qr_code": "QR Code",
+   "search_placeholder": "Rechercher sur Owly...",
+  "searching": "Recherche...",
+  "results": "Résultats",
+  "send_message": "Envoyer un message",
+  "no_results": "Aucun résultat pour \"{{query}}\"",
+  "loading": "Chargement...",
+  "no_contacts": "Aucun contact pour le moment",
+  "scan_qr_user": "Scannez le code QR d'un utilisateur",
+   "user_found": "Utilisateur trouvé",
+   
+  "message": "Message",
+  "scan_another_code": "Scanner un autre code",
+  "preparing": "Préparation...",
+    "or_upload_image": "OU téléchargez une image",
+     "choose_image": "Choisir une image",
+     "scan_qr_code": "Scanner un QR Code",
+     "file": {
+    "default_name": "Fichier",
+    "download": "Télécharger"
+  }
+  
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 

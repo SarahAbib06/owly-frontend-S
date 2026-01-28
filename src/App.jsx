@@ -28,18 +28,20 @@ import { ChatProvider } from "./context/ChatContext";
 import { useEffect } from "react";
 export default function App() {
   const currentUser = JSON.parse(localStorage.getItem("user")); // récupère l'utilisateur connecté
-  useEffect(() => {
+ 
+useEffect(() => {
   if (!currentUser) return;
 
   const fetchUserTheme = async () => {
     try {
-      const res = await fetch(`/api/user/${currentUser._id}`);
+      const res = await fetch(`/api/users/${currentUser._id}`);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
-      const theme = data.theme;
 
-      if (theme.type === "gradient") {
-        document.body.style.background = theme.value;
-      } else if (theme.type === "color" || theme.type === "seasonal") {
+      const theme = data.theme;
+      if (!theme) return;
+
+      if (theme.type === "gradient" || theme.type === "color" || theme.type === "seasonal") {
         document.body.style.background = theme.value;
       } else if (theme.type === "upload") {
         document.body.style.backgroundImage = `url(${theme.value})`;
@@ -47,12 +49,13 @@ export default function App() {
         document.body.style.backgroundRepeat = "no-repeat";
       }
     } catch (err) {
-      console.error(err);
+      console.error("Erreur lors du fetch du thème :", err);
     }
   };
 
   fetchUserTheme();
 }, []);
+
 
   return (
     <Router>

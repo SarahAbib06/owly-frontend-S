@@ -224,8 +224,8 @@ const toggleFavorite = async () => {
           }}
         >
           <Info size={15} />
-          <span>Infos sur {selectedChat?.name || "la conversation"}</span>
-        </div>
+  <span>{t("chat.infoOn", { name: selectedChat?.name || t("chat.defaultConversation") })}</span>
+</div>
 
         {/* Toggle Favoris */}
         <div
@@ -239,11 +239,11 @@ const toggleFavorite = async () => {
         >
           <Star size={15} fill={isFavorite ? "currentColor" : "none"} />
           <span>
-            {isFavorite
-              ? "Retirer des favoris"
-              : "Ajouter aux favoris"
-            }
-          </span>
+  {isFavorite
+    ? t("chat.removeFromFavorites")
+    : t("chat.addToFavorites")
+  }
+</span>
         </div>
 
         {/* Archiver/Désarchiver */}
@@ -288,21 +288,22 @@ const toggleFavorite = async () => {
         )}
 
         {/* Supprimer la conversation */}
-        <div
-          className="flex items-center gap-2 text-xs text-red-600 cursor-pointer py-2 px-2 rounded-md hover:bg-red-100 dark:hover:bg-red-700 transition-colors duration-150"
-          onClick={handleDeleteClick}
-        >
-          <Trash2 size={15} />
-          <span>Supprimer la conversation</span>
-        </div>
+<div
+  className="flex items-center gap-2 text-xs text-red-600 cursor-pointer py-2 px-2 rounded-md hover:bg-red-100 dark:hover:bg-red-700 transition-colors duration-150"
+  onClick={handleDeleteClick}
+>
+  <Trash2 size={15} />
+  <span>{t("chat.deleteConversation")}</span>
+</div>
 
-        {/* Recherche */}
-        <button
-          onClick={() => { onOpenSearch(); onClose(); }}
-          className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-200 cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 w-full transition-colors duration-150"
-        >
-          🔍 Recherche
-        </button>
+
+       <button
+  onClick={() => { onOpenSearch(); onClose(); }}
+  className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-200 cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 w-full transition-colors duration-150"
+>
+  🔍 {t("chat.search")}
+</button>
+
 
       </div>
 

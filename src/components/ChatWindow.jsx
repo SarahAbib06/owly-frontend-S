@@ -41,6 +41,24 @@ import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
 import MessageRequestBanner from "./MessageRequestBanner";
 import Modal from "./Modal";
+function adjustColor(col, amt) {
+  let usePound = false;
+  if (col[0] === "#") {
+    col = col.slice(1);
+    usePound = true;
+  }
+
+  let num = parseInt(col,16);
+  let r = (num >> 16) + amt;
+  let g = ((num >> 8) & 0x00FF) + amt;
+  let b = (num & 0x0000FF) + amt;
+
+  r = Math.min(255, Math.max(0, r));
+  g = Math.min(255, Math.max(0, g));
+  b = Math.min(255, Math.max(0, b));
+
+  return (usePound ? "#" : "") + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+}
 
 
 const SeenIconGray = () => (
@@ -73,11 +91,13 @@ const formatDateLabel = (dateString, t) => {
 
   if (diff === 0) return t("chat.today") || "Aujourd'hui";
   if (diff === 86400000) return t("chat.yesterday") || "Hier";
+ // ⚡ utiliser la locale depuis i18next
+  const locale = t("chat.locale") || "fr-FR";
 
-  return msgDate.toLocaleDateString("fr-FR", {
+  return msgDate.toLocaleDateString(locale, {
     day: "numeric",
     month: "long",
-    year: "numeric",
+    year: "numeric"
   });
 };
 
@@ -122,7 +142,7 @@ const TypingIndicator = ({ avatar, username }) => (
         className="w-8 h-8 rounded-full object-cover"
       />
     </div>
-   
+    
     {/* Bulle de message avec animation */}
     <div className="flex flex-col max-w-[70%]">
       {username && !selectedChat?.isGroup && (
@@ -130,27 +150,27 @@ const TypingIndicator = ({ avatar, username }) => (
           {username}
         </p>
       )}
-     
+      
       <div className="bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-3">
         <div className="flex items-center gap-1">
           {/* Animation des trois points */}
           <div className="flex items-center gap-1">
-            <div
+            <div 
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
               style={{ animationDelay: '0ms' }}
             ></div>
-            <div
+            <div 
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
               style={{ animationDelay: '150ms' }}
             ></div>
-            <div
+            <div 
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
               style={{ animationDelay: '300ms' }}
             ></div>
           </div>
         </div>
       </div>
-     
+      
       {/* Timestamp (optionnel) */}
       <div className="text-[10px] mt-1 text-gray-500 dark:text-gray-400">
         {new Date().toLocaleTimeString("fr-FR", {
@@ -162,7 +182,7 @@ const TypingIndicator = ({ avatar, username }) => (
   </div>
 );
 
-export default function ChatWindow({ selectedChat, onBack, onConversationDeleted }) {
+export default function ChatWindow({ selectedChat, onBack }) {
   const { t } = useTranslation();
   const isFromArchived = selectedChat?.isFromArchived === true;
   const { conversations, archivedConversations } = useChat();
@@ -190,10 +210,10 @@ const [mediaList, setMediaList] = useState([]);
 const { conversations: myConversations, loading: convLoading } = useConversations();
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
- 
+  
   // Récupérer le userId de l'autre utilisateur
-  const otherUserId = selectedChat?.isGroup
-    ? null
+  const otherUserId = selectedChat?.isGroup 
+    ? null 
     : selectedChat?.participants?.find(
         participant => {
           const participantId = participant._id || participant.id;
@@ -228,8 +248,8 @@ console.log('🔍 DEBUG MESSAGE REQUEST:', {
 });
 
 // ✅ CORRECTION ICI : Vérifier que JE SUIS le destinataire (messageRequestFor)
-const isIncomingMessageRequest =
-  selectedChat?.isMessageRequest === true &&
+const isIncomingMessageRequest = 
+  selectedChat?.isMessageRequest === true && 
   selectedChat?.messageRequestFor?.toString() === user?.id?.toString();
 
 console.log('🚨 isIncomingMessageRequest =', isIncomingMessageRequest);
@@ -246,9 +266,10 @@ console.log('🚨 isIncomingMessageRequest =', isIncomingMessageRequest);
 });
 
 const getUserStatusText = () => {
+  
   // 🟢 Online
   if (contactStatus.isOnline) {
-    return "En ligne";
+    return  t("status.online");
   }
 // 🔒 Si pas de lastSeen ET offline → Statut masqué (statusVisibility = "Personne")
   if (!contactStatus.lastSeen) {
@@ -263,14 +284,14 @@ const getUserStatusText = () => {
     const diffMin = Math.floor(diffMs / 60000);
     const diffHour = Math.floor(diffMin / 60);
 
-    if (diffMin < 1) return "En ligne il y a quelques secondes";
-    if (diffMin < 60) return `En ligne il y a ${diffMin} min`;
-    if (diffHour < 24) return `En ligne il y a ${diffHour} h`;
+    if (diffMin < 1) return t("status.onlineSeconds");
+    if (diffMin < 60) return t("status.onlineMinutes", { count: diffMin });
+    if (diffHour < 24) return t("status.onlineHours", { count: diffHour });
 
-    return "En ligne il y a longtemps";
+    return t("status.onlineLong");
   }
 
-  return "En ligne il y a un moment";
+  return t("status.onlineMoment");
 };
 useEffect(() => {
   if (!contactStatus.lastSeen || contactStatus.isOnline) return;
@@ -327,7 +348,7 @@ const contactId = React.useMemo(() => {
 
  const otherUserName = React.useMemo(() => {
   if (selectedChat?.isGroup) return null;
- 
+  
   // Essayer de trouver dans participants
   const otherParticipant = selectedChat?.participants?.find(
     participant => {
@@ -337,21 +358,21 @@ const contactId = React.useMemo(() => {
     }
 
   );
- 
+  
   if (otherParticipant?.username) {
     return otherParticipant.username;
   }
- 
+  
   // Sinon, utiliser le nom de la conversation
   if (selectedChat?.name) {
     return selectedChat.name;
   }
- 
+  
   // Sinon, utiliser targetUser s'il existe
   if (selectedChat?.targetUser?.username) {
     return selectedChat.targetUser.username;
   }
- 
+  
   return null;
 }, [selectedChat, user]);
 
@@ -368,7 +389,7 @@ useEffect(() => {
   return () => document.removeEventListener('mousedown', handleClickOutside);
 }, [showEmojiPicker]);
 // Après les autres useEffect (vers la fin du composant, avant les returns), ajoute :
-// ajouter pour supprimer
+// ajouter pour supprimer 
 
   // Sauvegarder les messages supprimés
   useEffect(() => {
@@ -397,10 +418,10 @@ useEffect(() => {
   // Écouter les changements en temps réel via socket
   useEffect(() => {
     if (!socketService.socket || !contactId) return;
-   
+    
     window.socket = socketService.socket;
     console.log("🌐 Socket accessible via window.socket");
-   
+    
     const handleOnline = ({ userId }) => {
       if (!contactId) return;
       if (String(userId) === String(contactId)) {
@@ -434,7 +455,7 @@ useEffect(() => {
 
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
- 
+  
   // Écoute les thèmes envoyés par l'autre participant
   useEffect(() => {
     if (!socketService.socket || !selectedChat) return;
@@ -457,8 +478,8 @@ useEffect(() => {
   const [sendBtnColor, setSendBtnColor] = useState("");
   const [themeEmojis, setThemeEmojis] = useState([]);
   const [inputText, setInputText] = useState("");
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null); 
+  const [filePreview, setFilePreview] = useState(null); 
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState([]);
@@ -466,7 +487,7 @@ useEffect(() => {
   const [searchTerm, setSearchTerm] = useState("");
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showPinnedSection, setShowPinnedSection] = useState(false);
- 
+  
   // États pour les interactions
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
@@ -594,7 +615,7 @@ useEffect(() => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesContainerRef = useRef(null);
- 
+  
   const [isConfirmUnblockModalOpen, setIsConfirmUnblockModalOpen] = useState(false);
 
   // Hooks pour la messagerie
@@ -701,17 +722,17 @@ const goToNextMedia = () => {
 };
 
   // Gérer l'upload de fichiers
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-   
-    setSelectedFile(file);
-   
-    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
-      setFilePreview(URL.createObjectURL(file));
-    } else {
-      setFilePreview(null);
-    }
+  const handleFileSelect = (e) => { 
+    const file = e.target.files[0]; 
+    if (!file) return; 
+    
+    setSelectedFile(file); 
+    
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) { 
+      setFilePreview(URL.createObjectURL(file)); 
+    } else { 
+      setFilePreview(null); 
+    } 
   };
 
   // Enregistrement audio
@@ -759,7 +780,7 @@ const handleMicClick = async () => {
  
  
 
- 
+  
 
   // Gestion upload fichier
   if (theme.type === "upload" && theme.value instanceof File) {
@@ -773,7 +794,7 @@ const handleMicClick = async () => {
     setThemeStyle(style);
     setSendBtnColor("");
     setBubbleBg("");
-   
+    
     if (save) {
       localStorage.setItem(chatKey, JSON.stringify({ ...theme, value: base64 }));
       // 🆕 SAUVEGARDER DANS LE BACKEND
@@ -793,7 +814,7 @@ const handleMicClick = async () => {
     setThemeStyle(style);
     setSendBtnColor("");
     setBubbleBg("");
-   
+    
     if (save) {
       localStorage.setItem(chatKey, JSON.stringify(theme));
       // 🆕 SAUVEGARDER DANS LE BACKEND
@@ -844,7 +865,7 @@ const handleMicClick = async () => {
 const saveThemeToBackend = async (theme) => {
   try {
     const token = localStorage.getItem("token");
-   
+    
     console.log("💾 Sauvegarde thème backend:", {
       conversationId: selectedChat._id,
       type: theme.type,
@@ -883,7 +904,7 @@ const saveThemeToBackend = async (theme) => {
 const loadThemeFromBackend = React.useCallback(async () => {
   try {
     const token = localStorage.getItem("token");
-   
+    
     console.log("📥 Chargement thème backend pour:", selectedChat._id);
 
     const response = await fetch(
@@ -897,7 +918,7 @@ const loadThemeFromBackend = React.useCallback(async () => {
 
     if (!response.ok) {
       console.log("ℹ️ Pas de thème en backend, utilisation localStorage");
-     
+      
       // Fallback sur localStorage
       const savedTheme = localStorage.getItem(chatKey);
       if (savedTheme) {
@@ -917,16 +938,16 @@ const loadThemeFromBackend = React.useCallback(async () => {
         emojis: data.data.emojis,
         name: data.data.name,
       };
-     
+      
       // Appliquer le thème SANS sauvegarder (déjà en DB)
       applyTheme(theme, false);
-     
+      
       // Sync localStorage pour cohérence
       localStorage.setItem(chatKey, JSON.stringify(theme));
     }
   } catch (error) {
     console.error("💥 Erreur chargement thème:", error);
-   
+    
     // Fallback sur localStorage
     const savedTheme = localStorage.getItem(chatKey);
     if (savedTheme) {
@@ -944,11 +965,11 @@ const removeTheme = async () => {
   setThemeEmojis([]);
   setFloatingEmojis([]);
   localStorage.removeItem(chatKey);
- 
+  
   // 🆕 SUPPRIMER AUSSI DU BACKEND
   try {
     const token = localStorage.getItem("token");
-   
+    
     const response = await fetch(
       `http://localhost:5000/api/themes/${selectedChat._id}`,
       {
@@ -983,10 +1004,10 @@ useEffect(() => {
   const handleThemeChanged = ({ conversationId, theme }) => {
     if (conversationId === selectedChat._id) {
       console.log("🎨 Thème reçu via socket:", theme);
-     
+      
       // Appliquer le thème reçu SANS sauvegarder (déjà fait par l'émetteur)
       applyTheme(theme, false);
-     
+      
       // Sync localStorage
       localStorage.setItem(chatKey, JSON.stringify(theme));
     }
@@ -996,7 +1017,7 @@ useEffect(() => {
   const handleThemeRemoved = ({ conversationId }) => {
     if (conversationId === selectedChat._id) {
       console.log("🗑️ Thème supprimé via socket");
-     
+      
       // Réinitialiser
       setThemeStyle({});
       setBubbleBg("");
@@ -1023,12 +1044,12 @@ const handleAcceptCall = () => {
   }
 
   console.log('✅ Acceptation de l\'appel:', incomingCall);
- 
+  
   // ⚠️ NE ÉMETTRE call:accept QU'UNE SEULE FOIS
   // Désactiver immédiatement pour éviter les doubles clics
   const callToAccept = { ...incomingCall };
   setIncomingCall(null); // Fermer la modal AVANT d'émettre
- 
+  
   socketService.socket.emit('call:accept', {
     callId: callToAccept.callId,
     callerId: callToAccept.callerId
@@ -1133,15 +1154,15 @@ const conversationAvatar = React.useMemo(() => {
   console.log("1. selectedChat:", selectedChat);
   console.log("2. targetUser:", selectedChat?.targetUser);
   console.log("3. targetUser.profilePicture:", selectedChat?.targetUser?.profilePicture);
- 
+  
   if (selectedChat?.isGroup) return "/group-avatar.png";
- 
+  
   // 1. Chercher dans targetUser (vient de SearchModal)
   if (selectedChat?.targetUser?.profilePicture) {
     console.log("✅ Photo trouvée dans targetUser:", selectedChat.targetUser.profilePicture);
     return selectedChat.targetUser.profilePicture;
   }
- 
+  
   // 2. Chercher dans participants
   const fromParticipants = selectedChat?.participants?.find(
     p => {
@@ -1150,12 +1171,12 @@ const conversationAvatar = React.useMemo(() => {
       return pid && uid && String(pid) === String(uid);
     }
   )?.profilePicture;
- 
+  
   if (fromParticipants) {
     console.log("✅ Photo trouvée dans participants:", fromParticipants);
     return fromParticipants;
   }
- 
+  
   console.log("❌ Aucune photo trouvée, utilisation par défaut");
   return "/default-avatar.png";
 }, [selectedChat, otherUserId]);
@@ -1246,7 +1267,7 @@ const conversationAvatar = React.useMemo(() => {
         console.error("Erreur épinglage:", error);
       }
     };
-   
+    
     const handleDeleteMessage = (msgId) => {
       if (window.confirm("Supprimer ce message pour moi ?")) {
         setDeletedMessages(prev => [...prev, msgId]);
@@ -1269,10 +1290,31 @@ const conversationAvatar = React.useMemo(() => {
               className={`${bubbleClasses(fromMe)} ${
                 isMatch ? "ring-2 ring-blue-400" : ""
               } cursor-pointer`}
-              style={{
-                background: fromMe ? bubbleBg || undefined : undefined,
-                color: textColor,
-              }}
+        style={{
+  background: fromMe
+    ? themeStyle.backgroundImage || bubbleBg || themeStyle.background || "#FFECA1"
+    : undefined,
+
+  color: textColor,
+
+  border: fromMe
+    ? themeStyle.backgroundImage
+      ? "2px solid rgba(255, 255, 255, 0.8)" // bordure visible
+      : `1px solid ${adjustColor(bubbleBg || themeStyle.background || "#FAFAFA", -40)}`
+    : undefined,
+
+  boxShadow: fromMe && themeStyle.backgroundImage
+    ? "0 0 8px rgba(0,0,0,0.25)" // ombre pour détacher du background
+    : "none",
+
+  // Optionnel : foncer légèrement le dégradé pour le rendre lisible
+  filter: fromMe && themeStyle.backgroundImage
+    ? "brightness(0.9)" 
+    : "none"
+}}
+
+
+
               onMouseDown={startLongPress}
               onMouseUp={cancelLongPress}
               onMouseLeave={cancelLongPress}
@@ -1293,7 +1335,7 @@ const conversationAvatar = React.useMemo(() => {
 
               {msg.typeMessage === "image" && (
                 <img
-                  src={msg.content}
+                  src={msg.content} 
                   alt="image"
                   className="max-w-full rounded mt-1 cursor-pointer" 
                   style={{ maxHeight: "300px" }}
@@ -1303,7 +1345,7 @@ const conversationAvatar = React.useMemo(() => {
 
               {msg.typeMessage === "video" && (
                 <video
-                  src={msg.content}
+                  src={msg.content} 
                   controls
                    className="max-w-full rounded mt-1 cursor-pointer" 
                   style={{ maxHeight: "300px" }}
@@ -1317,13 +1359,30 @@ const conversationAvatar = React.useMemo(() => {
                 <AudioMessage   key={msg._id} src={msg.content || msg.fileUrl} />
               )}
               {msg.typeMessage === "file" && (
-                <a
-                  href={msg.content}
-                  download
-                  className="flex items-center gap-2 underline"
-                >
-                  📎 {msg.fileName || "Fichier"}
-                </a>
+<a
+  href={msg.content}
+  download={msg.fileName || t("file.default_name")}
+  className="flex items-center gap-1 p-1
+             rounded-lg bg-gray-100 dark:bg-neutral-800
+             border border-gray-300 dark:border-neutral-700
+             shadow-sm hover:bg-gray-200 dark:hover:bg-neutral-700
+             transition w-fit max-w-[230px]"
+>
+  {/* Icône plus petite */}
+  <div className="text-lg">📄</div>
+
+  {/* Texte */}
+  <div className="flex flex-col">
+    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[150px]">
+     {msg.fileName || t("file.default_name")}
+    </span>
+
+    <span className="text-[10px] text-gray-500 dark:text-gray-400">
+      {t("file.download")}
+    </span>
+  </div>
+</a>
+
               )}
             </div>
 
@@ -1341,14 +1400,16 @@ const conversationAvatar = React.useMemo(() => {
                   }}
                   className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
                 >
-                  <Smile size={16} /> Réagir
+                  <Smile size={16} /> {t("react")}
                 </button>
                 <button
                   onClick={handlePinMessage}
                   className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
                 >
                   <Pin size={16} />{" "}
-                  {msg.isPinned ? "Désépingler" : "Épingler"}
+                  
+                  {msg.isPinned ? t("unpin") : t("pin")}
+
                 </button>
                 <button
                   onClick={() => {
@@ -1359,7 +1420,7 @@ const conversationAvatar = React.useMemo(() => {
                   }}
                   className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
                 >
-                  <CornerUpRight size={16} /> Transférer
+                  <CornerUpRight size={16} /> {t("forward")}
                 </button>
                 {fromMe && (
                   <button
@@ -1370,7 +1431,7 @@ const conversationAvatar = React.useMemo(() => {
                     }}
                     className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
                   >
-                    <Trash2 size={16} /> Supprimer
+                    <Trash2 size={16} />{t("delete")}
                   </button>
                 )}
               </div>
@@ -1421,15 +1482,19 @@ const conversationAvatar = React.useMemo(() => {
             <span>{messageTime}</span>
 
             {fromMe && (
-              <span className="flex items-center gap-1">
-    {msg.status === "sending" ? (
-      // 1 flèche grise (en cours d'envoi)
-      <span className="text-gray-400">✓</span>
-    ) : (
-      // 2 flèches grises (envoyé avec succès)
-      <span className="text-gray-500">✓✓</span>
-    )}
-  </span>
+               <span className="flex items-center gap-1">
+                {msg._id.startsWith("pending_") || msg.status === "sending" ? (
+                  <span className="flex items-center gap-1 text-gray-400">
+                    ✓
+                  </span>
+                ) : msg.status === "seen" || (msg.readBy && msg.readBy.length > 0) ? (
+                  // 👁️ VU - DOUBLE COCHE BLEUE
+                  <span className="text-blue-500">✓✓✓</span>
+                ) : (
+                  // Envoyé - DOUBLE COCHE GRISE
+                  <span className="text-gray-400">✓✓</span>
+                )}
+              </span>
             )}
           </div>
         </div>
@@ -1545,7 +1610,7 @@ const conversationAvatar = React.useMemo(() => {
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
             onClick={() => alert("Fonctionnalité d'appel vidéo bientôt disponible!")}
           />
-         
+          
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
               size={16}
@@ -1564,7 +1629,7 @@ const conversationAvatar = React.useMemo(() => {
             const token = localStorage.getItem("token");
             try {
               console.log('🟢 Acceptation demande pour conversation:', selectedChat._id);
-             
+              
               const res = await fetch("http://localhost:5000/api/relations/accept-request", {
                 method: "POST",
                 headers: {
@@ -1581,11 +1646,12 @@ const conversationAvatar = React.useMemo(() => {
                 window.location.reload();
               } else {
                 console.error('❌ Erreur accept:', data);
-                alert(data.error || "Erreur lors de l'acceptation");
+               alert(data.error || t("accept_error"));
+
               }
             } catch (err) {
               console.error('❌ Erreur réseau accept:', err);
-              alert("Erreur réseau");
+             alert(t("network_error"));
             }
           }}
           onDelete={async () => {
@@ -1594,7 +1660,7 @@ const conversationAvatar = React.useMemo(() => {
             const token = localStorage.getItem("token");
             try {
               console.log('🔴 Suppression demande pour conversation:', selectedChat._id);
-             
+              
               const res = await fetch("http://localhost:5000/api/relations/delete-request", {
                 method: "POST",
                 headers: {
@@ -1615,7 +1681,7 @@ const conversationAvatar = React.useMemo(() => {
               }
             } catch (err) {
               console.error('❌ Erreur réseau delete:', err);
-              alert("Erreur réseau");
+             alert(t("network_error"));
             }
           }}
         />
@@ -1628,7 +1694,7 @@ const conversationAvatar = React.useMemo(() => {
             <div className="flex items-center gap-1.5">
               <Pin size={14} className="text-yellow-600 dark:text-yellow-400" />
               <span className="text-xs font-medium text-yellow-800 dark:text-yellow-300">
-                {pinnedMessages.length} épinglé{pinnedMessages.length > 1 ? "s" : ""}
+                {pinnedMessages.length} {t("messages.pinned")}{pinnedMessages.length > 1 ?  t("messages.plural") : ""}
               </span>
             </div>
             <button
@@ -1730,12 +1796,12 @@ const conversationAvatar = React.useMemo(() => {
           <div
             className={`
               max-w-[85%] px-4 py-3 rounded-lg text-sm italic text-gray-500 dark:text-gray-400
-              ${wasFromMe
-                ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none"
+              ${wasFromMe 
+                ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none" 
                 : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"}
             `}
           >
-            Vous avez supprimé un message
+           {t("messageDeletedForYou")}
           </div>
         </div>
       </div>
@@ -1764,7 +1830,7 @@ const conversationAvatar = React.useMemo(() => {
 
         {/* 🔥 INDICATEUR "EN TRAIN D'ÉCRIRE" */}
         {isTyping && typingUsers.length > 0 && (
-          <TypingIndicator
+          <TypingIndicator 
             avatar={otherUserAvatar}
             username={selectedChat?.isGroup ? typingUsers[0]?.username : null}
           />
@@ -1814,7 +1880,7 @@ const conversationAvatar = React.useMemo(() => {
             {(recordingTime % 60).toString().padStart(2, "0")}
           </span>
           <button onClick={cancelRecording} className="ml-4 text-xs underline">
-            Annuler
+           {t("cancelRecording")}
           </button>
         </div>
       )}
@@ -1841,7 +1907,7 @@ const conversationAvatar = React.useMemo(() => {
             }}
             className="text-xs text-red-500 underline mt-1"
           >
-            Annuler
+           {t("cancel")}
           </button>
         </div>
       )}
@@ -1871,8 +1937,8 @@ const conversationAvatar = React.useMemo(() => {
               <Smile
                 size={18}
                 className={`cursor-pointer transition-colors ${
-                  showEmojiPicker
-                    ? 'text-myYellow'
+                  showEmojiPicker 
+                    ? 'text-myYellow' 
                     : 'text-gray-700 dark:text-gray-300'
                 }`}
               />
@@ -1993,14 +2059,14 @@ const conversationAvatar = React.useMemo(() => {
       {/* Header */}
       <div className="px-6 py-5 border-b border-gray-200 dark:border-neutral-700">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Supprimer le message
+            {t("deleteMessageTitle")}
         </h3>
       </div>
 
       {/* Corps */}
       <div className="px-6 py-6 space-y-6">
         <p className="text-sm text-gray-600 dark:text-gray-300">
-          Que voulez-vous faire ?
+           {t("deleteMessageQuestion")}
         </p>
 
         <div className="space-y-3">
@@ -2012,9 +2078,9 @@ const conversationAvatar = React.useMemo(() => {
             }}
             className="w-full px-4 py-3 text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
           >
-            <div className="font-medium">Supprimer pour moi</div>
+            <div className="font-medium">{t("deleteForMe")}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              Vous ne verrez plus ce message, mais les autres le verront toujours.
+               {t("deleteForMeInfo")}
             </div>
           </button>
 
@@ -2026,9 +2092,9 @@ const conversationAvatar = React.useMemo(() => {
             }}
             className="w-full px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
           >
-            <div className="font-medium">Supprimer pour tout le monde</div>
+            <div className="font-medium">{t("deleteForEveryone")}</div>
             <div className="text-xs text-red-500/80 dark:text-red-400/80">
-              Ce message sera supprimé pour vous et les autres participants.
+                {t("deleteWarningAll")}
             </div>
           </button>
         </div>
@@ -2040,7 +2106,7 @@ const conversationAvatar = React.useMemo(() => {
           onClick={() => setShowDeleteModal(false)}
           className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
         >
-          Annuler
+        {t("cancel")}
         </button>
       </div>
     </div>
@@ -2056,7 +2122,7 @@ const conversationAvatar = React.useMemo(() => {
       selectedChat={{
         ...selectedChat,
         //  AJOUTER le userId de l'autre utilisateur
-        userId: selectedChat?.isGroup
+        userId: selectedChat?.isGroup 
           ? null // Pas de blocage pour les groupes
           : selectedChat?.participants?.find(
               participant => {
@@ -2075,7 +2141,6 @@ const conversationAvatar = React.useMemo(() => {
       onOpenSearch={() => setOpenSearch(true)}
       // ✅ Ajouter le callback pour refresh
       onBlockStatusChange={() => refresh()}
-      onConversationDeleted={onConversationDeleted}
     />
   </>
 )}
@@ -2088,18 +2153,9 @@ const conversationAvatar = React.useMemo(() => {
       onArchive: async () => {
         try {
           if (isArchived) {
-            // Désarchivage
             await unarchiveConversation(selectedChat._id);
-            
-            // ← AJOUTE ÇA : on rafraîchit la liste + ferme le chat
-            if (typeof onConversationDeleted === 'function') {
-              onConversationDeleted();
-            }
           } else {
-            // Archivage → on laisse le comportement actuel
             await archiveConversation(selectedChat._id);
-            
-            // Si tu veux aussi rafraîchir ici : onConversationDeleted?.();
           }
         } catch (err) {
           alert("Erreur lors de l'opération");
@@ -2108,8 +2164,7 @@ const conversationAvatar = React.useMemo(() => {
       isArchived: isArchived,
     }}
     onClose={() => setIsInfoOpen(false)}
-    onBlockStatusChange={() => refresh()}
-    onConversationDeleted={onConversationDeleted}   // ← AJOUTE CETTE PROP ICI
+      onBlockStatusChange={() => refresh()}
   />
 )}
 {/* 🔥 LIGHTBOX MODAL POUR MÉDIAS */}

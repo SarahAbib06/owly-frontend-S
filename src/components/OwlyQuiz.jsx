@@ -339,15 +339,16 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
             className="max-w-2xl w-full text-center mt-8 p-6 sm:p-8 bg-white rounded-2xl shadow-2xl relative z-10"
           >
             <p variants={itemVariants} className="text-base sm:text-lg mb-6 leading-relaxed">
-              Ce jeu raconte l'histoire d'Owly. Pour la découvrir, réussis chaque défi.
-            </p>
+  {t("owlyQuiz.intro.description")}
+</p>
+
             <button 
               variants={itemVariants}
               onClick={startChallenge}
               whileTap={{ scale: 0.95 }}
               className="px-8 py-3 rounded-xl bg-[#ffd54f] border-none font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              Commencer l'aventure
+             {t("owlyQuiz.intro.startButton")}
             </button>
           </div>
         )}
@@ -362,7 +363,10 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
             className="mt-8 relative z-10 w-full flex flex-col items-center"
           >
             <div variants={itemVariants} className="text-center mb-6">
-              <h2 className="text-2xl sm:text-3xl font-bold mb-3">Puzzle — reconstitue l'image</h2>
+             <h2 className="text-2xl sm:text-3xl font-bold mb-3">
+  {t("owlyQuiz.puzzle.title")}
+</h2>
+
               <div 
                 className="inline-block px-6 py-2 bg-white rounded-full shadow-lg"
                 animate={{
@@ -419,7 +423,7 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
             className="text-center mt-8 relative z-10 w-full max-w-2xl px-4"
           >
             <h2 variants={itemVariants} className="text-2xl sm:text-3xl font-bold mb-6">
-              Défi mémoire
+               {t("owlyQuiz.memory.title")}
             </h2>
             <div variants={itemVariants} className="text-4xl sm:text-5xl mb-8 bg-white p-6 rounded-2xl shadow-xl">
               {playerSeq.length > 0 ? playerSeq.join(" ") : memorySeq.map(() => "❓").join(" ")}
@@ -449,7 +453,7 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
             className="text-center mt-8 relative z-10 w-full max-w-2xl px-4"
           >
             <h2 variants={itemVariants} className="text-xl sm:text-2xl lg:text-3xl font-bold mb-8">
-              Défi rapidité & logique — Trouve la boule !
+              {t("owlyQuiz.cups.title")}
             </h2>
             <div variants={itemVariants} className="flex gap-4 sm:gap-6 justify-center">
               {cups.map((c, i) => (
@@ -480,7 +484,7 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
             className="text-center mt-8 relative z-10 w-full max-w-2xl px-4"
           >
             <h2 variants={itemVariants} className="text-2xl sm:text-3xl font-bold mb-8">
-              Défi d'observation visuelle
+               {t("owlyQuiz.observation.title")}
             </h2>
             {showGrid ? (
               <div 
@@ -506,9 +510,13 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
               </div>
             ) : (
               <>
-                <p variants={itemVariants} className="text-lg sm:text-xl mb-6 bg-white p-4 rounded-xl shadow-lg">
-                  Quel symbole était à la position {obsQuestion.index + 1} ?
-                </p>
+               <p
+  variants={itemVariants}
+  className="text-lg sm:text-xl mb-6 bg-white p-4 rounded-xl shadow-lg"
+>
+  {t("owlyQuiz.observation.question", { position: obsQuestion.index + 1 })}
+</p>
+
                 <div variants={itemVariants} className="flex flex-wrap gap-3 sm:gap-4 justify-center">
                   {obsOptions.map((icon, i) => (
                     <button
@@ -536,7 +544,7 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
             className="text-center mt-8 relative z-10 w-full max-w-2xl px-4"
           >
             <h2 variants={itemVariants} className="text-2xl sm:text-3xl font-bold mb-6">
-              Question finale
+               {t("owlyQuiz.final.title")}
             </h2>
             <p variants={itemVariants} className="text-lg sm:text-xl mb-8 bg-white p-6 rounded-2xl shadow-xl">
               {finalQues.question}
@@ -568,50 +576,55 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
             <p variants={itemVariants} className="leading-7 text-base sm:text-lg mb-6">
               {STORY_PARAGRAPHS[storyIndex - 1]}
             </p>
-            <button
-              variants={itemVariants}
-              onClick={nextStage}
-              whileTap={{ scale: 0.95 }}
-              className="w-full sm:w-auto px-8 py-3 rounded-xl bg-[#ffd54f] font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              Prochain défi →
-            </button>
+           <button
+  variants={itemVariants}
+  onClick={nextStage}
+  whileTap={{ scale: 0.95 }}
+  className="w-full sm:w-auto px-8 py-3 rounded-xl bg-[#ffd54f] font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+>
+  {t("owlyQuiz.nextChallenge")} →
+</button>
+
           </div>
         )}
 
-        {/* LOST */}
-        {stage === "lost" && (
-          <div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="max-w-2xl w-full mt-8 p-6 sm:p-8 bg-white rounded-2xl shadow-2xl text-center relative z-10"
-          >
-            <h2 variants={itemVariants} className="text-3xl sm:text-4xl font-bold mb-4">
-              💥 Game Over
-            </h2>
-            <p variants={itemVariants} className="text-base sm:text-lg mb-6">
-              Tu as échoué. Réessaye pour continuer l'histoire d'Owly.
-            </p>
-            <div variants={itemVariants} className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-              <button
-                onClick={startChallenge}
-                whileTap={{ scale: 0.95 }}
-                className="px-6 py-3 rounded-xl bg-[#ffd54f] font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                🔁 Réessayer ce défi
-              </button>
-              <button
-                onClick={resetGame}
-                whileTap={{ scale: 0.95 }}
-                className="px-6 py-3 rounded-xl bg-gray-300 font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                Recommencer le jeu
-              </button>
-            </div>
-          </div>
-        )}
+       {/* LOST */}
+{stage === "lost" && (
+  <div
+    variants={containerVariants}
+    initial="hidden"
+    animate="visible"
+    exit="exit"
+    className="max-w-2xl w-full mt-8 p-6 sm:p-8 bg-white rounded-2xl shadow-2xl text-center relative z-10"
+  >
+    <h2 variants={itemVariants} className="text-3xl sm:text-4xl font-bold mb-4">
+      {t("owlyQuiz.lost.title")}
+    </h2>
+
+    <p variants={itemVariants} className="text-base sm:text-lg mb-6">
+      {t("owlyQuiz.lost.message")}
+    </p>
+
+    <div variants={itemVariants} className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+      <button
+        onClick={startChallenge}
+        whileTap={{ scale: 0.95 }}
+        className="px-6 py-3 rounded-xl bg-[#ffd54f] font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+      >
+        {t("owlyQuiz.lost.retry")}
+      </button>
+
+      <button
+        onClick={resetGame}
+        whileTap={{ scale: 0.95 }}
+        className="px-6 py-3 rounded-xl bg-gray-300 font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+      >
+        {t("owlyQuiz.lost.restart")}
+      </button>
+    </div>
+  </div>
+)}
+
 
         {/* FINISHED */}
         {stage === "finished" && (
@@ -623,7 +636,7 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
             className="max-w-3xl w-full mt-8 p-6 sm:p-8 bg-white rounded-2xl shadow-2xl relative z-10"
           >
             <h2 variants={itemVariants} className="text-3xl sm:text-4xl font-bold mb-8 text-center">
-              🎉 Histoire complète d'Owly 🎉
+                {t("owlyQuiz.fullStoryTitle")}
             </h2>
             {STORY_PARAGRAPHS.map((p, i) => (
               <p 
@@ -640,7 +653,7 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
               whileTap={{ scale: 0.95 }}
               className="w-full sm:w-auto px-8 py-3 rounded-xl bg-[#ffd54f] font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300 mt-6"
             >
-              🔄 Rejouer
+               🔄 {t("owlyQuiz.replay")}
             </button>
           </div>
         )}

@@ -11,7 +11,19 @@
     "register": "Register",
      "loading": "Logging in..."
   },
+"errors": {
+  "invalidPassword": "Incorrect password",
+  "serverError": "Server error",
+  "loginFailed": "Login failed"
+},
   "register": {
+    "errors": {
+      "allFieldsRequired": "All fields are required",
+      "acceptTerms": "You must accept the terms",
+      "passwordMismatch": "Passwords do not match",
+       "usernameLength": "Username must be between 3 and 30 characters"
+      
+    },
     "createAccount": "Create your account",
     "subtitle": "Join the revolution",
     "username": "Username",
@@ -60,9 +72,17 @@
 
 },
  "chat": {
-
-    "today": "Today",
+ "today": "Today",
     "yesterday": "Yesterday",
+    "locale": "en-US",
+
+
+
+   
+  "deleteConversation": "Delete conversation?",
+   "messageDeletedByYou": "You deleted a message",
+    "new": "New chat",
+   
     "online": "Online",
     "inputPlaceholder": "Enter a message...",
     "reactions": "Reactions",
@@ -73,8 +93,24 @@
     "blockMessage": "You cannot contact or call this person in this conversation. You will not receive their messages or calls.",
     "userUnblocked": "User successfully unblocked",
     "unblock": "Unblock",
-    "blockedByOther": "You cannot send messages to this person"
-
+    "blockedByOther": "You cannot send messages to this person",
+     "infoOn": "Info on {{name}}",
+    "defaultConversation": "the conversation",
+     "addToFavorites": "Add to favorites",
+    "removeFromFavorites": "Remove from favorites",
+       "search": "Search",
+        "wantsToChat": "wants to chat with you!",
+         "accept": "Accept",
+         "decline": "Decline",
+         "archive": "Archive",
+    "unarchive": "Unarchive",
+    "conversation": "the conversation",
+    "archiveMessage": "Archive this conversation?",
+    "unarchiveMessage": "Unarchive this conversation?",
+    "archiveError": "Error during archiving",
+    "loading": "Loading...",
+    "addFavorite": "Add to favorites",
+    "removeFavorite": "Remove from favorites"
   },
   
   "messages": {
@@ -89,7 +125,9 @@
     "searchGroupe": "Search a Groupe...",
     "favorites": "Favorite conversations",
     "archived": "Archived conversations",
-    "showAll": "Show all"
+    "showAll": "Show all",
+    "pinned": "pinned",
+  "plural": "s"
     
   },
    "buttons": {
@@ -290,6 +328,10 @@
     "memory_game": "Memory Game",
     "tictac":"Guess the number"
   },
+   "games": {
+    "selectGame": "Select a game to start the adventure",
+     "play": "Play →"
+  },
 
 
 
@@ -418,9 +460,31 @@
    "higher": "It's higher!",
     "lower": "It's lower!",
     "owlyQuiz": {
+       "replay": "Replay",
+       "fullStoryTitle": "🎉 Complete Owly Story 🎉",
+       "nextChallenge": "Next Challenge",
     "title": "Owly Quiz",
-    "intro": "This game tells the story of Owly. To discover it, complete each challenge.",
-
+    "intro": {
+    "description": "This game tells Owly's story. To discover it, complete each challenge.",
+      "startButton": "Start the adventure"      
+  },"lost": {
+  "title": "💥 Game Over",
+  "message": "You failed. Try again to continue Owly's story.",
+  "retry": "🔁 Retry this challenge",
+  "restart": "Restart the game"
+},"memory": {
+      "title": "Memory Challenge"
+    },
+     "cups": {
+      "title": "Speed & Logic Challenge — Find the ball!"
+    },
+    "observation": {
+      "title": "Visual Observation Challenge",
+        "question": "Which symbol was at position {{position}}?"
+    },
+     "final": {
+      "title": "Final Question"
+    },
     "btn": {
       "start": "Start",
       "nextChallenge": "Next challenge",
@@ -430,22 +494,13 @@
     },
 
     "puzzle": {
-      "title": "Puzzle — rebuild the image",
+       "title": "Puzzle — rebuild the image",
       "timer": "Time"
     },
 
-    "memory": {
-      "title": "Memory challenge"
-    },
+   
 
-    "cups": {
-      "title": "Speed & logic challenge — Find the ball!"
-    },
 
-    "observation": {
-      "title": "Visual observation challenge",
-      "question": "Which symbol was at position {{pos}}?"
-    },
 
     "final": {
       "title": "Final question",
@@ -477,9 +532,134 @@
       "title": "Full Story of Owly"
     }
    
+  },
+  "lost": {
+  "title": "💥 Game Over"
+},
+"help": {
+    "title": "Help & Support",
+     "subtitle": "Find answers to your questions"
+  },
+    "about": {
+    "title": "About Owly",
+    "description": "Owly is your all-in-one messaging app with secure chat, calls, built-in games, and AI assistant. Version 1.0.0"
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "messages": {
+      "question": "How to send an invitation to a contact?",
+      "answer": "To add a new contact, search for their username in the search bar and send them an invitation. The other person will need to accept your request to become your contact."
+    },
+    "calls": {
+      "question": "Are my conversations secure?",
+      "answer": "Yes! All your personal messages are end-to-end encrypted. This means only you and the recipient can read the exchanged messages."
+    },
+    "block": {
+      "question": "How to block a user?",
+      "answer": "Open a conversation with the user, click on the options (3 dots), then select 'Block'. Blocked users will no longer be able to contact you."
+    },
+    "games": {
+      "question": "How to access the games?",
+      "answer": "Click on the 'Games' icon in the sidebar to access our built-in games: Owly Quiz, Rock-Paper-Scissors, Memory Game, and Guess the Number."
+    },
+     "ai": {
+      "question": "What is Owly AI?",
+      "answer": "Owly AI is our smart assistant that can answer your questions, help you, and chat with you. Access it from the sidebar."
+    }
+  },
+   "support": {
+    "contact": {
+      "title": "Contact Us",
+      "description": "Need help? Send us an email",
+      "action": "owly.app.team@gmail.com"
+    },
+     "documentation": {
+      "title": "Documentation",
+      "description": "Complete guides and tutorials",
+      "action": "View docs"
+    },
+     "moreHelp": "Need more help?"
+  },
+  "status": {
+  "online": "Online",
+  "onlineSeconds": "Online a few seconds ago",
+  "onlineMinutes": "Online {{count}} min ago",
+  "onlineHours": "Online {{count}} h ago",
+  "onlineLong": "Online a long time ago",
+  "onlineMoment": "Online a moment ago"
+},
+"deleteConversationTitle": "Delete conversation?",
+  "deleteConversationWarning": "All your messages will be permanently deleted on your side. This action is irreversible.",
+   "cancelButton": "Cancel",
+   "deleteButton": "Delete",
+   "messageDeletedForYou": "You deleted a message",
+   "deleteMessageTitle": "Delete message",
+   "deleteMessageQuestion": "What do you want to do?",
+   "deleteForMe": "Delete for me",
+   "deleteForMeInfo": "You will no longer see this message, but others will still see it.",
+   "deleteForEveryone": "Delete for everyone",
+   "deleteWarningAll": "This message will be deleted for you and all other participants.",
+   "cancel": "Cancel",
+   "cancelRecording": "Cancel",
+   "network_error": "Network error",
+   "accept_error": "Error while accepting",
+   "react": "React",
+   "forward": "Forward",
+   "delete": "Delete",
+   "pin": "Pin",
+"unpin": "Unpin",
+
+  "search_error": "Search error",
+   "no_user_found": "No user found",
+   
+  "suppression": "Error during search",
+   "conversation_ouverture": "Unable to open conversation",
+   "camera_access": "Unable to access the camera",
+    "qr_error": "QR code not recognized",
+    "scan_error": "Error during scan",
+    "no_qr_detected": "No QR code detected in the image",
+     "search": "Search",
+       "qr_code": "QR Code",
+        "search_placeholder": "Search on Owly...",
+        "searching": "Searching...",
+        "results": "Results",
+         "send_message": "Send message",
+          "no_results": "No results for \"{{query}}\""  ,
+          "loading": "Loading...",
+          "no_contacts": "No contacts at the moment",
+           "scan_qr_user": "Scan a user's QR code",
+            "user_found": "User found",
+            "message": "Message",
+            "scan_another_code": "Scan another code",
+            "preparing": "Preparing...",
+            "or_upload_image": "OR upload an image",
+            "choose_image": "Choose an image",
+            "scan_qr_code": "Scan a QR Code",
+            "file": {
+    "default_name": "File",
+    "download": "Download"
   }
+            
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }
+
+
+
 
 
 

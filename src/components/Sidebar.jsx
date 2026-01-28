@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
 import { profileService } from "../services/profileService";
 
+
 export default function Sidebar() {
   const { t } = useTranslation();
   const { user: authUser } = useAuth();
@@ -61,7 +62,9 @@ export default function Sidebar() {
   };
 
   return (
-    <>
+    <> 
+ 
+
       {/* ========== VERTICAL SIDEBAR (Desktop) ========== */}
       <div className="hidden sm:flex w-22 h-screen flex-col justify-between items-center pb-6 pt-2 shadow-md border-r-[1.5px] border-gray-300 z-[9999] bg-[#f0f0f0] dark:border-gray-600 dark:bg-[#2E2F2F] transition-colors duration-300">
         

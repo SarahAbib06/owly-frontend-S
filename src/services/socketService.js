@@ -360,6 +360,16 @@ class SocketService {
     }
   }
 
+
+  // Dans socketService.js, AJOUTE cette méthode
+
+// Écouter quand un message est vu
+onMessageSeen(callback) {
+  if (this.socket) {
+    this.socket.on('message:seen', callback);
+  }
+}
+
   // Écouter les compteurs non lus
   onUnreadCountsData(callback) {
     if (this.socket) {
