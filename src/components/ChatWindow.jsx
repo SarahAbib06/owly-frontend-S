@@ -340,6 +340,7 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
 
     return () => clearInterval(interval);
   }, [contactStatus.lastSeen, contactStatus.isOnline]);
+  
 
   // 🔥 CORRECTION : Charger membres du groupe
   useEffect(() => {
