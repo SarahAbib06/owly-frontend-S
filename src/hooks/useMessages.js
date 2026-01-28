@@ -34,6 +34,7 @@ const normalizeMessage = (message) => {
     status: status,
     tempId: message.tempId || null,
     readBy: message.readBy || []
+    
   };
 };
 
