@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Mic, MicOff, Video, VideoOff, Phone, Monitor } from 'lucide-react';
 import agoraService from '../services/agoraService';
 import socketService from '../services/socketService';
@@ -34,12 +34,20 @@ const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
   const channelNameRef = useRef(callChat?._id ? `call_${callChat._id}` : null);
   const agoraStartedRef = useRef(false);
   const callStatusRef = useRef('idle'); 
-  const [showCallInitModal, setShowCallInitModal] = useState(true);  // true = modal visible par défaut
+  // Le modal ne doit être visible QUE si on est l'appelant (pas de acceptedCall)
+const [showCallInitModal, setShowCallInitModal] = useState(!acceptedCall);
   
   // ✅ Mettre à jour la ref quand le state change
   useEffect(() => {
     callStatusRef.current = callStatus;
   }, [callStatus]);
+  // 🔥 Masquer automatiquement le modal si on reçoit un appel
+useEffect(() => {
+  if (acceptedCall) {
+    console.log("📥 Appel accepté détecté → masquage du modal d'init");
+    setShowCallInitModal(false);
+  }
+}, [acceptedCall]);
   
   useEffect(() => {
     setCurrentCallType(effectiveCallType);
@@ -280,20 +288,61 @@ socket.on('call:ended', (data) => {
     }
   };
 }, []); 
- useEffect(() => {
- // Réinitialise le modal chaque fois que le type d'appel change
- setShowCallInitModal(true);
-  setIsCalling(false);
- setCallStatus('idle');
-   setIsCallActive(false);
-  // Optionnel : reset d'autres états "en cours" si besoin
- }, [callType]);     
+    
  // Ajoute ceci juste après ton useEffect existant sur [callType]
-useEffect(() => {
-  if (callStatus === 'idle' && !isCalling && !isCallActive) {
-    setShowCallInitModal(true);
+
+// 🆕 PLACER CETTE FONCTION ICI (APRÈS TOUS LES useEffect, AVANT handleEndCall)
+const cleanupMediaStreams = useCallback(() => {
+  console.log("🧹 Nettoyage des streams média");
+  
+  // 1. Arrêter les tracks locaux Agora
+  if (agoraService.localAudioTrack) {
+    agoraService.localAudioTrack.stop();
+    agoraService.localAudioTrack.close();
+    console.log("⏹️ Audio local arrêté");
   }
-}, [callStatus, isCalling, isCallActive]);
+  
+  if (agoraService.localVideoTrack) {
+    agoraService.localVideoTrack.stop();
+    agoraService.localVideoTrack.close();
+    console.log("⏹️ Vidéo locale arrêtée");
+  }
+
+  // 2. Arrêter le partage d'écran si actif
+  if (agoraService.screenTrack) {
+    agoraService.screenTrack.stop();
+    agoraService.screenTrack.close();
+    console.log("⏹️ Partage d'écran arrêté");
+  }
+  
+  // 3. Nettoyer les références
+  agoraService.localAudioTrack = null;
+  agoraService.localVideoTrack = null;
+  agoraService.screenTrack = null;
+  
+  console.log("✅ Nettoyage terminé");
+}, []);
+
+// 🆕 AJOUTER CES 2 useEffect ICI (JUSTE APRÈS cleanupMediaStreams)
+useEffect(() => {
+  return () => {
+    console.log("🧹 Démontage VideoCallScreen → nettoyage streams");
+    cleanupMediaStreams();
+  };
+}, [cleanupMediaStreams]);
+
+useEffect(() => {
+  const handleBeforeUnload = () => {
+    console.log("🚪 Fermeture page → nettoyage streams");
+    cleanupMediaStreams();
+  };
+
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  
+  return () => {
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+  };
+}, [cleanupMediaStreams]);
 
   const startOutgoingCall = () => {
     console.log('🔍 === DÉBUT startOutgoingCall ===');
@@ -568,20 +617,26 @@ const endCall = async (reason = 'ended') => {
   }
 };
 
-// Puis modifier handleEndCall pour être plus clair
+
+
 const handleEndCall = () => {
+  console.log("🔚 handleEndCall appelé");
+  
+  // 🆕 NETTOYER LES STREAMS AVANT TOUT
+  cleanupMediaStreams();
+  
   setIsCallActive(false);
   setIsCalling(false);
   setCallStatus('ended');
   setCallDuration(0);
   setIsScreenSharing(false);
-  //setDebugInfo('Appel terminé');
 
   setTimeout(() => {
     clearActiveCall?.();
     onClose?.();
   }, 400);
 };
+
 
   const toggleMicrophone = async () => {
     const newState = !isMuted;

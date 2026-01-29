@@ -1,3 +1,6 @@
+// 🔥 CORRECTION - IncomingCallModal.jsx
+// Gérer TOUS les cas de fin d'appel (timeout, annulation, rejet)
+
 import React, { useEffect } from "react";
 import { Phone, Video, X, Check } from "lucide-react";
 import { useCall } from "../context/CallContext";
@@ -19,24 +22,68 @@ const IncomingCallModal = () => {
     if (audio) audio.pause();
   };
 
-  // Écoute l'annulation par l'appelant
+  // 🔥 ÉCOUTER TOUS LES ÉVÉNEMENTS DE FIN D'APPEL
   useEffect(() => {
     const socket = socketService.socket;
     if (!socket) return;
 
+    // 1️⃣ Annulation par l'appelant (avant que tu acceptes)
     const handleCallCancelled = (data) => {
       console.log("📴 [call-cancelled] Appel annulé par l'appelant", data);
+      
+      // Vérifier que c'est bien notre appel
+      if (incomingCall && data.callId === incomingCall.callId) {
+        setShowIncomingCallModal(false);
+        stopRingtone();
+        setIncomingCall(null);
+      }
+    };
+
+    // 2️⃣ Fin d'appel (timeout, ou autre raison)
+    const handleCallEnded = (data) => {
+      console.log("📴 [call:ended] Appel terminé", data);
+      
+      // Vérifier que c'est notre appel
+      if (incomingCall && data.callId === incomingCall.callId) {
+        setShowIncomingCallModal(false);
+        stopRingtone();
+        setIncomingCall(null);
+      }
+    };
+
+    // 3️⃣ Échec de l'appel (utilisateur hors ligne, etc.)
+    const handleCallFailed = (data) => {
+      console.log("❌ [call-failed] Appel échoué", data);
+      
+      if (incomingCall && data.callId === incomingCall.callId) {
+        setShowIncomingCallModal(false);
+        stopRingtone();
+        setIncomingCall(null);
+      }
+    };
+
+    // 4️⃣ Erreur d'appel
+    const handleCallError = (data) => {
+      console.log("💥 [call-error] Erreur d'appel", data);
+      
       setShowIncomingCallModal(false);
       stopRingtone();
       setIncomingCall(null);
     };
 
+    // Écouter tous les événements
     socket.on("call-cancelled", handleCallCancelled);
+    socket.on("call:ended", handleCallEnded);
+    socket.on("call-failed", handleCallFailed);
+    socket.on("call-error", handleCallError);
 
     return () => {
       socket.off("call-cancelled", handleCallCancelled);
+      socket.off("call:ended", handleCallEnded);
+      socket.off("call-failed", handleCallFailed);
+      socket.off("call-error", handleCallError);
     };
-  }, [setShowIncomingCallModal, setIncomingCall]);
+  }, [incomingCall, setShowIncomingCallModal, setIncomingCall]);
 
   if (!showIncomingCallModal || !incomingCall) return null;
 
@@ -57,7 +104,7 @@ const IncomingCallModal = () => {
 
         {/* Titre selon le type */}
         <h3>
-          {isVideoCall ? " Appel vidéo entrant" : "Appel audio entrant"}
+          {isVideoCall ? " Appel vidéo entrant" : " Appel audio entrant"}
         </h3>
         
         <p className="caller-name">{incomingCall.callerName}</p>
