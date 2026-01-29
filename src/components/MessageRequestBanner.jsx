@@ -1,6 +1,8 @@
  import React from 'react';
+ import { useTranslation } from 'react-i18next';
 
 const MessageRequestBanner = ({ conversationName, conversationAvatar, onAccept, onDelete }) => {
+   const { t } = useTranslation();
   return (
     <div className="
       sticky top-0 z-40

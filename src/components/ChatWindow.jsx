@@ -22,7 +22,10 @@ import { useTyping } from "../hooks/useTyping";
 import { useReactions } from "../hooks/useReactions";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
+import { useCall } from "../context/CallContext";
 import socketService from "../services/socketService";
+
+import VideoCallScreen from "./VideoCallScreen";
 import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
@@ -32,9 +35,9 @@ import { FiSearch } from "react-icons/fi";
 
 import { Archive } from "lucide-react";
 import { useChat } from "../context/ChatContext"; // ← AJOUTE CET IMPORT
-import EmojiPicker from 'emoji-picker-react';
+//import EmojiPicker from 'emoji-picker-react';
 
-
+import ChatInput from "./ChatInput";
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
@@ -131,7 +134,7 @@ const fileToBase64 = (file) =>
 
 const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "🎉"];
 
-// Composant Typing Indicator
+// 🔤 COMPOSANT TYPING INDICATOR
 const TypingIndicator = ({ avatar, username }) => (
   <div className="flex justify-start items-start gap-2 mb-3">
     {/* Avatar */}
@@ -182,8 +185,93 @@ const TypingIndicator = ({ avatar, username }) => (
   </div>
 );
 
-export default function ChatWindow({ selectedChat, onBack }) {
+
+// 🔥 COMPOSANT POUR AFFICHER UN MESSAGE D'APPEL
+const CallMessage = ({ callType, callResult, duration, fromMe }) => {
+  // Icônes selon le type
+  const CallIcon = callType === "audio" ? Phone : Video;
+  
+  // Couleur selon le statut
+  const getStatusColor = () => {
+    switch (callResult) {
+      case "missed":
+        return "text-red-500";
+      case "rejected":
+        return "text-orange-500";
+      case "ended":
+        return "text-green-500";
+      default:
+        return "text-gray-500";
+    }
+  };
+
+  // Texte selon le statut
+  const getStatusText = () => {
+    switch (callResult) {
+      case "missed":
+        return "Appel manqué";
+      case "rejected":
+        return "Appel refusé";
+      case "ended":
+        return "Appel terminé";
+      default:
+        return "Appel";
+    }
+  };
+
+  // Format durée (mm:ss)
+  const formatDuration = (seconds) => {
+    if (!seconds || seconds === 0) return null;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const durationText = formatDuration(duration);
+
+  return (
+    <div className="flex items-center gap-2 py-1">
+      {/* Icône d'appel */}
+      <CallIcon size={18} className={getStatusColor()} />
+      
+      {/* Informations d'appel */}
+      <div className="flex flex-col">
+        <span className={`text-xs font-medium ${getStatusColor()}`}>
+          Appel {callType === "audio" ? "audio" : "vidéo"}
+        </span>
+        
+        <div className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-400">
+          <span>{getStatusText()}</span>
+          {durationText && (
+            <>
+              <span>•</span>
+              <span>{durationText}</span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function ChatWindow({ selectedChat, onBack, onConversationDeleted }) {
+
+  console.log("🔍 DEBUG selectedChat:", {
+    _id: selectedChat?._id,
+    name: selectedChat?.name,
+    groupName: selectedChat?.groupName,
+    isGroup: selectedChat?.isGroup,
+    type: selectedChat?.type,
+    participants: selectedChat?.participants?.length,
+    "Clés disponibles": Object.keys(selectedChat || {})
+  });
+  
   const { t } = useTranslation();
+  const {
+    incomingCall,
+    getActiveCall,
+    clearActiveCall
+  } = useCall();
   const isFromArchived = selectedChat?.isFromArchived === true;
   const { conversations, archivedConversations } = useChat();
   const isArchived = isFromArchived || archivedConversations.some(c => c._id === selectedChat?._id);
@@ -200,18 +288,24 @@ const [showDeleteModal, setShowDeleteModal] = useState(false);
 const [messageToDelete, setMessageToDelete] = useState(null);
 const [deletedForEveryone, setDeletedForEveryone] = useState([]);
 
-const [showEmojiPicker, setShowEmojiPicker] = useState(false); //imojie
+//const [showEmojiPicker, setShowEmojiPicker] = useState(false); //imojie
 // États pour la lightbox média kenza 
 const [mediaLightboxOpen, setMediaLightboxOpen] = useState(false);
 const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 const [mediaList, setMediaList] = useState([]);
+//groupe 
+const [showGroupInfo, setShowGroupInfo] = useState(false);
+const [groupMembers, setGroupMembers] = useState([]);
+const [showGroupManager, setShowGroupManager] = useState(false);
+const [myRoleInGroup, setMyRoleInGroup] = useState('membre');
 
 
 const { conversations: myConversations, loading: convLoading } = useConversations();
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
   
-  // Récupérer le userId de l'autre utilisateur
+  const [startOutgoingCallType, setStartOutgoingCallType] = useState(null);
+  
   const otherUserId = selectedChat?.isGroup 
     ? null 
     : selectedChat?.participants?.find(
@@ -318,8 +412,6 @@ const contactId = React.useMemo(() => {
   }, [selectedChat, user]);
 
   console.log("contactId:", contactId);
-
-  // Récupérer le statut initial
   useEffect(() => {
     if (!contactId) return;
     console.log("🧪 TEST contactId =", contactId);
@@ -346,38 +438,34 @@ const contactId = React.useMemo(() => {
     }
   }, [deletedMessages, selectedChat?._id]);
 
- const otherUserName = React.useMemo(() => {
-  if (selectedChat?.isGroup) return null;
-  
-  // Essayer de trouver dans participants
-  const otherParticipant = selectedChat?.participants?.find(
-    participant => {
-      const participantId = participant._id || participant.id || participant.userId;
-      const currentUserId = user?._id || user?.id || user?.userId;
-      return participantId && currentUserId && String(participantId) !== String(currentUserId);
+  const otherUserName = React.useMemo(() => {
+    if (selectedChat?.isGroup) return null;
+   
+    const otherParticipant = selectedChat?.participants?.find(
+      participant => {
+        const participantId = participant._id || participant.id || participant.userId;
+        const currentUserId = user?._id || user?.id || user?.userId;
+        return participantId && currentUserId && String(participantId) !== String(currentUserId);
+      }
+    );
+    
+    if (otherParticipant?.username) {
+      return otherParticipant.username;
     }
-
-  );
-  
-  if (otherParticipant?.username) {
-    return otherParticipant.username;
-  }
-  
-  // Sinon, utiliser le nom de la conversation
-  if (selectedChat?.name) {
-    return selectedChat.name;
-  }
-  
-  // Sinon, utiliser targetUser s'il existe
-  if (selectedChat?.targetUser?.username) {
-    return selectedChat.targetUser.username;
-  }
-  
-  return null;
-}, [selectedChat, user]);
+    
+    if (selectedChat?.name) {
+      return selectedChat.name;
+    }
+    
+    if (selectedChat?.targetUser?.username) {
+      return selectedChat.targetUser.username;
+    }
+    
+    return null;
+  }, [selectedChat, user]);
 
 
-
+/*
 useEffect(() => {
   const handleClickOutside = (event) => {
     if (showEmojiPicker && !event.target.closest('.EmojiPickerReact')) {
@@ -390,7 +478,7 @@ useEffect(() => {
 }, [showEmojiPicker]);
 // Après les autres useEffect (vers la fin du composant, avant les returns), ajoute :
 // ajouter pour supprimer 
-
+*/
   // Sauvegarder les messages supprimés
   useEffect(() => {
     if (selectedChat?._id && deletedMessages.length > 0) {
@@ -456,7 +544,6 @@ useEffect(() => {
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
   
-  // Écoute les thèmes envoyés par l'autre participant
   useEffect(() => {
     if (!socketService.socket || !selectedChat) return;
 
@@ -477,7 +564,7 @@ useEffect(() => {
   const [bubbleBg, setBubbleBg] = useState("");
   const [sendBtnColor, setSendBtnColor] = useState("");
   const [themeEmojis, setThemeEmojis] = useState([]);
-  const [inputText, setInputText] = useState("");
+  //const [inputText, setInputText] = useState("");
   const [selectedFile, setSelectedFile] = useState(null); 
   const [filePreview, setFilePreview] = useState(null); 
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -488,7 +575,6 @@ useEffect(() => {
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showPinnedSection, setShowPinnedSection] = useState(false);
   
-  // États pour les interactions
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
@@ -553,9 +639,7 @@ useEffect(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 100);
   };
-
   socketService.socket.on("message:deleted", handleMessageDeleted);
-
   return () => {
     socketService.socket.off("message:deleted", handleMessageDeleted);
   };
@@ -568,7 +652,7 @@ useEffect(() => {
     if (e.key === 'Escape') closeMediaLightbox();
     if (e.key === 'ArrowLeft') goToPreviousMedia();
     if (e.key === 'ArrowRight') goToNextMedia();
-  };
+};
 
   window.addEventListener('keydown', handleKeyDown);
   return () => window.removeEventListener('keydown', handleKeyDown);
@@ -609,6 +693,9 @@ useEffect(() => {
       console.log("selectedChat:", selectedChat);
   console.log("otherUserId:", otherUserId);
 
+  console.log("selectedChat:", selectedChat);
+  console.log("otherUserId:", otherUserId);
+
   const isMessageRequest = selectedChat?.isMessageRequest === true ||
     selectedChat?.messageRequestForMe === true;
 
@@ -642,6 +729,29 @@ useEffect(() => {
 
   // Charger les messages épinglés
   useEffect(() => {
+    if (!selectedChat) return;
+
+    const handleSaveCallMessage = async (data) => {
+      console.log("💾 [ChatWindow] Enregistrement message d'appel:", data);
+      
+      try {
+        socketService.emit("call-message", {
+          ...data,
+          chatId: selectedChat._id
+        });
+      } catch (error) {
+        console.error("❌ Erreur save call message:", error);
+      }
+    };
+
+    socketService.socket?.on("save-call-message", handleSaveCallMessage);
+
+    return () => {
+      socketService.socket?.off("save-call-message", handleSaveCallMessage);
+    };
+  }, [selectedChat]);
+
+  useEffect(() => {
     const pinned = messages.filter((msg) => msg.isPinned);
     setPinnedMessages(pinned);
     setShowPinnedSection(pinned.length > 0);
@@ -656,38 +766,97 @@ useEffect(() => {
     // Ce useEffect vide dépend de selectedChat et archivedConversations
   }, [selectedChat, archivedConversations]);
 
-  // Gérer la saisie avec typing indicator
+  // ✅ MARQUER LES MESSAGES COMME VUS - VERSION INSTANTANÉE
+  useEffect(() => {
+    if (!selectedChat?._id || !user?.id || !messages.length) return;
+
+    const markMessagesAsSeen = async () => {
+      try {
+        // 🔍 Trouver les messages NON VUS de l'autre utilisateur
+        const unreadMessages = messages.filter(msg => {
+          const isFromOther = String(msg.senderId || msg.Id_sender) !== String(user.id);
+          const notSeenByMe = !msg.readBy?.some(r => String(r.userId) === String(user.id));
+          return isFromOther && notSeenByMe;
+        });
+
+        if (unreadMessages.length === 0) {
+          console.log("✅ Aucun message à marquer comme vu");
+          return;
+        }
+
+        console.log(`👁️ ${unreadMessages.length} messages à marquer comme vus`);
+
+        const token = localStorage.getItem("token");
+        
+        const response = await fetch(
+          `http://localhost:5000/api/messages/${selectedChat._id}/mark-all-seen`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log(`✅ ${data.messagesMarked} messages marqués comme vus`);
+        }
+      } catch (error) {
+        console.error("❌ Erreur marquer messages vus:", error);
+      }
+    };
+
+    // 🔥 MARQUER IMMÉDIATEMENT au chargement
+    const initialTimeout = setTimeout(markMessagesAsSeen, 500);
+
+    // 🔥 RÉÉCOUTER À CHAQUE NOUVEAU MESSAGE
+    const messageCheckInterval = setInterval(() => {
+      markMessagesAsSeen();
+    }, 1000); // Vérifier toutes les secondes
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(messageCheckInterval);
+    };
+  }, [selectedChat?._id, user?.id, messages]);
+/*
   const handleInputChange = (e) => {
     setInputText(e.target.value);
     if (e.target.value.length > 0) {
       sendTyping();
     }
-  };
+  };*/
 
   // Envoyer un message
-  const handleSendMessage = async () => {
-    try {
-      if (selectedFile) {
-        if (selectedFile.type.startsWith("image/")) {
-          await sendImage(selectedFile);
-        } else if (selectedFile.type.startsWith("video/")) {
-          await sendVideo(selectedFile);
-        } else {
-          await sendFile(selectedFile);
-        }
-
-        setSelectedFile(null);
-        setFilePreview(null);
-        return;
+  // ✅ REMPLACE PAR CECI
+const handleSendMessage = async (text, file) => {
+  try {
+    if (file) {
+      if (file.type.startsWith("image/")) {
+        await sendImage(file);
+      } else if (file.type.startsWith("video/")) {
+        await sendVideo(file);
+      } else {
+        await sendFile(file);
       }
-
-      if (!inputText.trim()) return;
-      await sendMessage(inputText);
-      setInputText("");
-    } catch (error) {
-      console.error("Erreur envoi:", error);
+      setSelectedFile(null);
+      setFilePreview(null);
+      return;
     }
-  };
+
+    if (!text || !text.trim()) return;
+    
+    // 🔥 ENVOYER LE TYPING INDICATOR
+    sendTyping();
+    
+    await sendMessage(text);
+  } catch (error) {
+    console.error("Erreur envoi:", error);
+  }
+};
   // 🔥 OUVRIR LA LIGHTBOX POUR MÉDIA
 const openMediaLightbox = (mediaUrl, mediaType) => {
   // Récupérer toutes les images et vidéos du chat
@@ -721,7 +890,6 @@ const goToNextMedia = () => {
   setCurrentMediaIndex((prev) => (prev === mediaList.length - 1 ? 0 : prev + 1));
 };
 
-  // Gérer l'upload de fichiers
   const handleFileSelect = (e) => { 
     const file = e.target.files[0]; 
     if (!file) return; 
@@ -762,13 +930,13 @@ const handleMicClick = async () => {
     console.log('▶️ Démarrage de l\'enregistrement...');
     await startRecording();
   }
-};
+};/*
   //imoji
  const onEmojiClick = (emojiObject) => {
   setInputText((prevInput) => prevInput + emojiObject.emoji);
   // Optionnel : fermer le picker après sélection
   // setShowEmojiPicker(false);
-};
+};*/
 //theme discution
  const applyTheme = React.useCallback(async (theme, save = true) => {
   console.log("Thème sélectionné :", theme);
@@ -1036,47 +1204,7 @@ useEffect(() => {
     socketService.socket.off("themeRemoved", handleThemeRemoved);
   };
 }, [selectedChat, chatKey, applyTheme]); // 🔥 Ajouter les dépendances
-  // Gérer l'appel entrant
-const handleAcceptCall = () => {
-  if (!socketService.socket || !incomingCall) {
-    console.error('Socket non disponible ou appel inexistant');
-    return;
-  }
-
-  console.log('✅ Acceptation de l\'appel:', incomingCall);
   
-  // ⚠️ NE ÉMETTRE call:accept QU'UNE SEULE FOIS
-  // Désactiver immédiatement pour éviter les doubles clics
-  const callToAccept = { ...incomingCall };
-  setIncomingCall(null); // Fermer la modal AVANT d'émettre
-  
-  socketService.socket.emit('call:accept', {
-    callId: callToAccept.callId,
-    callerId: callToAccept.callerId
-  });
-
-  // Définir activeCall
-  setActiveCall({
-    ...callToAccept,
-    status: 'accepted'
-  });
-};
-
-  const handleRejectCall = async () => {
-    if (!socketService.socket || !incomingCall) {
-      console.error('Socket non disponible ou appel inexistant');
-      return;
-    }
-
-    console.log('❌ Rejet de l\'appel:', incomingCall);
-    socketService.socket.emit('call:reject', {
-      callId: incomingCall.callId,
-      callerId: incomingCall.callerId
-    });
-
-    setIncomingCall(null);
-  };
-
   // Charger le thème sauvegardé
   useEffect(() => {
   // 🔥 RÉINITIALISER D'ABORD LE THÈME
@@ -1143,44 +1271,41 @@ const handleAcceptCall = () => {
       ? "bg-myYellow2 dark:bg-mydarkYellow text-myBlack rounded-t-lg rounded-bl-lg rounded-br-none px-4 py-4 text-xs"
       : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:!text-white rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-4 text-xs";
 
-  // Nom de la conversation
- const conversationName = selectedChat?.isGroup
-    ? selectedChat.groupName
-    : otherUserName || selectedChat?.name || "Utilisateur";
-
-// Dans ChatWindow.jsx, remplacez la ligne 151 par :
-const conversationAvatar = React.useMemo(() => {
-  console.log("🖼️ DEBUG - Recherche photo de profil:");
-  console.log("1. selectedChat:", selectedChat);
-  console.log("2. targetUser:", selectedChat?.targetUser);
-  console.log("3. targetUser.profilePicture:", selectedChat?.targetUser?.profilePicture);
-  
-  if (selectedChat?.isGroup) return "/group-avatar.png";
-  
-  // 1. Chercher dans targetUser (vient de SearchModal)
-  if (selectedChat?.targetUser?.profilePicture) {
-    console.log("✅ Photo trouvée dans targetUser:", selectedChat.targetUser.profilePicture);
-    return selectedChat.targetUser.profilePicture;
-  }
-  
-  // 2. Chercher dans participants
-  const fromParticipants = selectedChat?.participants?.find(
-    p => {
-      const pid = p._id || p.id;
-      const uid = otherUserId;
-      return pid && uid && String(pid) === String(uid);
+ // 🔥 CORRECTION : Nom de la conversation
+  const conversationName = React.useMemo(() => {
+    if (selectedChat?.type === 'group') {
+      return selectedChat?.name || "Groupe";
     }
-  )?.profilePicture;
-  
-  if (fromParticipants) {
-    console.log("✅ Photo trouvée dans participants:", fromParticipants);
-    return fromParticipants;
-  }
-  
-  console.log("❌ Aucune photo trouvée, utilisation par défaut");
-  return "/default-avatar.png";
-}, [selectedChat, otherUserId]);
+    return otherUserName || selectedChat?.name || "Utilisateur";
+  }, [selectedChat, otherUserName]);
 
+  // 🔥 CORRECTION : Avatar de la conversation
+  const conversationAvatar = React.useMemo(() => {
+    if (selectedChat?.type === 'group') {
+      return selectedChat?.groupPic || selectedChat?.avatar || "/group-avatar.png";
+    }
+
+    if (selectedChat?.targetUser?.profilePicture) {
+      return selectedChat.targetUser.profilePicture;
+    }
+
+    const fromParticipants = selectedChat?.participants?.find(
+      (p) => {
+        const pid = p._id || p.id;
+        const uid = otherUserId;
+        return pid && uid && String(pid) === String(uid);
+      }
+    )?.profilePicture;
+    
+    if (fromParticipants) {
+      console.log("✅ Photo trouvée dans participants:", fromParticipants);
+      return fromParticipants;
+    }
+    
+    console.log("❌ Aucune photo trouvée, utilisation par défaut");
+    return "/default-avatar.png";
+  }, [selectedChat, otherUserId]);
+  
   // Avatar de l'autre utilisateur pour l'indicateur
   const otherUserAvatar = selectedChat?.isGroup
     ? "/group-avatar.png"
@@ -1383,6 +1508,15 @@ const conversationAvatar = React.useMemo(() => {
   </div>
 </a>
 
+              )}
+
+              {msg.typeMessage === "call" && (
+                <CallMessage
+                  callType={msg.callType}
+                  callResult={msg.callResult}
+                  duration={msg.duration}
+                  fromMe={fromMe}
+                />
               )}
             </div>
 
@@ -1602,13 +1736,28 @@ const conversationAvatar = React.useMemo(() => {
           {/* Boutons statiques pour appels */}
           <Phone
             size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
-            onClick={() => alert("Fonctionnalité d'appel vocal bientôt disponible!")}
+            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
+            onClick={() => {
+              console.log('📞 [ChatWindow] Lancement appel AUDIO');
+              
+              setStartOutgoingCallType(null);
+              setTimeout(() => {
+                setStartOutgoingCallType("audio");
+              }, 0);
+            }}
           />
+
           <Video
             size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
-            onClick={() => alert("Fonctionnalité d'appel vidéo bientôt disponible!")}
+            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+            onClick={() => {
+              console.log('🎬 [ChatWindow] Lancement appel VIDÉO');
+              
+              setStartOutgoingCallType(null);
+              setTimeout(() => {
+                setStartOutgoingCallType("video");
+              }, 0);
+            }}
           />
           
           <button onClick={() => setIsOptionsOpen(true)}>
@@ -1687,7 +1836,7 @@ const conversationAvatar = React.useMemo(() => {
         />
       )}
 
-      {/* SECTION MESSAGES ÉPINGLÉS */}
+      {/* PINNED MESSAGES SECTION */}
       {showPinnedSection && pinnedMessages.length > 0 && (
         <div className="border-b border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/40 z-20">
           <div className="flex items-center justify-between px-3 py-1.5">
@@ -1844,7 +1993,6 @@ const conversationAvatar = React.useMemo(() => {
 
 
 <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
-  {/* ✅ SI BLOQUÉ PAR MOI */}
   {isBlocked && blockedBy === 'me' ? (
     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
       <div className="text-center space-y-3">
@@ -1852,7 +2000,7 @@ const conversationAvatar = React.useMemo(() => {
           {t("chat.youBlocked") || "Vous avez bloqué"} {otherUserName || "cet utilisateur"}
         </p>
         <p className="text-xs text-red-600 dark:text-red-300">
-          {t("chat.blockMessage") || "Vous ne pouvez pas contacter cette personne ou l'appeler dans cette discussion. Vous ne recevez pas ses messages ou appels."}
+          {t("chat.blockMessage") || "Vous ne pouvez pas contacter cette personne."}
         </p>
         <button
           onClick={() => setIsConfirmUnblockModalOpen(true)}
@@ -1863,144 +2011,53 @@ const conversationAvatar = React.useMemo(() => {
       </div>
     </div>
   ) : isBlocked && blockedBy === 'them' ? (
-    /* ✅ SI BLOQUÉ PAR EUX */
     <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
       <p className="text-sm text-center text-gray-600 dark:text-gray-400">
         {t("chat.blockedByOther") || "Vous ne pouvez pas envoyer de message à cette personne"}
       </p>    
     </div>
   ) : (
-    /* ✅ SINON : INPUT NORMAL */
-    <>
-      {isRecording && (
-        <div className="mb-2 flex items-center justify-center gap-2 text-red-500">
-          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-          <span className="text-sm font-medium">
-            {Math.floor(recordingTime / 60)}:
-            {(recordingTime % 60).toString().padStart(2, "0")}
-          </span>
-          <button onClick={cancelRecording} className="ml-4 text-xs underline">
-           {t("cancelRecording")}
-          </button>
-        </div>
-      )}
-
-      {selectedFile && (
-        <div className="mb-2 p-2 border rounded bg-white dark:bg-neutral-800">
-          {selectedFile.type.startsWith("image/") && (
-            <img src={filePreview} className="max-h-40 rounded" alt="preview" />
-          )}
-
-          {selectedFile.type.startsWith("video/") && (
-            <video src={filePreview} controls className="max-h-40 rounded" />
-          )}
-
-          {!selectedFile.type.startsWith("image/") &&
-           !selectedFile.type.startsWith("video/") && (
-            <p className="text-sm">📎 {selectedFile.name}</p>
-          )}
-
-          <button
-            onClick={() => {
-              setSelectedFile(null);
-              setFilePreview(null);
-            }}
-            className="text-xs text-red-500 underline mt-1"
-          >
-           {t("cancel")}
-          </button>
-        </div>
-      )}
-
-      {/* 🎨 EMOJI PICKER */}
-      <div className="relative">
-        {showEmojiPicker && (
-          <div className="absolute bottom-16 left-0 z-50">
-            <EmojiPicker
-              onEmojiClick={onEmojiClick}
-              theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
-              searchDisabled={false}
-              skinTonesDisabled={false}
-              height={400}
-              width={320}
-            />
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 w-full">
-          <div className="flex-1 flex items-center gap-2 px-4 py-4 rounded-xl bg-myGray4 dark:bg-[#2E2F2F] backdrop-blur-md">
-            {/* 🎨 BOUTON EMOJI */}
-            <button
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              type="button"
-            >
-              <Smile
-                size={18}
-                className={`cursor-pointer transition-colors ${
-                  showEmojiPicker 
-                    ? 'text-myYellow' 
-                    : 'text-gray-700 dark:text-gray-300'
-                }`}
-              />
-            </button>
-
-            <Paperclip
-              size={18}
-              className="text-gray-700 dark:text-gray-300 cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
-              accept="image/*,video/*,application/*"
-            />
-            <input
-              type="text"
-              className="flex items-center flex-1 bg-transparent outline-none text-xs text-myBlack dark:text-white"
-              placeholder={t("chat.inputPlaceholder") || "Tapez un message..."}
-              value={inputText}
-              onChange={handleInputChange}
-              onKeyPress={(e) =>
-                e.key === "Enter" && !isRecording && handleSendMessage()
-              }
-              disabled={isRecording}
-            />
-          </div>
-
-         <button
-  className={`w-12 h-12 flex items-center justify-center rounded-xl text-sm font-bold ${
-    isRecording 
-      ? 'bg-red-500 animate-pulse' 
-      : 'bg-myYellow2 dark:bg-mydarkYellow'
-  }`}
-  onClick={
-    isRecording
-      ? handleMicClick  // Si en train d'enregistrer → arrêter
-      : selectedFile || inputText.trim() !== ""
-      ? handleSendMessage
-      : handleMicClick  // Sinon → démarrer l'enregistrement
-  }
-  disabled={isRecording && recordingTime < 1} // Empêcher spam pendant 1ère seconde
->
-  {isRecording ? (
-    <Send size={18} className="text-white" />
-  ) : selectedFile || inputText.trim() !== "" ? (
-    <Send size={18} />
-  ) : (
-    <Mic size={18} className="text-gray-700 dark:myBlack" />
-  )}
-</button>
-        </div>
-      </div>
-    </>
+    <ChatInput
+      onSendMessage={handleSendMessage}
+      isRecording={isRecording}
+      recordingTime={recordingTime}
+      onMicClick={handleMicClick}
+      onCancelRecording={cancelRecording}
+      selectedFile={selectedFile}
+      filePreview={filePreview}
+      onFileSelect={(file) => {
+        setSelectedFile(file);
+        if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+          setFilePreview(URL.createObjectURL(file));
+        } else {
+          setFilePreview(null);
+        }
+      }}
+      onClearFile={() => {
+        setSelectedFile(null);
+        setFilePreview(null);
+      }}
+      t={t}
+    />
   )}
 </footer>
 
      
 
       {/* Search Modal */}
+      {/* ✅ VIDEO CALL SCREEN - UNE SEULE FOIS */}
+      {startOutgoingCallType && selectedChat && (
+        <VideoCallScreen
+          selectedChat={selectedChat}
+          callType={startOutgoingCallType}
+          onClose={() => {
+            console.log(`📞 [ChatWindow] Fermeture appel sortant`);
+            setStartOutgoingCallType(null);
+            clearActiveCall();
+          }}
+        />
+      )}
+
       {openSearch && (
         <>
           <div
@@ -2053,6 +2110,8 @@ const conversationAvatar = React.useMemo(() => {
           forwardMessage(messageToForward?._id, targetConversationId);
         }}
       />
+
+      {/* Delete Modal */}
       {showDeleteModal && (
   <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
     <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl overflow-hidden">
@@ -2222,6 +2281,55 @@ const conversationAvatar = React.useMemo(() => {
         </div>
       )}
 
+      {/* Info Contact Modal */}
+      {isInfoOpen && (
+        <InfoContactModal
+          chat={{
+            ...selectedChat,
+            openTheme: () => setShowThemeSelector(true),
+            onArchive: async () => {
+              try {
+                if (isArchived) {
+                  await unarchiveConversation(selectedChat._id);
+                  
+                  if (typeof onConversationDeleted === 'function') {
+                    onConversationDeleted();
+                  }
+                } else {
+                  await archiveConversation(selectedChat._id);
+                }
+              } catch (err) {
+                alert("Erreur lors de l'opération");
+              }
+            },
+            isArchived: isArchived,
+          }}
+          onClose={() => setIsInfoOpen(false)}
+          onBlockStatusChange={() => refresh()}
+          onConversationDeleted={onConversationDeleted}
+        />
+      )}
+
+      {showGroupInfo && (
+        <GroupManagerModal
+          groupId={selectedChat._id}
+          myRole={myRoleInGroup}
+          members={groupMembers}
+          onClose={() => setShowGroupInfo(false)}
+          onMembersUpdated={() => {
+            const token = localStorage.getItem('token');
+            fetch(`http://localhost:5000/api/groups/${selectedChat._id}/members`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                setGroupMembers(data.members || []);
+              }
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
