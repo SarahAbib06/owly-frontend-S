@@ -1,5 +1,5 @@
 // frontend/src/hooks/useMessages.js
-// 🔥 VERSION CORRIGÉE : Conservation des infos d'expéditeur pour les groupes
+// 🔥 VERSION FINALE : Messages d'appel instantanés
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { messageService } from "../services/messageService";
@@ -12,30 +12,27 @@ export const useMessages = (conversationId) => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const isLoadingRef = useRef(false);
-
-  // ✅ Normaliser un message pour être sûr d'avoir createdAt et status
-  // Dans useMessages.js, modifie normalizeMessage
-const normalizeMessage = (message) => {
-  const baseDate = message.createdAt || message.timestamp || new Date();
-  const d = new Date(baseDate);
-  const safeDate = isNaN(d.getTime()) ? new Date() : d;
-
-  // Déterminer le statut
-  let status = message.status || "sent";
   
-  // Si readBy existe et contient au moins 1 personne → "seen"
-  if (message.readBy && Array.isArray(message.readBy) && message.readBy.length > 0) {
-    status = "seen";
-  }
+  // ✅ Normaliser un message
+  const normalizeMessage = (message) => {
+    const baseDate = message.createdAt || message.timestamp || new Date();
+    const d = new Date(baseDate);
+    const safeDate = isNaN(d.getTime()) ? new Date() : d;
 
-  return {
-    ...message,
-    createdAt: safeDate.toISOString(),
-    status: status,
-    tempId: message.tempId || null,
-    readBy: message.readBy || []
+    let status = message.status || "sent";
+    
+    if (message.readBy && Array.isArray(message.readBy) && message.readBy.length > 0) {
+      status = "seen";
+    }
+
+    return {
+      ...message,
+      createdAt: safeDate.toISOString(),
+      status: status,
+      tempId: message.tempId || null,
+      readBy: message.readBy || []
+    };
   };
-};
 
   // Charger les messages (API)
   const loadMessages = useCallback(
@@ -353,31 +350,48 @@ const normalizeMessage = (message) => {
     }
   }, [conversationId]);
 
-  // Listeners Socket.io
+  // 🔥 LISTENERS SOCKET.IO - VERSION FINALE
   useEffect(() => {
     if (!conversationId) return;
 
-    // 📨 Nouveau message reçu
-    const handleNewMessage = (message) => {
-          console.log("📨 NEW MESSAGE RECEIVED:", {
-    _id: message._id,
-    typeMessage: message.typeMessage,
-    content: message.content,
-    conversationId: message.conversationId
-  });
+    // 📨 ÉCOUTER LES DEUX FORMATS D'ÉVÉNEMENTS
+    const handleNewMessage = (data) => {
+      console.log("📨 NEW MESSAGE RECEIVED:", {
+        _id: data._id,
+        typeMessage: data.typeMessage,
+        content: data.content?.substring(0, 50),
+        conversationId: data.conversationId
+      });
 
-      const normalized = normalizeMessage(message);
+      // 🔥 VÉRIFIER QUE C'EST BIEN POUR CETTE CONVERSATION
+      const messageConvId = data.conversationId?._id || data.conversationId;
+      if (messageConvId && String(messageConvId) !== String(conversationId)) {
+        console.log("⏭️ Message pour une autre conversation, ignoré");
+        return;
+      }
+
+      const normalized = normalizeMessage(data);
       const myUserId = localStorage.getItem("userId") || localStorage.getItem("user_id");
 
       setMessages(prev => {
-        if (normalized.senderId === myUserId) {
+        // 🔥 EXCEPTION : Les messages d'appel DOIVENT TOUJOURS être ajoutés
+        const isCallMessage = normalized.typeMessage === "call";
+        
+        // 🔥 NE PAS AJOUTER SES PROPRES MESSAGES (sauf appels et messages système)
+        if (!isCallMessage && 
+            (normalized.senderId === myUserId || normalized.Id_sender === myUserId)) {
+          console.log("⏭️ C'est mon propre message, skip");
           return prev;
         }
 
+        // 🔥 ÉVITER LES DOUBLONS
         if (prev.some(m => m._id === normalized._id || m._id === normalized.tempId)) {
+          console.log("⏭️ Message déjà présent, skip");
           return prev;
         }
 
+        console.log("✅ AJOUT du nouveau message:", normalized._id, "Type:", normalized.typeMessage);
+        
         return [...prev, normalized].sort(
           (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
         );
@@ -393,22 +407,11 @@ const normalizeMessage = (message) => {
       const serverMessage = response.data;
       const tempId = response.tempId;
 
-      console.log("🔍 Recherche message temporaire:", {
-        tempId,
-        serverMessageId: serverMessage._id,
-        typeMessage: serverMessage.typeMessage
-      });
-
       setMessages(prev => {
         const tempIndex = prev.findIndex(m => m._id === tempId);
 
-        console.log("📊 Index trouvé:", tempIndex, "| Total messages:", prev.length);
-
         if (tempIndex === -1) {
-          console.log("⚠️ Aucun message temporaire trouvé, ajout du message");
-          
           if (prev.some(m => m._id === serverMessage._id)) {
-            console.log("⏭️ Message réel déjà présent, skip");
             return prev;
           }
           
@@ -418,8 +421,6 @@ const normalizeMessage = (message) => {
           );
         }
 
-        console.log("✅ Remplacement du message temporaire:", tempId, "→", serverMessage._id);
-        
         const updated = [...prev];
         const normalized = normalizeMessage(serverMessage);
         
@@ -476,35 +477,36 @@ const normalizeMessage = (message) => {
       }
     };
 
-
     // 👁️ Message vu
-const handleMessageSeen = (data) => {
-  const { messageId, seenBy } = data;
-  
-  console.log("👁️ Message marqué comme vu:", { messageId, seenBy });
+    const handleMessageSeen = (data) => {
+      const { messageId, seenBy } = data;
+      
+      console.log("👁️ Message marqué comme vu:", { messageId, seenBy });
 
-  setMessages(prev => 
-    prev.map(msg => {
-      if (msg._id === messageId) {
-        const readBy = msg.readBy || [];
-        
-        // Éviter les doublons
-        if (!readBy.some(r => r.userId === seenBy)) {
-          return {
-            ...msg,
-            readBy: [...readBy, { userId: seenBy, readAt: new Date() }],
-            status: "seen" // ← DOUBLE COCHE BLEUE
-          };
-        }
-      }
-      return msg;
-    })
-  );
-};
+      setMessages(prev => 
+        prev.map(msg => {
+          if (msg._id === messageId) {
+            const readBy = msg.readBy || [];
+            
+            if (!readBy.some(r => r.userId === seenBy)) {
+              return {
+                ...msg,
+                readBy: [...readBy, { userId: seenBy, readAt: new Date() }],
+                status: "seen"
+              };
+            }
+          }
+          return msg;
+        })
+      );
+    };
+
+    // 🔥 ENREGISTREMENT DES LISTENERS AVEC LES DEUX FORMATS
+    // Format avec tiret (backend)
+    socketService.socket?.on("new-message", handleNewMessage);
+    // Format avec underscore (au cas où)
+    socketService.socket?.on("new_message", handleNewMessage);
     
-
-    // 🎧 ENREGISTREMENT DES LISTENERS
-    socketService.onNewMessage(handleNewMessage);
     socketService.onMessageSent(handleMessageSent);
     socketService.onMessageError(handleMessageError);
     socketService.onMessagePinned(handleMessagePinned);
@@ -512,11 +514,13 @@ const handleMessageSeen = (data) => {
     socketService.onMessageSeen(handleMessageSeen);
 
     return () => {
-      socketService.off("new_message", handleNewMessage);
+      socketService.socket?.off("new-message", handleNewMessage);
+      socketService.socket?.off("new_message", handleNewMessage);
       socketService.off("message_sent", handleMessageSent);
       socketService.off("message_error", handleMessageError);
       socketService.off("message:pinned", handleMessagePinned);
       socketService.off("message:unpinned", handleMessageUnpinned);
+      socketService.off("message:seen", handleMessageSeen);
     };
   }, [conversationId]);
 

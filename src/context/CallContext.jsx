@@ -93,16 +93,37 @@ const acceptCall = useCallback(() => {
   }, [incomingCall]);
 
   /* 🎧 Socket global */
-  useEffect(() => {
-    const socket = socketService.socket;
-    if (!socket) return;
+/* 🎧 Socket global */
+useEffect(() => {
+  const socket = socketService.socket;
+  if (!socket) return;
 
-    socket.on("incoming-call", handleIncomingCall);
+  socket.on("incoming-call", handleIncomingCall);
+  
+  // 🔥 CORRIGER ICI - Ajouter les handlers complets
+  const handleCallCancelled = () => {
+    console.log("🚫 Appel annulé reçu");
+    stopRingtone();
+    setShowIncomingCallModal(false);
+    setIncomingCall(null);
+  };
+  
+  const handleCallTimeout = () => {
+    console.log("⏱️ Timeout appel reçu");
+    stopRingtone();
+    setShowIncomingCallModal(false);
+    setIncomingCall(null);
+  };
 
-    return () => {
-      socket.off("incoming-call", handleIncomingCall);
-    };
-  }, [handleIncomingCall]);
+  socket.on("call-cancelled", handleCallCancelled);
+  socket.on("call-timeout", handleCallTimeout);
+
+  return () => {
+    socket.off("incoming-call", handleIncomingCall);
+    socket.off("call-cancelled", handleCallCancelled);
+    socket.off("call-timeout", handleCallTimeout);
+  };
+}, [handleIncomingCall]); // ← Ajouter handleIncomingCall dans les dépendances
 
   /* 🔄 Utilitaires */
   const getActiveCall = () => {

@@ -395,19 +395,41 @@ useEffect(() => {
     setContactStatus((prev) => ({ ...prev }));
   }, 60000); // toutes les 1 min
 
-  return () => clearInterval(interval);
-}, [contactStatus.lastSeen, contactStatus.isOnline]);
+    return () => clearInterval(interval);
+  }, [contactStatus.lastSeen, contactStatus.isOnline]);
 
+  // 🔥 CORRECTION : Charger membres du groupe
+  useEffect(() => {
+    if (selectedChat?.isGroup && selectedChat._id) {
+      const fetchGroupMembers = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch(`http://localhost:5000/api/groups/${selectedChat._id}/members`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          
+          if (data.success) {
+            setGroupMembers(data.members || []);
+            
+            const userId = localStorage.getItem('userId');
+            const myMember = data.members.find(m => String(m.id) === String(userId));
+            setMyRoleInGroup(myMember?.role || 'membre');
+          }
+        } catch (err) {
+          console.error("❌ Erreur chargement membres:", err);
+        }
+      };
+      
+      fetchGroupMembers();
+    }
+  }, [selectedChat?._id]);
 
-
-
-
-console.log("selectedChat:", selectedChat, "user:", user);
-const contactId = React.useMemo(() => {
-  if (!selectedChat || selectedChat.isGroup || !user) return null;
-  const other = selectedChat.participants.find(
-    (p) => String(p._id) !== String(user._id)
-);
+  const contactId = React.useMemo(() => {
+    if (!selectedChat || selectedChat.isGroup || !user) return null;
+    const other = selectedChat.participants.find(
+      (p) => String(p._id) !== String(user._id)
+    );
     return other?._id || null;
   }, [selectedChat, user]);
 
