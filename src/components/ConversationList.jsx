@@ -185,6 +185,7 @@ const filteredList = filteredByType.filter((conv) => {
 
   // Fonction pour charger les conversations archivées
 const loadArchived = async () => {
+  
   if (archivedList.length === 0) {
     setLoadingArchived(true);
     try {
@@ -434,7 +435,7 @@ const loadArchived = async () => {
             </p>
           </div>
         ) : (
-         filteredList.map((conv) => {
+        filteredList.map((conv) => {
   const isGroup = conv.isGroup || conv.type === 'group';
   
   // 🔥 CORRECTION : Gestion différente selon l'origine de la conversation
