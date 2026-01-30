@@ -638,8 +638,34 @@
             "file": {
     "default_name": "File",
     "download": "Download"
+  },
+   "pad": {
+    "pressEscToClose": "Press Esc to close",
+    "autoSave": "Auto save",
+    "placeholder": "Start writing... (Real-time collaboration)",
+    "buttons": {
+    "close": "Fermer",
+     "clear": "Clear"
+  },
+     "title": "Collaborative Pad",
+  "cleared": "Pad cleared ✓",
+  
+  "saveStatus": {
+    "error": "Save error",
+    "modifying": "Modifying…",
+    "saved": "Saved ✓",
+    "ready": "Ready"
+  },
+  "confirm": {
+    "clear": "Do you really want to clear all pad content?"
+  },
+ 
+  
+  "titles": {
+    "clearPad": "Clear pad"
   }
-            
+}
+
           
 
 

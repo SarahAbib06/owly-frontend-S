@@ -45,16 +45,7 @@ export default function ParametresConfidentialite({
   };
 
   const privacyItems = [
-    {
-      id: "lastLogin",
-      icon: Clock,
-      title: t("parametresConfidentialite.LastLogin"),
-      description: dernierConnexionChoice === "Tout le monde"
-        ? t("derniereConnexion.Everyone")
-        : t("derniereConnexion.NoOne"),
-      iconColor: "text-blue-500",
-      iconBg: "bg-blue-500/10"
-    },
+    
     {
       id: "statut",
       icon: Eye,
@@ -69,7 +60,7 @@ export default function ParametresConfidentialite({
       id: "blockedUsers",
       icon: UserX,
       title: t("parametresConfidentialite.BlockedUsers"),
-      description: `2 ${t("parametresConfidentialite.BlockedUsersCount")}`,
+    
       iconColor: "text-red-500",
       iconBg: "bg-red-500/10"
     },

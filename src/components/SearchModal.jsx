@@ -565,7 +565,7 @@ const { t } = useTranslation();
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    className="w-full pl-4 pr-10 py-3 bg-gray-100 dark:bg-neutral-700 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-4 pr-10 py-3 bg-gray-100 dark:bg-neutral-700 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-myYellow"
                     autoFocus
                   />
                   <button

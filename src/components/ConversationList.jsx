@@ -30,7 +30,7 @@ export default function ConversationList({ onSelect, onNewChat }) {
   const [archivedList, setArchivedList] = useState([]);
   const [loadingArchived, setLoadingArchived] = useState(false);
   const [lastMessages, setLastMessages] = useState({});
-
+  const [unreadCounts, setUnreadCounts] = useState({});
   const currentUserId = localStorage.getItem('userId');
 
   const { 
@@ -41,104 +41,93 @@ export default function ConversationList({ onSelect, onNewChat }) {
   } = useConversations();
 
   // Déterminer quelle liste afficher selon filterMode
-  let listToDisplay = conversations;
-  if (filterMode === "archived") {
-    listToDisplay = archivedList;
-  } else if (filterMode === "favorites") {
-    listToDisplay = favoritesList;
-  }
+let listToDisplay = conversations;
+if (filterMode === "archived") {
+  listToDisplay = archivedList;
+} else if (filterMode === "favorites") {
+  listToDisplay = favoritesList;
+}
 
-  // Debug pour les conversations
-  useEffect(() => {
-    console.log("📊 Conversations:", conversations);
-  }, [conversations]);
-
-  // Filtrage par type (all = tout, group = uniquement groupes)
-  const filteredByType = filterType === 'group'
-    ? listToDisplay.filter(conv => conv.type === 'group' || conv.isGroup)
-    : listToDisplay;
-
-  // Charger les derniers messages
- // Charger les derniers messages AU CHARGEMENT INITIAL
-// Charger les derniers messages AU CHARGEMENT INITIAL SEULEMENT
-useEffect(() => {
-  const fetchLastMessages = async () => {
-    if (conversations.length === 0) return;
-    
-    const messages = {};
-    
-    for (const conv of conversations) {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(
-          `http://localhost:5000/api/messages/${conv._id}?page=1&limit=1`,
-          {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }
-        );
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.messages && data.messages.length > 0) {
-            const lastMsg = data.messages[0];
-            
-            let preview = '';
-            if (lastMsg.typeMessage === 'text') {
-              preview = lastMsg.content;
-            } else if (lastMsg.typeMessage === 'image') {
-              preview = '📷 Photo';
-            } else if (lastMsg.typeMessage === 'video') {
-              preview = '🎥 Vidéo';
-            } else if (lastMsg.typeMessage === 'audio') {
-              preview = '🎤 Audio';
-            } else if (lastMsg.typeMessage === 'file') {
-              preview = '📎 Fichier';
-            }
-            
-            messages[conv._id] = {
-              content: preview,
-              senderId: lastMsg.Id_sender || lastMsg.senderId,
-              createdAt: lastMsg.createdAt || lastMsg.timestamp
-            };
-          }
-        }
-      } catch (error) {
-        console.error(`Erreur chargement message conv ${conv._id}:`, error);
-      }
-    }
-    
-    setLastMessages(messages);
-  };
-
-  fetchLastMessages();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, conversations); // ✅ NE charger qu'UNE SEULE FOIS au montage
-
-  // Filtrer les conversations selon la recherche
- // Filtrer les conversations selon la recherche
-const filteredList = filteredByType.filter((conv) => {
-  const isGroup = conv.isGroup || conv.type === 'group';
-  
-  // 🔥 CORRECTION : Gestion différente selon l'origine
-  let conversationName;
-  
-  if (conv.isFromArchived) {
-    // Conversations archivées : utiliser directement conv.name
-    conversationName = isGroup
-      ? (conv.groupName || conv.name || "Groupe")
-      : (conv.name || "Utilisateur");
-  } else {
-    // Conversations normales : chercher dans participants
-    const otherParticipant = conv.participants?.find(p => p._id !== currentUserId);
-    conversationName = isGroup
-      ? (conv.groupName || conv.name || "Groupe")
-      : (otherParticipant?.username || conv.name || "Utilisateur");
-  }
-   
-  return conversationName.toLowerCase().includes(search.toLowerCase());
+// ⭐ TRIER par date du dernier message (le plus récent en premier)
+const sortedList = [...listToDisplay].sort((a, b) => {
+  const timeA = lastMessages[a._id]?.createdAt || a.lastMessageAt || 0;
+  const timeB = lastMessages[b._id]?.createdAt || b.lastMessageAt || 0;
+  return new Date(timeB) - new Date(timeA);
 });
 
+// Debug pour les conversations
+useEffect(() => {
+  console.log("📊 Conversations:", conversations);
+}, [conversations]);
 
+// Filtrage par type (all = tout, group = uniquement groupes)
+const filteredByType = filterType === 'group'
+  ? sortedList.filter(conv => conv.type === 'group' || conv.isGroup)
+  : sortedList;
+  // Charger les derniers messages
+  useEffect(() => {
+    const fetchLastMessages = async () => {
+      const messages = {};
+      
+      for (const conv of filteredByType) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(
+            `http://localhost:5000/api/messages/${conv._id}?page=1&limit=1`,
+            {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.messages && data.messages.length > 0) {
+              const lastMsg = data.messages[0];
+              
+              let preview = '';
+              if (lastMsg.typeMessage === 'text') {
+                preview = lastMsg.content;
+              } else if (lastMsg.typeMessage === 'image') {
+                preview = '📷 Photo';
+              } else if (lastMsg.typeMessage === 'video') {
+                preview = '🎥 Vidéo';
+              } else if (lastMsg.typeMessage === 'audio') {
+                preview = '🎤 Audio';
+              } else if (lastMsg.typeMessage === 'file') {
+                preview = '📎 Fichier';
+              }
+              
+              messages[conv._id] = {
+                content: preview,
+                senderId: lastMsg.Id_sender || lastMsg.senderId,
+                createdAt: lastMsg.createdAt || lastMsg.timestamp
+              };
+            }
+          }
+        } catch (error) {
+          console.error(`Erreur chargement message conv ${conv._id}:`, error);
+        }
+      }
+      
+      setLastMessages(messages);
+    };
+
+    if (filteredByType.length > 0) {
+      fetchLastMessages();
+    }
+  }, [filteredByType]);
+
+  // Filtrer les conversations selon la recherche
+  const filteredList = filteredByType.filter((conv) => {
+    const isGroup = conv.isGroup || conv.type === 'group';
+    const otherParticipant = conv.participants?.find(p => p._id !== currentUserId);
+
+    const conversationName = isGroup
+      ? (conv.groupName || conv.name || "Groupe")
+      : (otherParticipant?.username || conv.name || "Utilisateur");
+   
+    return conversationName.toLowerCase().includes(search.toLowerCase());
+  });
 
   // Écouter les nouveaux messages
   useEffect(() => {
@@ -165,6 +154,13 @@ const filteredList = filteredByType.filter((conv) => {
             createdAt: data.createdAt || data.timestamp || new Date()
           }
         }));
+          // ⭐ LIGNES pour increpemter  compteur
+        if (data.senderId !== currentUserId && data.conversationId !== selectedId) {
+          setUnreadCounts(prev => ({
+            ...prev,
+            [data.conversationId]: (prev[data.conversationId] || 0) + 1
+          }));
+        }
       }
     };
 
@@ -176,6 +172,12 @@ const filteredList = filteredByType.filter((conv) => {
 
   const handleSelectConversation = async (conv) => {
     setSelectedId(conv._id);
+     // ⭐ AJOUTEZ CES LIGNES
+    setUnreadCounts(prev => ({
+      ...prev,
+      [conv._id]: 0
+    }));
+
     onSelect(conv, filterMode !== "all");
 
     if (conv.unreadCount > 0) {
@@ -184,32 +186,21 @@ const filteredList = filteredByType.filter((conv) => {
   };
 
   // Fonction pour charger les conversations archivées
-const loadArchived = async () => {
-  
-  if (archivedList.length === 0) {
-    setLoadingArchived(true);
-    try {
-      const userId = localStorage.getItem('userId');
-      console.log("🔍 Chargement archivées pour userId:", userId);
-      
-      if (userId) {
-        const res = await conversationService.getArchivedConversations(userId);
-        
-        console.log("📁 Réponse archivées:", res);
-        console.log("📋 Nombre:", res.conversations?.length);
-        
-        if (res.conversations && res.conversations.length > 0) {
-          console.log("📄 Exemple:", res.conversations[0]);
+  const loadArchived = async () => {
+    if (archivedList.length === 0) {
+      setLoadingArchived(true);
+      try {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          const res = await conversationService.getArchivedConversations(userId);
+          setArchivedList(res.conversations || []);
         }
-        
-        setArchivedList(res.conversations || []);
+      } catch (err) {
+        console.error("Erreur chargement archivées", err);
       }
-    } catch (err) {
-      console.error("❌ Erreur chargement archivées", err);
+      setLoadingArchived(false);
     }
-    setLoadingArchived(false);
-  }
-};
+  };
 
   // Fonction pour charger les favoris
   const loadFavorites = async () => {
@@ -435,70 +426,51 @@ const loadArchived = async () => {
             </p>
           </div>
         ) : (
-        filteredList.map((conv) => {
-  const isGroup = conv.isGroup || conv.type === 'group';
-  
-  // 🔥 CORRECTION : Gestion différente selon l'origine de la conversation
-  let conversationName;
-  let avatar;
-  
-  if (conv.isFromArchived) {
-    // 🎯 CONVERSATIONS ARCHIVÉES : utiliser directement les données enrichies du backend
-    console.log('📁 Conversation archivée:', conv);
-    
-    conversationName = isGroup
-      ? (conv.groupName || conv.name || "Groupe")
-      : (conv.name || "Utilisateur");  // ← conv.name contient DÉJÀ le username
-    
-    avatar = isGroup
-      ? (conv.groupPic || conv.avatar || "/group-avatar.png")
-      : (conv.avatar || "/default-avatar.png");  // ← conv.avatar contient DÉJÀ la photo
-  } else {
-    // 🎯 CONVERSATIONS NORMALES : chercher dans participants
-    const otherParticipant = conv.participants?.find(p => p._id !== currentUserId);
-    
-    conversationName = isGroup
-      ? (conv.groupName || conv.name || "Groupe")
-      : (otherParticipant?.username || conv.name || "Utilisateur");
-    
-    avatar = isGroup
-      ? (conv.groupPic || conv.groupAvatar || "/group-avatar.png")
-      : (otherParticipant?.profilePicture || "/default-avatar.png");
-  }
-  
-  const lastMsg = lastMessages[conv._id];
-  let lastMessage = t("messages.noMessages") || "Aucun message";
-  
-  if (lastMsg) {
-    const isMine = lastMsg.senderId === currentUserId;
-    const prefix = isMine ? "Vous : " : "";
-    lastMessage = prefix + lastMsg.content;
-  }
-  
-  const time = conv.lastMessageAt
-    ? new Date(conv.lastMessageAt).toLocaleTimeString('fr-FR', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    : "";
+          filteredList.map((conv) => {
+            const isGroup = conv.isGroup || conv.type === 'group';
+            const otherParticipant = conv.participants?.find(p => p._id !== currentUserId);
+            
+            const conversationName = isGroup
+              ? (conv.groupName || conv.name || "Groupe")
+              : (otherParticipant?.username || conv.name || "Utilisateur");
+           
+            const avatar = isGroup
+              ? (conv.groupAvatar || "/group-avatar.png")
+              : (otherParticipant?.profilePicture || "/default-avatar.png");
+           
+            const lastMsg = lastMessages[conv._id];
+            let lastMessage = t("messages.noMessages") || "Aucun message";
+            
+            if (lastMsg) {
+              const isMine = lastMsg.senderId === currentUserId;
+              const prefix = isMine ? "Vous : " : "";
+              lastMessage = prefix + lastMsg.content;
+            }
+           
+            const time = conv.lastMessageAt
+              ? new Date(conv.lastMessageAt).toLocaleTimeString('fr-FR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              : "";
 
-  return (
-    <div
-      key={conv._id}
-      onClick={() => handleSelectConversation(conv)}
-    >
-      <ConversationItem
-        avatar={avatar}
-        name={conversationName}
-        lastMessage={lastMessage}
-        time={time}
-        unread={conv.unreadCount || 0}
-        selected={selectedId === conv._id}
-        isGroup={isGroup}
-      />
-    </div>
-  );
-})
+            return (
+              <div
+                key={conv._id}
+                onClick={() => handleSelectConversation(conv)}
+              >
+                <ConversationItem
+                  avatar={avatar}
+                  name={conversationName}
+                  lastMessage={lastMessage}
+                  time={time}
+                 unread={unreadCounts[conv._id] || conv.unreadCount || 0}
+                  selected={selectedId === conv._id}
+                  isGroup={isGroup}
+                />
+              </div>
+            );
+          })
         )}
       </div>
     </aside>

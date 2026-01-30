@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { X, Users, Save, Trash2 } from "lucide-react";
 import socketService from "../services/socketService";
 import { padService } from "../services/padService";
-
+import { useTranslation } from "react-i18next";
 const PadModal = ({ conversationId, isOpen, onClose }) => {
+   const { t } = useTranslation();
   const [content, setContent] = useState("");
   const [activeUsers, setActiveUsers] = useState([]);
-  const [saveStatus, setSaveStatus] = useState("Prêt");
+  const [saveStatus, setSaveStatus] = useState(t("pad.saveStatus.ready"));
   const [isSaving, setIsSaving] = useState(false);
   const textareaRef = useRef(null);
   const saveTimeoutRef = useRef(null);
@@ -110,7 +111,7 @@ const PadModal = ({ conversationId, isOpen, onClose }) => {
     }
     
     // Sauvegarde auto
-    setSaveStatus("Modification...");
+    setSaveStatus(t("pad.saveStatus.modifying"));
     setIsSaving(true);
     
     if (saveTimeoutRef.current) {
@@ -120,13 +121,14 @@ const PadModal = ({ conversationId, isOpen, onClose }) => {
     saveTimeoutRef.current = setTimeout(async () => {
       try {
         await savePadContent(newContent);
-        setSaveStatus("Sauvegardé ✓");
+        setSaveStatus(t("pad.saveStatus.saved"));
         setTimeout(() => {
-          setSaveStatus("Prêt");
+         setSaveStatus(t("pad.saveStatus.ready"));
           setIsSaving(false);
         }, 1500);
       } catch (error) {
-        setSaveStatus("Erreur de sauvegarde");
+        setSaveStatus(t("pad.saveStatus.error"));
+
         setIsSaving(false);
       }
     }, 800);
@@ -134,17 +136,17 @@ const PadModal = ({ conversationId, isOpen, onClose }) => {
 
   // ==================== VIDER LE PAD ====================
   const handleClearPad = async () => {
-    if (window.confirm("Voulez-vous vraiment vider tout le contenu du pad ?")) {
+    if (window.confirm(t("pad.confirm.clear")))  {
       try {
         await padService.clear(conversationId);
         setContent("");
         if (socketService.socket) {
           socketService.updatePadContent(conversationId, "");
         }
-        setSaveStatus("Pad vidé ✓");
+        setSaveStatus(t("pad.cleared"));
       } catch (error) {
         console.error("❌ Erreur:", error);
-        setSaveStatus("Erreur");
+       setSaveStatus(t("pad.saveStatus.error"));
       }
     }
   };
@@ -199,7 +201,7 @@ const PadModal = ({ conversationId, isOpen, onClose }) => {
           >
             <div className="flex items-center gap-5">
               <h3 className="text-2xl font-semibold m-0" style={{ fontSize: "26px" }}>
-                Pad Collaboratif
+                {t("pad.title")}
               </h3>
 
               {/* UTILISATEURS ACTIFS */}
@@ -234,10 +236,10 @@ const PadModal = ({ conversationId, isOpen, onClose }) => {
                 onClick={handleClearPad}
                 className="px-4 py-2 bg-[#5c2a2a] hover:bg-[#7a3636] text-white rounded-lg transition-colors flex items-center gap-2"
                 style={{ padding: "10px 18px" }}
-                title="Vider le pad"
+                title={t("pad.titles.clearPad")}
               >
                 <Trash2 size={16} />
-                Vider
+                {t("pad.buttons.clear")}
               </button>
 
               {/* BOUTON FERMER */}
@@ -249,7 +251,7 @@ const PadModal = ({ conversationId, isOpen, onClose }) => {
                   height: "44px",
                   fontSize: "24px",
                 }}
-                title="Fermer"
+                 title={t("pad.buttons.close")}
               >
                 ×
               </button>
@@ -270,7 +272,7 @@ const PadModal = ({ conversationId, isOpen, onClose }) => {
                 ref={textareaRef}
                 value={content}
                 onChange={handleContentChange}
-                placeholder="Commencez à écrire... (Collaboration en temps réel)"
+                placeholder={t("pad.placeholder")}
                 spellCheck="true"
                 autoComplete="off"
                 className="w-full h-full p-7 bg-transparent text-[#e0e0e0] font-mono text-base border-none outline-none resize-none"
@@ -304,10 +306,10 @@ const PadModal = ({ conversationId, isOpen, onClose }) => {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Save size={14} />
-                  <span>Sauvegarde automatique</span>
+                  <span>{t("pad.autoSave")}</span>
                 </div>
                 <span>•</span>
-                <span>Appuyez sur Esc pour fermer</span>
+                <span>{t("pad.pressEscToClose")}</span>
               </div>
               <div className="text-xs opacity-70">
                 ID: {conversationId?.substring(0, 8)}...

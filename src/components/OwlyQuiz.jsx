@@ -165,13 +165,7 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
       setTimeout(()=>setShowGrid(false), 3000);
     }
 
-    if(type==="finalPuzzle"){
-       setFinalQues({
-    question: t("owlyQuiz.final.question"),
-    options: shuffleArray(t("owlyQuiz.final.options", { returnObjects: true })),
-    correct: 2
-  });
-    }
+    
 
     setStage("challenge");
   };
@@ -202,9 +196,9 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
   };
 
   const onFinalClick=(i)=>{
-    if(challengeType!=="finalPuzzle") return;
-    if(i===finalQues.correct) onWin(); else onFail();
-  };
+  if(challengeType!=="finalPuzzle") return;
+  if(i===1) onWin(); else onFail(); // L'index 1 est la bonne réponse
+};
 
  const onWin = () => {
   playSound(winSound);
@@ -276,22 +270,29 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
         />
       </div>
 
-      {/* Bouton retour */}
-      <motion.button
-        onClick={() => navigate("/games")}
-        whileTap={{ scale: 0.95 }}
-        className="
-          fixed top-4 left-4 z-50
-          px-4 sm:px-6 py-2 sm:py-3
-          bg-[#ffd54f] rounded-xl
-          font-bold text-sm sm:text-base
-          shadow-lg shadow-black/20
-          hover:shadow-xl hover:shadow-black/30
-          transition-all duration-300
-        "
-      >
-        ⬅ Retour
-      </motion.button>
+   <button
+     onClick={() => (window.location.href = "/games")}
+     className="
+       p-1
+       bg-black text-yellow-400
+       rounded-full
+       shadow-lg
+       hover:bg-gray-800 hover:text-yellow-300
+       transition
+       flex items-center justify-center
+       cursor-pointer
+       fixed
+       left-30
+       lg:left-25
+        -top-0 md:top-2 
+       
+        
+       z-50
+     "
+   >
+     <IoArrowBackOutline className="text-2xl sm:text-3xl" />
+   </button>
+
 
       {/* Titre */}
       <motion.h1 
@@ -534,36 +535,49 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
           </div>
         )}
 
-        {/* FINAL */}
-        {stage === "challenge" && challengeType === "finalPuzzle" && (
-          <div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="text-center mt-8 relative z-10 w-full max-w-2xl px-4"
-          >
-            <h2 variants={itemVariants} className="text-2xl sm:text-3xl font-bold mb-6">
-               {t("owlyQuiz.final.title")}
-            </h2>
-            <p variants={itemVariants} className="text-lg sm:text-xl mb-8 bg-white p-6 rounded-2xl shadow-xl">
-              {finalQues.question}
-            </p>
-            <div variants={itemVariants} className="flex flex-wrap gap-3 sm:gap-4 justify-center">
-              {finalQues.options.map((opt, i) => (
-                <button
-                  key={i}
-                  onClick={() => onFinalClick(i)}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-[#ffd54f] font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
+     
+      
+{/* FINAL PUZZLE */}
+{stage === "challenge" && challengeType === "finalPuzzle" && (  
+<motion.div
+  variants={containerVariants}
+  initial="hidden"
+  animate="visible"
+  exit="exit"
+  className="text-center mt-4 sm:mt-6 lg:mt-8 relative z-10 w-full px-3 sm:px-4 lg:px-6 flex flex-col items-center"
+>
+  <motion.h2 
+    variants={itemVariants} 
+    className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold mb-4 sm:mb-5 lg:mb-6"
+  >
+     {t("owlyQuiz.finalQuestion")}
+  </motion.h2>
+
+  <motion.p
+    variants={itemVariants}
+    className="text-sm sm:text-base lg:text-lg xl:text-xl mb-4 sm:mb-6 lg:mb-8 bg-white p-4 sm:p-5 lg:p-6 rounded-xl lg:rounded-2xl shadow-xl max-w-full sm:max-w-xl lg:max-w-2xl w-full leading-relaxed"
+  >
+    Que symbolise Owly dans l'histoire ?
+  </motion.p>
+
+  <motion.div
+    variants={itemVariants}
+    className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 w-full max-w-full sm:max-w-md md:max-w-2xl lg:max-w-3xl"
+  >
+    {["Le pouvoir", "La connexion avec la nature", "La richesse", "Un secret"].map((opt, i) => (
+      <motion.button
+        key={i}
+        onClick={() => onFinalClick(i)}
+        whileTap={{ scale: 0.95 }}
+        className="px-4 py-3 sm:px-6 sm:py-4 lg:px-8 lg:py-5 rounded-lg sm:rounded-xl bg-[#ffd54f] font-bold text-sm sm:text-base lg:text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-[#ffc107]"
+      >
+        {opt}
+      </motion.button>
+    ))}
+  </motion.div>
+</motion.div>
+)}
         {/* STORY */}
         {stage === "story" && (
           <div
@@ -625,38 +639,44 @@ const STORY_SUMMARY = t("owlyQuiz.storySummary", { returnObjects: true });
   </div>
 )}
 
+{/* FINISHED */}
+{stage === "finished" && (
+  <motion.div
+    variants={containerVariants}
+    initial="hidden"
+    animate="visible"
+    exit="exit"
+    className="max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl w-full mt-4 sm:mt-6 md:mt-8 mx-3 sm:mx-4 mb-20 sm:mb-24 md:mb-8"
+  >
+    <div className="p-4 sm:p-6 md:p-8 bg-white rounded-xl md:rounded-2xl shadow-2xl">
+      <motion.h2 
+        variants={itemVariants} 
+        className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 md:mb-8 text-center"
+      >
+        {t("owlyQuiz.fullStoryTitle")}
+      </motion.h2>
+      
+      <div className="max-h-[50vh] md:max-h-none overflow-y-auto md:overflow-visible mb-6">
+        {STORY_PARAGRAPHS.map((p, i) => (
+  <motion.p key={i}>{p}</motion.p>
+))}
 
-        {/* FINISHED */}
-        {stage === "finished" && (
-          <div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="max-w-3xl w-full mt-8 p-6 sm:p-8 bg-white rounded-2xl shadow-2xl relative z-10"
-          >
-            <h2 variants={itemVariants} className="text-3xl sm:text-4xl font-bold mb-8 text-center">
-                {t("owlyQuiz.fullStoryTitle")}
-            </h2>
-            {STORY_PARAGRAPHS.map((p, i) => (
-              <p 
-                key={i} 
-                variants={itemVariants}
-                className="leading-7 text-base sm:text-lg mb-4"
-              >
-                {p}
-              </p>
-            ))}
-            <button
-              variants={itemVariants}
-              onClick={resetGame}
-              whileTap={{ scale: 0.95 }}
-              className="w-full sm:w-auto px-8 py-3 rounded-xl bg-[#ffd54f] font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300 mt-6"
-            >
-               🔄 {t("owlyQuiz.replay")}
-            </button>
-          </div>
-        )}
+      </div>
+
+      <motion.button
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.4 }}
+  onClick={resetGame}
+  whileTap={{ scale: 0.95 }}
+  className="w-full md:w-auto px-6 py-3 sm:px-8 md:px-10 md:py-4 rounded-xl bg-[#ffd54f] font-bold text-sm sm:text-base md:text-lg shadow-lg block mx-auto"
+>
+  🔄 {t("owlyQuiz.replay")}
+</motion.button>
+
+    </div>
+  </motion.div>
+)}
       </AnimatePresence>
     </div>
   );
