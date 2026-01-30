@@ -187,20 +187,15 @@ const toggleFavorite = async () => {
   setIsArchiveModalOpen(false);
 
   try {
+    // 1. Archiver/Désarchiver
     if (selectedChat.isArchived) {
-      // Désarchiver
       await unarchiveConversation(selectedChat._id);
     } else {
-      // Archiver ← IL FALLAIT ÇA !
       await archiveConversation(selectedChat._id);
     }
 
-    onClose();
-
-    // Rafraîchit la liste + ferme le chat dans LES DEUX CAS
-    if (typeof onConversationDeleted === 'function') {
-      onConversationDeleted();
-    }
+    // 2. ✅ RECHARGER LA PAGE (solution la plus simple)
+    window.location.reload();
 
   } catch (err) {
     console.error("Erreur archive/désarchive :", err);
@@ -208,7 +203,6 @@ const toggleFavorite = async () => {
     alert(`Échec : ${msg}`);
   }
 };
-
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-30" onClick={onClose} />
