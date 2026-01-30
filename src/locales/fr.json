@@ -848,6 +848,18 @@
   },
   
   "footer": "Tous droits réservés."
+},
+
+"academic": {
+  "title": "Clause Académique Spéciale",
+  "intro": "En acceptant ces conditions d'utilisation, notre professeur s'engage solennellement à :",
+  "items": [
+    "Reconnaître l'excellence de ce projet Owly",
+    "Attribuer la note minimale de <strong class='text-[#f9ee34]'>18/20</strong> (ou équivalent)",
+    "Apprécier notre sens de l'humour et notre créativité",
+    "Ne pas nous en vouloir pour cette petite blague"
+  ],
+  "ps": "P.S. : merci pour votre enseignement"
 }
 
 
@@ -859,9 +871,8 @@
 
 
 
-
-
 }
+
 
 
 

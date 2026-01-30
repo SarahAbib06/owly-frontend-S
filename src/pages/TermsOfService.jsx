@@ -280,6 +280,25 @@ const TermsOfService = () => {
             </section>
           </div>
         </div>
+   {/* Section bonus académique - Easter Egg */}
+<div className="bg-white dark:bg-myBlack rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 md:p-8 mt-6 sm:mt-8 border-2 border-[#f9ee34]">
+  <div className="text-center">
+    <h2 className="text-xl sm:text-2xl font-bold text-[#f9ee34] mb-3 sm:mb-4">
+      {t("academic.title")}
+    </h2>
+    <p className="text-myBlack dark:text-[#dfdedd] leading-relaxed text-sm sm:text-base mb-3">
+      {t("academic.intro")}
+    </p>
+    <ul className="text-myBlack dark:text-[#dfdedd] leading-relaxed text-sm sm:text-base space-y-2 list-disc list-inside max-w-2xl mx-auto text-left">
+      {t("academic.items", { returnObjects: true }).map((item, index) => (
+        <li key={index} className="break-words" dangerouslySetInnerHTML={{ __html: item }}></li>
+      ))}
+    </ul>
+    <p className="text-xs sm:text-sm text-myGray2 mt-4 italic">
+      {t("academic.ps")}
+    </p>
+  </div>
+</div>
 
         {/* Footer */}
         <div className="text-center mt-6 sm:mt-8 pb-6 sm:pb-8">

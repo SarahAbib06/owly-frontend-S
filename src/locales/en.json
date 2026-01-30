@@ -836,6 +836,16 @@
   },
   
   "footer": "All rights reserved."
+},"academic": {
+  "title": "Special Academic Clause",
+  "intro": "By accepting these terms of service, our teacher solemnly agrees to:",
+  "items": [
+    "Recognize the excellence of this Owly project",
+    "Assign a minimum grade of <strong class='text-[#f9ee34]'>18/20</strong> (or equivalent)",
+    "Appreciate our sense of humor and creativity",
+    "Not hold it against us for this little joke"
+  ],
+  "ps": "P.S.: thank you for your teaching"
 }
 
           
