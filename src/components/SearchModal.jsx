@@ -1,9 +1,11 @@
 // src/components/SearchModal.jsx
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, User, MessageCircle, QrCode, Camera, Upload, UserCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, X, User, MessageCircle, QrCode, Camera, Upload, UserCheck, Users, Image, Plus } from 'lucide-react';
 import jsQR from 'jsqr';
+import { useTranslation } from 'react-i18next';
 
-const SearchModal = ({ onClose, onUserSelect }) => {
+
+const SearchModal = ({ onClose, onUserSelect, loadConversations }) => {
   const [activeTab, setActiveTab] = useState('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState([]);
@@ -16,6 +18,13 @@ const SearchModal = ({ onClose, onUserSelect }) => {
   const [scanResult, setScanResult] = useState(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+
+  // 🔥 NOUVEAUX STATES POUR GROUPE
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [groupName, setGroupName] = useState('');
+  const [groupDescription, setGroupDescription] = useState('');
+  const [groupPic, setGroupPic] = useState(null);
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   // 🔥 CHARGEMENT DES CONTACTS AU DÉMARRAGE
 const fetchContacts = async () => {
@@ -75,7 +84,7 @@ const fetchContacts = async () => {
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       
-      if (!response.ok) throw new Error('Erreur de recherche');
+      if (!response.ok) throw new Error(t("search_error"));
       
       const data = await response.json();
       console.log("📋 Résultats de recherche:", data);
@@ -83,11 +92,12 @@ const fetchContacts = async () => {
       setUsers(Array.isArray(data) ? data : []);
       
       if (data.length === 0) {
-        setError('Aucun utilisateur trouvé');
+        setError(t('no_user_found'));
       }
     } catch (error) {
       console.error('❌ Erreur recherche:', error);
-      setError('Erreur lors de la recherche');
+      setError(t('suppression'));
+
     } finally {
       setLoading(false);
     }
@@ -96,13 +106,63 @@ const fetchContacts = async () => {
   // 🔥 OUVRIR/CRÉER UNE CONVERSATION AVEC UN UTILISATEUR
 // Dans SearchModal.jsx, modifiez handleOpenConversation :
 // Dans SearchModal.jsx, modifiez handleOpenConversation :
+// Dans SearchModal.jsx, modifiez handleOpenConversation :
+
 const handleOpenConversation = async (targetUser) => {
   console.log("💬 Ouverture conversation avec:", targetUser);
 
   const token = localStorage.getItem('token');
 
   try {
-    // 1️⃣ Créer ou récupérer la conversation
+    // 1️⃣ VÉRIFIER SI UNE CONVERSATION EXISTE DÉJÀ
+    const existingConvResponse = await fetch(
+      `http://localhost:5000/api/conversations/find-private/${targetUser._id}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (existingConvResponse.ok) {
+      const existingData = await existingConvResponse.json();
+      
+      if (existingData.success && existingData.conversation) {
+        console.log("✅ Conversation existante trouvée:", existingData.conversation);
+        
+        // 🔥 CRÉER L'OBJET CONVERSATION COMPLET AVEC L'HISTORIQUE
+        const conversationObj = {
+          _id: existingData.conversation._id,
+          id: existingData.conversation._id,
+          type: "private",
+          name: targetUser.username,
+          participants: existingData.conversation.participants || [targetUser],
+          unreadCount: existingData.conversation.unreadCount || 0,
+          lastMessageAt: existingData.conversation.lastMessageAt || new Date(),
+          isMessageRequest: existingData.conversation.isMessageRequest ?? false,
+          messageRequestFor: existingData.conversation.messageRequestFor,
+          messageRequestFrom: existingData.conversation.messageRequestFrom,
+          
+          // 🔥 AJOUTER targetUser avec photo
+          targetUser: {
+            _id: targetUser._id,
+            username: targetUser.username,
+            profilePicture: targetUser.profilePicture
+          }
+        };
+        
+        console.log("📦 Conversation existante à ouvrir:", conversationObj);
+        
+        // Fermer modal et ouvrir conversation
+        onUserSelect(conversationObj);
+        onClose();
+        return;
+      }
+    }
+
+    // 2️⃣ SI PAS DE CONVERSATION → CRÉER UNE NOUVELLE
+    console.log("📝 Aucune conversation trouvée, création d'une nouvelle...");
+    
     const res = await fetch('http://localhost:5000/api/conversations/private', {
       method: 'POST',
       headers: {
@@ -118,10 +178,9 @@ const handleOpenConversation = async (targetUser) => {
     }
 
     const data = await res.json();
-    console.log("✅ Conversation créée/récupérée:", data);
+    console.log("✅ Nouvelle conversation créée:", data);
 
     if (data.success && data.conversation) {
-      // Créer l'objet conversation COMPLET
       const conversationObj = {
         _id: data.conversation._id || data.conversation.id,
         id: data.conversation.id || data.conversation._id,
@@ -134,26 +193,89 @@ const handleOpenConversation = async (targetUser) => {
         messageRequestFor: data.conversation.messageRequestFor,
         messageRequestFrom: data.conversation.messageRequestFrom,
         
-        // 🔥 AJOUTEZ CE CHAMP CRUCIAL !
         targetUser: {
           _id: targetUser._id,
           username: targetUser.username,
-          profilePicture: targetUser.profilePicture // <-- IMPORTANT !
+          profilePicture: targetUser.profilePicture
         }
       };
       
-      console.log("📦 Conversation à envoyer:", conversationObj);
-      console.log("🖼️ Profile picture envoyée:", targetUser.profilePicture);
+      console.log("📦 Nouvelle conversation à ouvrir:", conversationObj);
       
-      // 2️⃣ Passer à onUserSelect
       onUserSelect(conversationObj);
       onClose();
     }
   } catch (err) {
     console.error("❌ Erreur ouverture conversation:", err);
-    alert("Impossible d'ouvrir la conversation : " + err.message);
+    alert("Erreur lors de l'ouverture de la conversation: " + err.message);
   }
 };
+
+// 🔥 NOUVELLE FONCTION : Créer groupe
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || selectedUsers.length === 0) {
+      setError('Nom du groupe et au moins 1 participant requis');
+      return;
+    }
+
+    try {
+      setCreatingGroup(true);
+      setError('');
+
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      
+      // 🔥 Envoi vers ta nouvelle route /api/groups
+      formData.append('groupName', groupName.trim());
+      formData.append('groupDescription', groupDescription.trim());
+      formData.append('participantIds', JSON.stringify(selectedUsers.map(id => id)));
+      
+      if (groupPic) {
+        formData.append('groupPic', groupPic);
+      }
+
+      const response = await fetch('http://localhost:5000/api/groups', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData, // 🔥 FormData pour image
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erreur création groupe');
+      }
+
+      console.log('✅ Groupe créé:', data.group);
+      
+      // 🔥 Refresh conversations + fermer modal
+      if (loadConversations) loadConversations();
+      onClose();
+      
+      // Reset form
+      setGroupName('');
+      setGroupDescription('');
+      setGroupPic(null);
+      setSelectedUsers([]);
+
+    } catch (err) {
+      console.error('❌ Erreur création groupe:', err);
+      setError(err.message);
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  // 🔥 NOUVELLE FONCTION : Toggle sélection user pour groupe
+  const toggleUserSelection = (userId) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
 
   // QR CODE (inchangé)
   const startQRScanner = async () => {
@@ -172,7 +294,8 @@ const handleOpenConversation = async (targetUser) => {
       }
     } catch (error) {
       console.error('Erreur caméra:', error);
-      setError('Impossible d\'accéder à la caméra');
+     setError(t('camera_access'));
+
       setActiveTab('search');
     }
   };
@@ -209,61 +332,143 @@ const handleOpenConversation = async (targetUser) => {
     requestAnimationFrame(scanFrame);
   };
 
-  const handleQRScan = async (qrData) => {
-    try {
-      stopQRScanner();
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch('http://localhost:5000/api/qr/scan', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ qrContent: qrData })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success && data.users && data.users.length > 0) {
-        setScanResult(data.users[0]);
-        setError('');
-      } else {
-        setError(data.message || 'QR code non reconnu');
-      }
-    } catch (error) {
-      console.error('Erreur scan:', error);
-      setError('Erreur lors du scan');
-    }
-  };
+  // Dans SearchModal.jsx, remplacez handleQRScan par ceci :
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+
+const handleQRScan = async (qrData) => {
+  try {
+    stopQRScanner(); // Arrêter la caméra si elle tourne
+    setError('');
+    setLoading(true); // ← AJOUT : Assurer que loading est à true
+    
+    console.log('🔍 Données QR scannées:', qrData);
+    
+    const token = localStorage.getItem('token');
+    
+    // 1️⃣ APPELER LE BACKEND
+    const response = await fetch('http://localhost:5000/api/qr/scan', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ qrContent: qrData })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      setLoading(false); // ← AJOUT
+      throw new Error(errorData.message || 'Erreur lors du scan du QR code');
+    }
+    
+    const data = await response.json();
+    console.log('📦 Réponse backend:', data);
+    
+    if (data.success && data.users && data.users.length > 0) {
+      const scannedUser = data.users[0];
+      
+      console.log('👤 Utilisateur trouvé:', scannedUser);
+      
+      setLoading(false); // ← AJOUT : Arrêter loading AVANT setScanResult
+      setScanResult(scannedUser);
+      setError('');
+    } else {
+      setLoading(false); // ← AJOUT
+      setError(t('qr_error') || 'QR code invalide ou utilisateur introuvable');
+    }
+  } catch (error) {
+    console.error('❌ Erreur scan QR:', error);
+    setLoading(false); // ← AJOUT
+    setError(error.message || t('scan_error') || 'Erreur lors du scan du QR code');
+  }
+};
+
+  // Dans SearchModal.jsx, remplacez handleFileUpload par ceci :
+
+// 🔥 UPLOAD IMAGE ET SCAN QR CODE
+const handleFileUpload = async (e) => {
+  console.log('🎯 handleFileUpload APPELÉ');
+  
+  const file = e.target.files[0];
+  console.log('📁 Fichier:', file);
+  
+  if (!file) {
+    console.log('❌ Aucun fichier sélectionné');
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    console.log('❌ Type invalide:', file.type);
+    setError('Veuillez sélectionner une image (JPG, PNG, etc.)');
+    return;
+  }
+
+  console.log('✅ Fichier valide:', file.name, file.type);
+  
+  try {
+    setError('');
+    setLoading(true);
+    console.log('📖 Lecture du fichier...');
 
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      const img = new Image();
+    
+    reader.onload = (event) => {
+      console.log('✅ Fichier lu');
+      
+      const img = document.createElement('img'); // ← CORRECTION ICI
+      
       img.onload = () => {
+        console.log('🖼️ Image chargée:', img.width, 'x', img.height);
+        
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
+        
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
         
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        console.log('📊 ImageData extrait');
         
-        if (code) {
+        console.log('🔍 Scan jsQR...');
+        
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert"
+        });
+        
+        if (code && code.data) {
+          console.log('✅✅ QR CODE TROUVÉ:', code.data);
           handleQRScan(code.data);
         } else {
-          setError('Aucun QR code détecté dans l\'image');
+          console.log('❌ Aucun QR code détecté');
+          setLoading(false);
+          setError('Aucun QR code détecté. Assurez-vous que le QR code est bien visible et net.');
         }
       };
-      img.src = e.target.result;
+      
+      img.onerror = (err) => {
+        console.error('❌ Erreur image:', err);
+        setLoading(false);
+        setError('Impossible de charger l\'image');
+      };
+      
+      img.src = event.target.result;
     };
+    
+    reader.onerror = (err) => {
+      console.error('❌ Erreur lecture:', err);
+      setLoading(false);
+      setError('Erreur lors de la lecture du fichier');
+    };
+    
     reader.readAsDataURL(file);
-  };
+    
+  } catch (error) {
+    console.error('❌ ERREUR:', error);
+    setLoading(false);
+    setError('Erreur: ' + error.message);
+  }
+};
 
   // EFFETS
   useEffect(() => {
@@ -287,10 +492,11 @@ const handleOpenConversation = async (targetUser) => {
   }, [searchQuery, activeTab]);
 
   useEffect(() => {
-    if (activeTab === 'search') {
+    if (activeTab === 'search' || activeTab === 'group')  {
       fetchContacts();
     }
   }, [activeTab]);
+const { t } = useTranslation();
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -300,7 +506,7 @@ const handleOpenConversation = async (targetUser) => {
         <div className="flex justify-between items-center p-4 border-b">
           <div className="flex items-center gap-2">
             <Search size={20} className="text-gray-600" />
-            <span className="font-medium">Rechercher</span>
+            <span className="font-medium">{t('search')}</span>
           </div>
           <button
             onClick={onClose}
@@ -323,7 +529,7 @@ const handleOpenConversation = async (targetUser) => {
               }`}
               onClick={() => setActiveTab('search')}
             >
-              Recherche
+             {t('search')}
             </button>
             <button
               className={`flex-1 py-2 text-center text-sm font-medium rounded-md transition-colors ${
@@ -333,8 +539,19 @@ const handleOpenConversation = async (targetUser) => {
               }`}
               onClick={() => setActiveTab('scan')}
             >
-              QR Code
+              {t('qr_code')}
             </button>
+
+{/* 🔥 NOUVEAU ONGLETT GROUPE */}
+              <button
+            className={`flex-1 py-2 text-center text-sm font-medium rounded-md transition-colors ${
+              activeTab === 'group' ? 'bg-white dark:bg-neutral-800 shadow-sm' : 'text-gray-600 dark:text-gray-300'
+            }`}
+            onClick={() => setActiveTab('group')}
+          >
+            <Users size={16} className="inline mr-1" />
+            Groupes
+          </button>
           </div>
 
           {activeTab === 'search' ? (
@@ -344,7 +561,7 @@ const handleOpenConversation = async (targetUser) => {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Rechercher sur Owly..."
+                   placeholder={t('search_placeholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -369,11 +586,11 @@ const handleOpenConversation = async (targetUser) => {
               {loading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-600">Recherche...</p>
+                  <p className="mt-2 text-sm text-gray-600">{t('searching')}</p>
                 </div>
               ) : users.length > 0 ? (
                 <div>
-                  <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3 px-1">Résultats</h3>
+                  <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3 px-1">  {t('results')}</h3>
                   <div className="space-y-2">
                     {users.map((user) => (
                       <div
@@ -411,7 +628,7 @@ const handleOpenConversation = async (targetUser) => {
                         <button
                           onClick={() => handleOpenConversation(user)}
                           className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
-                          title="Envoyer un message"
+                          title={t('send_message')}
                         >
                           <MessageCircle size={18} />
                         </button>
@@ -421,7 +638,7 @@ const handleOpenConversation = async (targetUser) => {
                 </div>
               ) : searchQuery && !loading && (
                 <div className="text-center py-4 text-gray-500">
-                  Aucun résultat pour "{searchQuery}"
+                  {t('no_results', { query: searchQuery })}
                 </div>
               )}
               {/* Contacts suggérés */}
@@ -430,7 +647,7 @@ const handleOpenConversation = async (targetUser) => {
                 {loadingContacts ? (
                   <div className="text-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-2 text-sm text-gray-600">Chargement...</p>
+                    <p className="mt-2 text-sm text-gray-600">{t('loading')}</p>
                   </div>
                 ) : contacts.length > 0 ? (
                   <div className="space-y-2">
@@ -466,7 +683,7 @@ const handleOpenConversation = async (targetUser) => {
                         <button
                           onClick={() => handleOpenConversation(contact)}
                           className="p-2 bg-black hover:bg-gray-800 text-white rounded-full"
-                          title="Envoyer un message"
+                          title={t('send_message')}
                         >
                           <MessageCircle size={18} />
                         </button>
@@ -475,7 +692,7 @@ const handleOpenConversation = async (targetUser) => {
                   </div>
                 ) : (
                   <div className="text-center py-4 text-gray-500 text-sm">
-                    Aucun contact pour le moment
+                   {t('no_contacts')}
                   </div>
                 )}
               </div>
@@ -486,9 +703,9 @@ const handleOpenConversation = async (targetUser) => {
             /* SCANNER QR CODE (inchangé) */
             <div>
               <div className="text-center mb-6">
-                <h3 className="font-medium mb-2">Scanner un QR Code</h3>
+                <h3 className="font-medium mb-2">{t('scan_qr_code')}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Scannez le code QR d'un utilisateur
+                  {t('scan_qr_user')}
                 </p>
               </div>
               
@@ -507,7 +724,7 @@ const handleOpenConversation = async (targetUser) => {
                   </div>
                   <h3 className="text-lg font-bold mb-1">{scanResult.username}</h3>
                   <p className="text-gray-600 dark:text-gray-300 mb-6 text-sm">
-                    Utilisateur trouvé
+                   {t('user_found')}
                   </p>
                   <div className="flex gap-2 justify-center">
                     <button
@@ -518,7 +735,7 @@ const handleOpenConversation = async (targetUser) => {
                       className="flex-1 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2"
                     >
                       <MessageCircle size={18} />
-                      Message
+                     {t('message')}
                     </button>
                   </div>
                   <button
@@ -529,7 +746,7 @@ const handleOpenConversation = async (targetUser) => {
                     }}
                     className="mt-4 text-blue-500 hover:text-blue-700 text-sm"
                   >
-                    Scanner un autre code
+                    {t('scan_another_code')}
                   </button>
                 </div>
               ) : (
@@ -552,29 +769,50 @@ const handleOpenConversation = async (targetUser) => {
                         <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-2 border-r-2 border-white" />
                       </div>
                     </div>
+                  ) : loading ? (
+                    <div className="border-2 border-dashed border-blue-300 dark:border-blue-600 rounded-2xl p-8 text-center mb-6 bg-blue-50 dark:bg-blue-900/20">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                      <p className="text-blue-700 dark:text-blue-300 font-medium">Scan en cours...</p>
+                    </div>
                   ) : (
                     <div className="border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded-2xl p-8 text-center mb-6">
                       <QrCode className="mx-auto mb-4 text-gray-400" size={48} />
-                      <p className="text-gray-600 dark:text-gray-300">Préparation...</p>
+                      <p className="text-gray-600 dark:text-gray-300">{t('preparing')}</p>
                     </div>
                   )}
 
                   <div className="mb-4">
-                    <label className="block text-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-300 mb-2 block">
-                        OU téléchargez une image
-                      </span>
-                      <div className="inline-flex items-center gap-2 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 px-4 py-2 rounded-xl cursor-pointer transition-colors">
-                        <Upload size={18} />
-                        <span className="text-sm">Choisir une image</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                        />
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 text-center">
+                      {t('or_upload_image') || 'Ou importer une image'}
+                    </p>
+                    
+                    <input
+                      type="file"
+                      id="qr-upload-input"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    
+                    <label 
+                      htmlFor="qr-upload-input"
+                      className="block w-full cursor-pointer"
+                    >
+                      <div className="flex items-center justify-center gap-2 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 px-6 py-4 rounded-xl transition-colors border-2 border-dashed border-gray-300 dark:border-neutral-600">
+                        <Upload size={20} />
+                        <span className="font-medium">{t('choose_image') || 'Choisir une image'}</span>
                       </div>
                     </label>
+                    
+                    {/* Indicateur de chargement */}
+                    {loading && (
+                      <div className="mt-3 text-center">
+                        <div className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <span className="text-sm font-medium">Analyse en cours...</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {error && (
@@ -584,6 +822,166 @@ const handleOpenConversation = async (targetUser) => {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+                    {/* 🔥 ONGLETT 3 : NOUVEAU GROUPE - COMPLÈT */}
+          {activeTab === 'group' && (
+            <div>
+              <h3 className="text-lg font-bold mb-4 flex items-center">
+                <Users size={20} className="mr-2 text-blue-500" />
+                Nouveau groupe
+              </h3>
+
+              {/* Erreur */}
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-3 rounded-xl mb-4">
+                  {error}
+                </div>
+              )}
+
+              {/* Nom du groupe */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Nom du groupe *</label>
+                <input
+                  type="text"
+                  placeholder="Nom du groupe (ex: Famille, Travail...)"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-100 dark:bg-neutral-700 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Description (optionnel)</label>
+                <input
+                  type="text"
+                  placeholder="Description du groupe..."
+                  value={groupDescription}
+                  onChange={(e) => setGroupDescription(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-100 dark:bg-neutral-700 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Photo de groupe */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2 flex items-center">
+                  <Image size={16} className="mr-1" />
+                  Photo du groupe (optionnel)
+                </label>
+                <label className="w-full p-6 border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded-2xl text-center hover:border-blue-400 transition-colors cursor-pointer">
+                  {groupPic ? (
+                    <div className="space-y-2">
+                      <img 
+                        src={URL.createObjectURL(groupPic)} 
+                        alt="Preview" 
+                        className="w-20 h-20 mx-auto rounded-full object-cover"
+                      />
+                      <p className="text-sm text-gray-600">{groupPic.name}</p>
+                      <button 
+                        onClick={() => setGroupPic(null)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Changer
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Image size={32} className="mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Cliquer pour ajouter une photo
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setGroupPic(e.target.files[0])}
+                        className="hidden"
+                      />
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {/* Sélection participants (depuis tes contacts) */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium flex items-center">
+                    <Users size={16} className="mr-1" />
+                    Participants ({selectedUsers.length})
+                  </label>
+                  <span className="text-xs text-gray-500">
+                    {selectedUsers.length === 0 && 'Sélectionne au moins 1 contact'}
+                  </span>
+                </div>
+                
+                {loadingContacts ? (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+                  </div>
+                ) : contacts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Aucun contact. Ajoute des amis d'abord !
+                  </div>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {contacts.slice(0, 10).map((contact) => ( // Limite à 10
+                      <div
+                        key={contact._id}
+                        className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${
+                          selectedUsers.includes(contact._id)
+                            ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800'
+                            : 'hover:bg-gray-100 dark:hover:bg-neutral-700'
+                        }`}
+                        onClick={() => toggleUserSelection(contact._id)}
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className={`w-10 h-10 rounded-full overflow-hidden ${
+                            selectedUsers.includes(contact._id) ? 'ring-2 ring-blue-500 ring-offset-2' : ''
+                          }`}>
+                            <img
+                              src={contact.profilePicture || '/default-avatar.png'}
+                              alt={contact.username}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div>
+                            <p className="font-medium">{contact.username}</p>
+                            <p className="text-xs text-gray-500">Contact</p>
+                          </div>
+                        </div>
+                        {selectedUsers.includes(contact._id) ? (
+                          <div className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full">
+                            <Plus size={14} className="text-blue-600" />
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Sélectionné</span>
+                          </div>
+                        ) : (
+                          <Plus size={20} className="text-gray-400 ml-auto" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Bouton Créer */}
+              <button
+                onClick={handleCreateGroup}
+                disabled={creatingGroup || !groupName.trim() || selectedUsers.length === 0}
+                className="w-full bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-black px-6 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              >
+                {creatingGroup ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white dark:border-black"></div>
+                    Création...
+                  </>
+                ) : (
+                  <>
+                    <Users size={20} />
+                    Créer groupe ({selectedUsers.length + 1} participants)
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>

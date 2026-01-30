@@ -40,9 +40,14 @@ const Register = () => {
 
     // Validation
     if (!formData.username || !formData.email || !formData.password || !formData.passwordConfirm) {
-      setError(t("register.errors.allFieldsRequired") || "Tous les champs sont requis");
+      setError( t("register.errors.allFieldsRequired", "Tous les champs sont requis"));
       return;
     }
+    // <-- Ajout ici pour la longueur du username
+if (formData.username.length < 3 || formData.username.length > 30) {
+  setError(t("register.errors.usernameLength", "Le nom d'utilisateur doit contenir entre 3 et 30 caractères"));
+  return;
+}
 
     if (!acceptTerms) {
       setError(t("register.errors.acceptTerms") || "Vous devez accepter les conditions");
@@ -89,6 +94,7 @@ const Register = () => {
               icon={<FaUser />}
               value={formData.username}
               onChange={handleChange}
+              
             />
             <InputField
               type="email"

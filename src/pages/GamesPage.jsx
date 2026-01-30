@@ -245,7 +245,7 @@ export default function GamesPage() {
                 shadow-lg
               "
             >
-              Jouer →
+               {t("games.play")}
             </motion.div>
           </motion.div>
         ))}
@@ -259,11 +259,12 @@ export default function GamesPage() {
         className="mt-8 sm:mt-12 text-center text-black/40 dark:text-white/40 text-xs sm:text-sm relative z-10 px-4"
       >
         <motion.p
-          animate={{ opacity: [0.4, 0.7, 0.4] }}
-          transition={{ duration: 3, repeat: Infinity }}
-        >
-          Sélectionnez un jeu pour commencer l'aventure
-        </motion.p>
+  animate={{ opacity: [0.4, 0.7, 0.4] }}
+  transition={{ duration: 3, repeat: Infinity }}
+>
+  {t("games.selectGame")}
+</motion.p>
+
       </motion.div>
     </div>
   );

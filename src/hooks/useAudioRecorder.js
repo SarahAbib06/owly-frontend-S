@@ -44,36 +44,49 @@ export const useAudioRecorder = (conversationId) => {
   }, [conversationId]);
 
   // Arrêter et envoyer
-  const stopAndSend = useCallback(async () => {
-    return new Promise((resolve, reject) => {
-      if (!mediaRecorderRef.current || !isRecording) {
-        reject(new Error('Pas d\'enregistrement en cours'));
-        return;
-      }
+ // Arrêter et envoyer
+const stopAndSend = useCallback(async () => {
+  if (!mediaRecorderRef.current || !isRecording) {
+    console.warn('⚠️ Pas d\'enregistrement en cours');
+    return;
+  }
 
-      mediaRecorderRef.current.onstop = async () => {
+  // Arrêter immédiatement le timer et le state
+  cleanup();
+
+  return new Promise((resolve, reject) => {
+    mediaRecorderRef.current.onstop = async () => {
+      try {
         const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
         
-        try {
-          const message = await audioService.sendAudioMessage(conversationId, audioBlob);
-          resolve(message);
-          console.log('🎤 Message vocal envoyé');
-        } catch (err) {
-          reject(err);
-        }
+        console.log('📤 Envoi du message vocal...', {
+          size: audioBlob.size,
+          conversationId
+        });
 
-        // Nettoyer
-        cleanup();
-      };
+        // Envoyer le message
+        const message = await audioService.sendAudioMessage(conversationId, audioBlob);
+        
+        console.log('✅ Message vocal envoyé:', message);
+        
+        // Notifier via Socket.IO que l'enregistrement est terminé
+        const userId = localStorage.getItem('userId');
+        socketService.stopAudioRecording(conversationId, userId);
+        
+        resolve(message);
+      } catch (err) {
+        console.error('❌ Erreur envoi vocal:', err);
+        reject(err);
+      }
+    };
 
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-
-      // Notifier via Socket.IO
-      const userId = localStorage.getItem('userId');
-      socketService.stopAudioRecording(conversationId, userId);
-    });
-  }, [conversationId, isRecording]);
+    // Arrêter l'enregistrement
+    mediaRecorderRef.current.stop();
+    
+    // Libérer le micro
+    mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+  });
+}, [conversationId, isRecording]);
 
   // Annuler l'enregistrement
   const cancelRecording = useCallback(() => {
@@ -87,15 +100,17 @@ export const useAudioRecorder = (conversationId) => {
   }, [isRecording]);
 
   // Nettoyer
-  const cleanup = () => {
-    setIsRecording(false);
-    setRecordingTime(0);
-    chunksRef.current = [];
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
+ // Nettoyer
+const cleanup = useCallback(() => {
+  setIsRecording(false);
+  setRecordingTime(0);
+  chunksRef.current = [];
+  
+  if (timerRef.current) {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+  }
+}, []);
 
   return {
     isRecording,

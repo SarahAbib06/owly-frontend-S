@@ -4,24 +4,20 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { AppelProvider } from "./context/AppelContext";
 import IncomingCallModal from "./components/IncomingCallModal.jsx";
-import VideoCall from './components/VideoCall';
-import AudioCall from './components/AudioCall';
-import { useAppel } from "./context/AppelContext"; // Import pour le composant conditionnel
+import VideoCall from './components/VideoCall.jsx';
+import AudioCall from './components/AudioCall.jsx';
+import ProfilPic from "./pages/ProfilPic.jsx";
+import TicTacToe2 from "./components/TicTacToe2.jsx";
 
 import RockPaper from "./pages/RockPaper";
 import Register from "./pages/Register.jsx";
 import Login from "./pages/Login.jsx";
 import Welcome from "./pages/Welcome.jsx";
 import OtpPage from "./pages/OtpPage";
-import ProfilPic from "./pages/ProfilPic.jsx";
-
-import TicTacToe2 from "./components/TicTacToe2";
 import MessagesPage from "./pages/MessagesPage";
 import MainLayout from "./components/MainLayout";
 import SettingsPage from "./pages/SettingsPage";
 import ForgotPassword from "./pages/ForgotPassword";
-
-
 import ProtectedRoute from "./components/ProtectedRoute";
 import MemoryGame from "./components/MemoryGame";
 import OwlyQuiz from "./components/OwlyQuiz";

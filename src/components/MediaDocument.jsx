@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FaArrowLeft } from "react-icons/fa";
+import {FaArrowLeft, FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import logo from "../assets/images/owlylogo.png";
 
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,8 @@ export default function MediaDocument({ onBack, conversationId }) {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // 🔥 CHARGER LES MÉDIAS ET FICHIERS
   useEffect(() => {
@@ -43,6 +45,39 @@ export default function MediaDocument({ onBack, conversationId }) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
+  // 🔥 OUVRIR LA LIGHTBOX
+const openLightbox = (index) => {
+  setCurrentImageIndex(index);
+  setLightboxOpen(true);
+};
+
+// 🔥 FERMER LA LIGHTBOX
+const closeLightbox = () => {
+  setLightboxOpen(false);
+};
+
+// 🔥 IMAGE PRÉCÉDENTE
+const goToPrevious = () => {
+  setCurrentImageIndex((prev) => (prev === 0 ? media.length - 1 : prev - 1));
+};
+
+// 🔥 IMAGE SUIVANTE
+const goToNext = () => {
+  setCurrentImageIndex((prev) => (prev === media.length - 1 ? 0 : prev + 1));
+};
+// 🔥 NAVIGATION AU CLAVIER
+useEffect(() => {
+  const handleKeyDown = (e) => {
+    if (!lightboxOpen) return;
+    
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') goToPrevious();
+    if (e.key === 'ArrowRight') goToNext();
+  };
+
+  window.addEventListener('keydown', handleKeyDown);
+  return () => window.removeEventListener('keydown', handleKeyDown);
+}, [lightboxOpen]);
 
   return (
     <div className="w-full bg-myGray4 dark:bg-neutral-800 p-4">
@@ -115,13 +150,13 @@ export default function MediaDocument({ onBack, conversationId }) {
                     src={item.url}
                     alt="Media"
                     className="rounded-lg object-cover w-full h-32 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => window.open(item.url, '_blank')}
+                    onClick={() => openLightbox(index)}
                   />
                 ) : (
                   <video
                     src={item.url}
                     className="rounded-lg object-cover w-full h-32 cursor-pointer"
-                    onClick={() => window.open(item.url, '_blank')}
+                    onClick={() => openLightbox(index)}
                   />
                 )}
                 <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">
@@ -170,6 +205,60 @@ export default function MediaDocument({ onBack, conversationId }) {
               </div>
             </a>
           ))}
+        </div>
+      )}
+      {/* 🔥 LIGHTBOX MODAL */}
+      {lightboxOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
+          {/* Bouton Fermer */}
+          <button
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-50"
+          >
+            <FaTimes className="w-8 h-8" />
+          </button>
+
+          {/* Bouton Précédent */}
+          {media.length > 1 && (
+            <button
+              onClick={goToPrevious}
+              className="absolute left-4 text-white hover:text-gray-300 transition-colors z-50"
+            >
+              <FaChevronLeft className="w-10 h-10" />
+            </button>
+          )}
+
+          {/* Image ou Vidéo */}
+          <div className="max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+            {media[currentImageIndex]?.type === 'image' ? (
+              <img
+                src={media[currentImageIndex]?.url}
+                alt="Image en grand"
+                className="max-w-full max-h-[90vh] object-contain"
+              />
+            ) : (
+              <video
+                src={media[currentImageIndex]?.url}
+                controls
+                className="max-w-full max-h-[90vh] object-contain"
+              />
+            )}
+          </div>
+
+          {/* Bouton Suivant */}
+          {media.length > 1 && (
+            <button
+              onClick={goToNext}
+              className="absolute right-4 text-white hover:text-gray-300 transition-colors z-50"
+            >
+              <FaChevronRight className="w-10 h-10" />
+            </button>
+          )}
+
+          {/* Compteur */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black/50 px-4 py-2 rounded-lg">
+            {currentImageIndex + 1} / {media.length}
+          </div>
         </div>
       )}
     </div>

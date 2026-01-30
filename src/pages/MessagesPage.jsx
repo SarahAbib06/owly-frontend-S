@@ -7,13 +7,20 @@ import WelcomeChatScreen from "../components/WelcomeChatScreen";
 import { Search, Plus, QrCode, PanelLeftClose } from "lucide-react";
 import SearchModal from "../components/SearchModal";
 import ResizablePanel from "../components/ResizablePanel";
+import { useConversations } from "../hooks/useConversations";
 
 export default function Messages() {
+
+    // 🔥 AJOUTÉ : TON HOOK
+  const { conversations, loadConversations } = useConversations();
   const [selectedChat, setSelectedChat] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [panelWidth, setPanelWidth] = useState(360);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const { setChatOpen } = useOutletContext();
+  const outletContext = useOutletContext();
+  const setChatOpen = outletContext?.setChatOpen ?? (() => {});
+  
 
   const openChat = (chat, isFromArchived = false) => {
     setSelectedChat({
@@ -32,6 +39,11 @@ export default function Messages() {
     setPanelWidth(newWidth);
   };
 
+  const handleConversationDeleted = () => {
+  setSelectedChat(null);               // on ferme la fenêtre de discussion
+  setRefreshTrigger(prev => prev + 1); // on force le rechargement de ConversationList
+};
+
   return (
     <div className="flex h-screen relative">
       {/* LISTE DES CONVERSATIONS */}
@@ -43,8 +55,10 @@ export default function Messages() {
         {/* Version mobile : ConversationList normal */}
         <div className="md:hidden h-full">
           <ConversationList
+            key={refreshTrigger}
             onSelect={openChat}
             onNewChat={() => setShowSearchModal(true)}
+            onConversationDeleted={handleConversationDeleted}
           />
         </div>
         
@@ -57,8 +71,10 @@ export default function Messages() {
             onResize={handleResize}
           >
             <ConversationList
+              key={refreshTrigger}
               onSelect={openChat}
               onNewChat={() => setShowSearchModal(true)}
+              onConversationDeleted={handleConversationDeleted}
             />
           </ResizablePanel>
         </div>
@@ -71,6 +87,8 @@ export default function Messages() {
             <ChatWindow
               selectedChat={selectedChat}
               onBack={closeChat}
+              onConversationDeleted={handleConversationDeleted}
+              onConversationListRefresh={handleConversationDeleted}
             />
             {/* Bouton retour sur mobile */}
             <button
@@ -88,19 +106,17 @@ export default function Messages() {
       </div>
 
           {/* MODAL DE RECHERCHE */}
-      {showSearchModal && (
-        <SearchModal 
-          onClose={() => setShowSearchModal(false)}
-          onUserSelect={(conversationObj) => {
-            console.log("🎯 Conversation reçue de SearchModal:", conversationObj);
-            console.log("📛 Nom de la conversation:", conversationObj.name);
-            
-            setShowSearchModal(false);
-            // Utilisez directement l'objet conversation
-            openChat(conversationObj);
-          }}
-        />
-      )}
+  {showSearchModal && (
+    <SearchModal 
+      onClose={() => setShowSearchModal(false)}
+      onUserSelect={(conversationObj) => {
+        console.log("🎯 Conversation reçue:", conversationObj);
+        setShowSearchModal(false);
+        openChat(conversationObj);
+      }}
+      loadConversations={loadConversations}  // ✅ MAINTENANT ÇA MARCHE !
+    />
+  )}
     </div>
   );
 }

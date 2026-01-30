@@ -1,6 +1,8 @@
  import React from 'react';
+ import { useTranslation } from 'react-i18next';
 
 const MessageRequestBanner = ({ conversationName, conversationAvatar, onAccept, onDelete }) => {
+   const { t } = useTranslation();
   return (
     <div className="
       sticky top-0 z-40
@@ -37,51 +39,53 @@ const MessageRequestBanner = ({ conversationName, conversationAvatar, onAccept, 
               {conversationName}
             </p>
             <p className="
-              text-xs sm:text-sm text-myBlack/90 
-              mt-0.5 font-medium
-            ">
-              veut discuter avec toi ! 
-            </p>
+  text-xs sm:text-sm text-myBlack/90 
+  mt-0.5 font-medium
+">
+  {t("chat.wantsToChat")}
+</p>
+
           </div>
         </div>
 
         {/* Boutons ENCORE PLUS PETITS */}
         <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto justify-center sm:justify-end">
-          <button
-            onClick={onAccept}
-            className="
-              bg-white hover:bg-gray-50
-              text-myBlack font-semibold
-              px-5 py-2 sm:px-6 sm:py-2.5
-              rounded-xl text-sm sm:text-base
-              shadow hover:shadow-md
-              transition-all duration-300
-              active:scale-95
-              flex items-center gap-1.5 flex-1 sm:flex-none
-              border-b-3 border-myYellow2/60
-            "
-          >
-            Accepter
-            
-          </button>
+         <button
+  onClick={onAccept}
+  className="
+    bg-white hover:bg-gray-50
+    text-myBlack font-semibold
+    px-5 py-2 sm:px-6 sm:py-2.5
+    rounded-xl text-sm sm:text-base
+    shadow hover:shadow-md
+    transition-all duration-300
+    active:scale-95
+    flex items-center gap-1.5 flex-1 sm:flex-none
+    border-b-3 border-myYellow2/60
+  "
+>
+  {t("chat.accept")}
+</button>
+
 
           <button
-            onClick={onDelete}
-            className="
-              bg-myBlack/10 hover:bg-myBlack/15
-              backdrop-blur-sm
-              border border-myBlack/25
-              text-myBlack font-medium
-              px-5 py-2 sm:px-6 sm:py-2.5
-              rounded-xl text-sm sm:text-base
-              transition-all duration-300
-              active:scale-95
-              hover:shadow-sm
-              flex-1 sm:flex-none
-            "
-          >
-            Refuser
-          </button>
+  onClick={onDelete}
+  className="
+    bg-myBlack/10 hover:bg-myBlack/15
+    backdrop-blur-sm
+    border border-myBlack/25
+    text-myBlack font-medium
+    px-5 py-2 sm:px-6 sm:py-2.5
+    rounded-xl text-sm sm:text-base
+    transition-all duration-300
+    active:scale-95
+    hover:shadow-sm
+    flex-1 sm:flex-none
+  "
+>
+  {t("chat.decline")}
+</button>
+
         </div>
       </div>
     </div>

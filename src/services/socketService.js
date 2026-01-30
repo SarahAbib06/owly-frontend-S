@@ -371,6 +371,16 @@ class SocketService {
     }
   }
 
+
+  // Dans socketService.js, AJOUTE cette méthode
+
+// Écouter quand un message est vu
+onMessageSeen(callback) {
+  if (this.socket) {
+    this.socket.on('message:seen', callback);
+  }
+}
+
   // Écouter les compteurs non lus
   onUnreadCountsData(callback) {
     if (this.socket) {
@@ -535,6 +545,71 @@ onScreenShareStarted(callback) {
 onScreenShareStopped(callback) {
   if (this.socket) this.socket.on('call:screen-share-stop', callback);
 }
+
+
+ // ==================== PAD COLLABORATIF ====================
+
+  // Rejoindre un pad
+  joinPad(conversationId) {
+    if (this.socket) {
+      this.socket.emit('join_pad', conversationId);
+      console.log('📝 Rejoint pad:', conversationId);
+    }
+  }
+
+  // Quitter un pad
+  leavePad(conversationId) {
+    if (this.socket) {
+      this.socket.emit('leave_pad', conversationId);
+      console.log('📝 Quitté pad:', conversationId);
+    }
+  }
+
+  // Modifier le contenu du pad
+  updatePadContent(conversationId, content) {
+    if (this.socket) {
+      this.socket.emit('pad_content_change', {
+        conversationId,
+        content,
+        mode: 'text'
+      });
+    }
+  }
+
+  // Écouter les mises à jour du pad
+  onPadUpdate(callback) {
+    if (this.socket) {
+      this.socket.on('pad_update', callback);
+    }
+  }
+
+  // Écouter les erreurs du pad
+  onPadError(callback) {
+    if (this.socket) {
+      this.socket.on('pad_error', callback);
+    }
+  }
+
+  // Écouter quand un utilisateur rejoint le pad
+  onPadUserJoined(callback) {
+    if (this.socket) {
+      this.socket.on('pad_user_joined', callback);
+    }
+  }
+
+  // Écouter quand un utilisateur quitte le pad
+  onPadUserLeft(callback) {
+    if (this.socket) {
+      this.socket.on('pad_user_left', callback);
+    }
+  }
+
+  // Écouter quand le pad est initialisé
+  onPadJoined(callback) {
+    if (this.socket) {
+      this.socket.on('pad_joined', callback);
+    }
+  }
 
 
   // ==================== MESSAGE REQUEST (DEMANDE DE MESSAGE) ====================
