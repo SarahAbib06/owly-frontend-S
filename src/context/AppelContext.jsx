@@ -28,7 +28,7 @@ export const AppelProvider = ({ children }) => {
     if (!token) return;
 
     console.log('Initialisation socket d\'appel global...');
-    
+
     socketRef.current = io(SIGNALING_SERVER, {
       auth: { token },
       transports: ['websocket', 'polling'],
@@ -47,7 +47,7 @@ export const AppelProvider = ({ children }) => {
       setIncomingCall(data);
       setShowCallModal(true);
       setCallState('ringing');
-      
+
       // Jouer le son d'appel
       playRingtone();
     });
@@ -56,7 +56,7 @@ export const AppelProvider = ({ children }) => {
     socketRef.current.on('call-answered', (data) => {
       console.log('✅ Appel accepté (notif):', data);
       setCallState('connecting');
-      
+
       // Vérifier callId correspond en utilisant la ref à jour
       const activeCall = currentCallRef.current;
       if (activeCall && data.callId && activeCall.callId && data.callId === activeCall.callId) {
@@ -72,7 +72,7 @@ export const AppelProvider = ({ children }) => {
     socketRef.current.on('call-ready', (data) => {
       console.log('🔔 AppelContext: call-ready reçu:', data);
       setCallState('connecting');
-      
+
       const activeCall = currentCallRef.current;
       if (activeCall && data.callId === activeCall.callId) {
         // L'appelant peut maintenant envoyer l'OFFER
@@ -216,7 +216,7 @@ export const AppelProvider = ({ children }) => {
     console.log('📞 Démarrage appel ' + type + ' vers:', otherParticipant._id);
 
     // Générer un callId unique et envoyer au backend
-    const callId = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    const callId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     // Envoyer le type d'appel au backend
     socketRef.current.emit('initiate-call', {
       conversationId: conversation._id,
@@ -227,13 +227,14 @@ export const AppelProvider = ({ children }) => {
     // Définir l'appel en cours
     setCallType(type);
     setCallState('initiating');
-    
+
     const callObject = {
       conversation,
       isInitiator: true,
       callId,
       targetUserId: otherParticipant._id,
       targetUsername: otherParticipant.username,
+      targetAvatar: otherParticipant.profilePicture, // 🆕 Utiliser profilePicture (Cloudinary)
       callType: type
     };
     // Tant que la cible n'a pas accepté, callAccepted reste false
@@ -267,10 +268,11 @@ export const AppelProvider = ({ children }) => {
       isInitiator: false,
       targetUserId: incomingCall.fromUserId,
       targetUsername: incomingCall.fromUsername,
+      targetAvatar: incomingCall.fromAvatar, // 🆕 Ajouter l'avatar de l'appelant
       callId: incomingCall.callId,
       callType: incomingCall.callType || 'video'
     };
-    
+
     console.log('📋 Setting currentCall (incoming) avec isInitiator=false:', callObject);
     setCallType(incomingCall.callType || 'video');
     setCallState('connecting');
@@ -309,7 +311,7 @@ export const AppelProvider = ({ children }) => {
         callId: currentCall.callId
       });
     }
-    
+
     setCurrentCall(null);
     setIncomingCall(null);
     setShowCallModal(false);
