@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FaArrowLeft } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
+import api from '../services/api';
 
 import { MdLock, MdVisibility, MdVisibilityOff } from "react-icons/md";
 
@@ -38,18 +39,11 @@ export default function ModifierMotDePasse({ setPrivacySubPage }) {
         return;
       }
 
-      const response = await fetch("http://localhost:5000/api/auth/change-password", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-          confirmPassword
-        })
-      });
+    const response = await api.put('/auth/change-password', {
+  currentPassword,
+  newPassword,
+  confirmPassword
+});
 
       const data = await response.json();
 

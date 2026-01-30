@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Users, UserPlus, UserMinus, Crown, X, Edit2, Camera, Save, LogOut, Shield } from 'lucide-react';
 import AddMembersModal from './AddMembersModal';
+import api from '../services/api';
 
 export default function GroupManagerModal({ groupId, myRole, members, onClose, onMembersUpdated }) {
   const [groupMembers, setGroupMembers] = useState(members || []);
@@ -34,11 +35,8 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
   // Charger infos du groupe
   const fetchGroupInfo = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/conversations/${groupId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+    const res = await api.get(`/conversations/${groupId}`);
+const data = res.data;
       
       if (data.success) {
         setGroupInfo(data.conversation);
@@ -55,11 +53,8 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
   const fetchMembers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/members`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+    const res = await api.get(`/groups/${groupId}/members`);
+const data = res.data;
       
       if (data.success) {
         setGroupMembers(data.members || []);
@@ -83,10 +78,7 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
     try {
       setPromoting(true);
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/members/${memberToPromote.id}/promote`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+     const res = await api.post(`/groups/${groupId}/members/${memberToPromote.id}/promote`);
 
       const data = await res.json();
 
@@ -112,15 +104,10 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
     if (!window.confirm("Promouvoir ce membre en administrateur ?")) return;
     
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/members/${userId}/promote`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+     const res = await api.post(`/groups/${groupId}/members/${userId}/promote`);
+const data = res.data;
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
+if (data.success) {
         console.log('✅ Membre promu admin');
         await fetchMembers();
         if (onMembersUpdated) onMembersUpdated();
@@ -144,15 +131,10 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
     if (!window.confirm("Êtes-vous sûr de vouloir quitter ce groupe ?")) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/leave`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+     const res = await api.delete(`/groups/${groupId}/leave`);
+const data = res.data;
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
+if (data.success) {
         alert('✅ Vous avez quitté le groupe');
         onClose();
         if (onMembersUpdated) onMembersUpdated();
@@ -170,27 +152,23 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
   const handleSaveGroupInfo = async () => {
     try {
       setSaving(true);
-      const token = localStorage.getItem('token');
-      
-      const formData = new FormData();
-      formData.append('groupName', editedGroupName);
-      formData.append('groupDescription', editedGroupDescription);
-      
-      if (newGroupPic) {
-        formData.append('groupPic', newGroupPic);
-      }
+const formData = new FormData();
+formData.append('groupName', editedGroupName);
+formData.append('groupDescription', editedGroupDescription);
 
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}`, {
-        method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData
-      });
+if (newGroupPic) {
+  formData.append('groupPic', newGroupPic);
+}
 
-      const data = await res.json();
+const res = await api.put(`/groups/${groupId}`, formData, {
+  headers: {
+    'Content-Type': 'multipart/form-data'
+  }
+});
 
-      if (res.ok && data.success) {
+const data = res.data;
+
+if (data.success) {
         console.log('✅ Groupe modifié');
         
         setGroupInfo(prev => ({
@@ -247,15 +225,10 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
     if (!window.confirm("Retirer ce membre du groupe ?")) return;
     
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/members/${userId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+     const res = await api.delete(`/groups/${groupId}/members/${userId}`);
+const data = res.data;
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
+if (data.success) {
         console.log('✅ Membre retiré');
         await fetchMembers();
         if (onMembersUpdated) onMembersUpdated();

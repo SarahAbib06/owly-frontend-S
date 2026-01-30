@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import DeletePhotoModal from "../components/DeletePhotoModal";
 import DeleteAccountModal from "./DeleteAccountModal";
 import { Trash } from "lucide-react";
+import api from '../services/api';
 
 export default function Profile({ setSelectedMenu }) {
   const [editMode, setEditMode] = useState(false);
@@ -152,39 +153,8 @@ useEffect(() => {
   const generateQRCode = async () => {
     try {
       setLoadingQR(true);
-      const token = localStorage.getItem("token");
-      
-      const API_BASE_URL = import.meta.env.VITE_API_URL; 
-      
-      const url = `${API_BASE_URL}/qr/generate`;
-      console.log("🔗 URL de requête:", url);
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log("📊 Status HTTP:", response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Erreur HTTP:", errorText);
-        
-        if (response.status === 401) {
-          alert("Session expirée. Veuillez vous reconnecter.");
-          localStorage.removeItem("token");
-          navigate("/login");
-        } else if (response.status === 404) {
-          alert("Route introuvable. Vérifiez le backend.");
-        }
-        
-        throw new Error(`Erreur ${response.status}`);
-      }
-      
-      const data = await response.json();
+const response = await api.get('/qr/generate');
+const data = response.data;
       console.log("✅ Données reçues:", data);
       
       if (data.success) {

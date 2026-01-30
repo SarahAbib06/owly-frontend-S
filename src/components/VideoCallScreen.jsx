@@ -457,18 +457,9 @@ useEffect(() => {
       //setDebugInfo('Génération du token...');
       console.log('🔑 Génération token pour channel:', channel);
       
-      const response = await axios.post(
-        'http://localhost:5000/api/agora/generate-token',
-        {
-          channelName: channel
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+    const response = await api.post('/agora/generate-token', {
+  channelName: channel
+});
 
       console.log('✅ Token reçu:', response.data);
       //setDebugInfo('Token généré avec succès');

@@ -20,6 +20,7 @@ import ConfirmBlockModal from "./ConfirmBlockModal";
 import { userService } from "../services/userService";
 import { addFavorite, removeFavorite, getFavorites } from "../services/favoritesService";
 import GroupManagerModal from "./GroupManagerModal";
+import api from '../services/api';
 
 export default function InfoContactModal({ chat, onClose, onBlockStatusChange, onConversationDeleted }) {
   const { t } = useTranslation();
@@ -66,11 +67,8 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange, o
     if (isGroup && chat._id) {
       const fetchGroupMembers = async () => {
         try {
-          const token = localStorage.getItem('token');
-          const res = await fetch(`http://localhost:5000/api/groups/${chat._id}/members`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const data = await res.json();
+const res = await api.get(`/groups/${chat._id}/members`);
+const data = res.data;
           
           if (data.success) {
             setGroupMembers(data.members || []);
@@ -275,18 +273,10 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange, o
     if (!window.confirm("Êtes-vous sûr de vouloir quitter ce groupe ?")) return;
     
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/groups/${chat._id}/leave`, {
-        method: 'DELETE',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+    const res = await api.delete(`/groups/${chat._id}/leave`);
+const data = res.data;
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
+if (data.success) {
         console.log('✅ Groupe quitté avec succès');
         onClose();
         if (typeof onConversationDeleted === 'function') {
@@ -307,10 +297,7 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange, o
     
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/conversations/${chat._id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+ const res = await api.delete(`/conversations/${chat._id}`);
 
       if (res.ok) {
         onClose();

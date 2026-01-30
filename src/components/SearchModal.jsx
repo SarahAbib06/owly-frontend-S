@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X, User, MessageCircle, QrCode, Camera, Upload, UserCheck, Users, Image, Plus } from 'lucide-react';
 import jsQR from 'jsqr';
 import { useTranslation } from 'react-i18next';
+import { getApiUrl } from '../utils/apiUrl';
 
 
 const SearchModal = ({ onClose, onUserSelect, loadConversations }) => {
@@ -32,9 +33,7 @@ const fetchContacts = async () => {
     setLoadingContacts(true);
     const token = localStorage.getItem('token');
     
-    const response = await fetch('http://localhost:5000/api/relations/contacts', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+const response = await api.get('/relations/contacts');
     
     if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
     
@@ -79,10 +78,7 @@ const fetchContacts = async () => {
       setUsers([]);
 
       const token = localStorage.getItem('token');
-      const response = await fetch(
-        `http://localhost:5000/api/search/users?username=${encodeURIComponent(searchQuery)}`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
+const response = await api.get(`/search/users?username=${encodeURIComponent(searchQuery)}`);
       
       if (!response.ok) throw new Error(t("search_error"));
       
@@ -115,14 +111,7 @@ const handleOpenConversation = async (targetUser) => {
 
   try {
     // 1️⃣ VÉRIFIER SI UNE CONVERSATION EXISTE DÉJÀ
-    const existingConvResponse = await fetch(
-      `http://localhost:5000/api/conversations/find-private/${targetUser._id}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      }
-    );
+const existingConvResponse = await api.get(`/conversations/find-private/${targetUser._id}`);
 
     if (existingConvResponse.ok) {
       const existingData = await existingConvResponse.json();
@@ -163,14 +152,9 @@ const handleOpenConversation = async (targetUser) => {
     // 2️⃣ SI PAS DE CONVERSATION → CRÉER UNE NOUVELLE
     console.log("📝 Aucune conversation trouvée, création d'une nouvelle...");
     
-    const res = await fetch('http://localhost:5000/api/conversations/private', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ receiverId: targetUser._id })
-    });
+  const res = await api.post('/conversations/private', { 
+  receiverId: targetUser._id 
+});
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
@@ -234,13 +218,11 @@ const handleOpenConversation = async (targetUser) => {
         formData.append('groupPic', groupPic);
       }
 
-      const response = await fetch('http://localhost:5000/api/groups', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData, // 🔥 FormData pour image
-      });
+     const response = await api.post('/groups', formData, {
+  headers: {
+    'Content-Type': 'multipart/form-data'
+  }
+});
 
       const data = await response.json();
 
@@ -346,14 +328,9 @@ const handleQRScan = async (qrData) => {
     const token = localStorage.getItem('token');
     
     // 1️⃣ APPELER LE BACKEND
-    const response = await fetch('http://localhost:5000/api/qr/scan', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ qrContent: qrData })
-    });
+   const response = await api.post('/qr/scan', { 
+  qrContent: qrData 
+});
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

@@ -1,6 +1,7 @@
 // frontend/src/components/AddMembersModal.jsx
 import { useState, useEffect } from 'react';
 import { X, UserPlus, Loader2, Search } from 'lucide-react';
+import api from '../services/api';
 
 export default function AddMembersModal({ groupId, currentMembers, onClose, onMembersAdded }) {
   const [contacts, setContacts] = useState([]);
@@ -14,13 +15,8 @@ export default function AddMembersModal({ groupId, currentMembers, onClose, onMe
     const fetchAvailableContacts = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
-        
-        // 1. Récupérer TOUS mes contacts
-        const res = await fetch('http://localhost:5000/api/relations/contacts', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const allContacts = await res.json();
+const response = await api.get('/relations/contacts');
+const allContacts = response.data;
         
         console.log('📋 Contacts bruts reçus:', allContacts.length);
         
@@ -78,27 +74,15 @@ export default function AddMembersModal({ groupId, currentMembers, onClose, onMe
 
     try {
       setAdding(true);
-      const token = localStorage.getItem('token');
-      
-      console.log('📤 Envoi requête ajout membres:', {
-        groupId,
-        userIds: selectedUsers
-      });
-      
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/members`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ userIds: selectedUsers })
-      });
+const response = await api.post(`/groups/${groupId}/members`, { 
+  userIds: selectedUsers 
+});
 
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Erreur lors de l\'ajout');
-      }
+const data = response.data;
+
+if (!data.success) {
+  throw new Error(data.error || 'Erreur lors de l\'ajout');
+}
 
       console.log('✅ Membres ajoutés avec succès');
       

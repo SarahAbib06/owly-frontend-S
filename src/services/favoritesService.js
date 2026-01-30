@@ -1,10 +1,8 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:5000/api/favorites";
+import api from './api';
 
 // Ajouter une conversation aux favoris
 export const addFavorite = (userId, conversationId) => {
-  return axios.post(`${API_URL}/add`, {
+  return api.post('/favorites/add', {
     userId,
     conversationId
   });
@@ -12,7 +10,7 @@ export const addFavorite = (userId, conversationId) => {
 
 // Supprimer une conversation des favoris
 export const removeFavorite = (userId, conversationId) => {
-  return axios.post(`${API_URL}/remove`, {
+  return api.post('/favorites/remove', {
     userId,
     conversationId
   });
@@ -20,5 +18,5 @@ export const removeFavorite = (userId, conversationId) => {
 
 // Récupérer toutes les conversations favorites
 export const getFavorites = (userId) => {
-  return axios.get(`${API_URL}?userId=${userId}`);
+  return api.get(`/favorites?userId=${userId}`);
 };

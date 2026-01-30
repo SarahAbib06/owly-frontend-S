@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Send } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import api from '../services/api';
 
 export default function ContactModal({ isOpen, onClose }) {
   const { t } = useTranslation();
@@ -11,7 +12,7 @@ export default function ContactModal({ isOpen, onClose }) {
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [errorMsg, setErrorMsg] = useState("");
 
-  const API_URL = '/api/contact';  // ← relatif → passe par le proxy Vite
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,20 +21,12 @@ export default function ContactModal({ isOpen, onClose }) {
     setStatus("loading");
     setErrorMsg("");
 
-    try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message: message.trim() }),
-      });
+try {
+  const response = await api.post('/contact', { 
+    message: message.trim() 
+  });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de l'envoi");
-      }
+  const data = response.data;
 
       setStatus("success");
       setMessage("");

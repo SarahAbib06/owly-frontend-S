@@ -46,6 +46,7 @@ import { useConversations } from "../hooks/useConversations";
 import MessageRequestBanner from "./MessageRequestBanner";
 import PadModal from "./PadModal";
 import Modal from "./Modal";
+import api from '../services/api';
 
 // 🔥 AJOUT DES IMPORTS POUR LES SONDAGES
 import PollModal from "./PollModal";
@@ -410,14 +411,8 @@ export default function ChatWindow({
     if (selectedChat?.isGroup && selectedChat._id) {
       const fetchGroupMembers = async () => {
         try {
-          const token = localStorage.getItem("token");
-          const res = await fetch(
-            `http://localhost:5000/api/groups/${selectedChat._id}/members`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
-          );
-          const data = await res.json();
+const res = await api.get(`/groups/${selectedChat._id}/members`);
+const data = res.data;
 
           if (data.success) {
             setGroupMembers(data.members || []);
@@ -450,9 +445,9 @@ export default function ChatWindow({
     if (!contactId) return;
     console.log("🧪 TEST contactId =", contactId);
 
-    fetch(`http://localhost:5000/api/users/${contactId}/status`)
-      .then((res) => res.json())
-      .then((data) => {
+api.get(`/users/${contactId}/status`)
+  .then(res => {
+    const data = res.data;
         console.log("🧪 REPONSE API STATUS =", data);
         setContactStatus({
           isOnline: data.isOnline,
@@ -665,24 +660,13 @@ export default function ChatWindow({
     try {
       setDeletedForEveryone((prev) => [...new Set([...prev, messageId])]);
 
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `http://localhost:5000/api/messages/${messageId}/delete`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
+const res = await api.post(`/messages/${messageId}/delete`);
+const data = res.data;
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setDeletedForEveryone((prev) => prev.filter((id) => id !== messageId));
-        throw new Error(data.error || "Erreur lors de la suppression");
-      }
+if (!data.success) {
+  setDeletedForEveryone((prev) => prev.filter((id) => id !== messageId));
+  throw new Error(data.error || "Erreur lors de la suppression");
+}
 
       console.log("Message supprimé pour tous :", data);
       setShowDeleteModal(false);
@@ -854,20 +838,8 @@ export default function ChatWindow({
 
         console.log(`👁️ ${unreadMessages.length} messages à marquer comme vus`);
 
-        const token = localStorage.getItem("token");
-
-        const response = await fetch(
-          `http://localhost:5000/api/messages/${selectedChat._id}/mark-all-seen`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          },
-        );
-
-        const data = await response.json();
+const response = await api.post(`/messages/${selectedChat._id}/mark-all-seen`);
+const data = response.data;
 
         if (data.success) {
           console.log(`✅ ${data.messagesMarked} messages marqués comme vus`);
@@ -1087,36 +1059,15 @@ export default function ChatWindow({
   // 2️⃣ NOUVELLE FONCTION : Sauvegarder dans le backend
   const saveThemeToBackend = async (theme) => {
     try {
-      const token = localStorage.getItem("token");
+const response = await api.post('/themes', {
+  conversationId: selectedChat._id,
+  type: theme.type,
+  value: theme.value,
+  emojis: theme.emojis || (theme.emoji ? [theme.emoji] : []),
+  name: theme.name || null,
+});
 
-      console.log("💾 Sauvegarde thème backend:", {
-        conversationId: selectedChat._id,
-        type: theme.type,
-        hasEmojis: theme.emojis?.length > 0,
-      });
-
-      const response = await fetch("http://localhost:5000/api/themes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          conversationId: selectedChat._id,
-          type: theme.type,
-          value: theme.value,
-          emojis: theme.emojis || (theme.emoji ? [theme.emoji] : []),
-          name: theme.name || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        console.error("❌ Erreur sauvegarde thème:", error);
-        return;
-      }
-
-      const data = await response.json();
+const data = response.data;
       console.log("✅ Thème sauvegardé avec succès:", data);
     } catch (error) {
       console.error("💥 Erreur réseau sauvegarde thème:", error);
@@ -1125,32 +1076,9 @@ export default function ChatWindow({
 
   // 3️⃣ NOUVELLE FONCTION : Charger depuis le backend
   const loadThemeFromBackend = React.useCallback(async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      console.log("📥 Chargement thème backend pour:", selectedChat._id);
-
-      const response = await fetch(
-        `http://localhost:5000/api/themes/${selectedChat._id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        console.log("ℹ️ Pas de thème en backend, utilisation localStorage");
-
-        const savedTheme = localStorage.getItem(chatKey);
-        if (savedTheme) {
-          const parsed = JSON.parse(savedTheme);
-          applyTheme(parsed, false);
-        }
-        return;
-      }
-
-      const data = await response.json();
+try {
+  const response = await api.get(`/themes/${selectedChat._id}`);
+  const data = response.data;
       console.log("✅ Thème chargé depuis backend:", data);
 
       if (data.success && data.data) {
@@ -1186,23 +1114,8 @@ export default function ChatWindow({
     localStorage.removeItem(chatKey);
 
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(
-        `http://localhost:5000/api/themes/${selectedChat._id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (response.ok) {
-        console.log("✅ Thème supprimé du backend");
-      } else {
-        console.error("❌ Erreur suppression thème backend");
-      }
+await api.delete(`/themes/${selectedChat._id}`);
+console.log("✅ Thème supprimé du backend");
     } catch (error) {
       console.error("💥 Erreur réseau suppression thème:", error);
     }
@@ -1904,17 +1817,9 @@ export default function ChatWindow({
                 selectedChat._id,
               );
 
-              const res = await fetch(
-                "http://localhost:5000/api/relations/accept-request",
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ conversationId: selectedChat._id }),
-                },
-              );
+const res = await api.post('/relations/accept-request', { 
+  conversationId: selectedChat._id 
+});
 
               const data = await res.json();
               console.log("✅ Réponse accept:", data);
@@ -1940,17 +1845,9 @@ export default function ChatWindow({
                 selectedChat._id,
               );
 
-              const res = await fetch(
-                "http://localhost:5000/api/relations/delete-request",
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ conversationId: selectedChat._id }),
-                },
-              );
+const res = await api.post('/relations/delete-request', { 
+  conversationId: selectedChat._id 
+});
 
               const data = await res.json();
               console.log("✅ Réponse delete:", data);
@@ -2478,19 +2375,13 @@ export default function ChatWindow({
           members={groupMembers}
           onClose={() => setShowGroupInfo(false)}
           onMembersUpdated={() => {
-            const token = localStorage.getItem("token");
-            fetch(
-              `http://localhost:5000/api/groups/${selectedChat._id}/members`,
-              {
-                headers: { Authorization: `Bearer ${token}` },
-              },
-            )
-              .then((res) => res.json())
-              .then((data) => {
-                if (data.success) {
-                  setGroupMembers(data.members || []);
-                }
-              });
+         api.get(`/groups/${selectedChat._id}/members`)
+  .then(res => {
+    const data = res.data;
+    if (data.success) {
+      setGroupMembers(data.members || []);
+    }
+  });
           }}
         />
       )}

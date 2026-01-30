@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { useState, useEffect } from "react";
+import api from '../services/api';
 
 export default function Statut({ setPrivacySubPage, selection, setSelection }) {
   const { t } = useTranslation();
@@ -12,12 +13,8 @@ export default function Statut({ setPrivacySubPage, selection, setSelection }) {
   useEffect(() => {
     const loadStatusVisibility = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const response = await fetch("http://localhost:5000/api/users/me", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        const data = await response.json();
+      const response = await api.get('/users/me');
+const data = response.data;
         if (data.statusVisibility) {
           setSelection(data.statusVisibility);
         }
@@ -35,19 +32,7 @@ export default function Statut({ setPrivacySubPage, selection, setSelection }) {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/users/status-visibility", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ visibility: value })
-      });
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de la sauvegarde");
-      }
+await api.put('/users/status-visibility', { visibility: value });
 
       console.log("✅ Paramètre de visibilité sauvegardé:", value);
     } catch (error) {

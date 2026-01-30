@@ -14,16 +14,21 @@ class SocketService {
       return this.socket;
     }
 
-    const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL 
+      || (import.meta.env.MODE === 'production'
+          ? 'https://owly-backend.onrender.com'  // ← TON URL BACKEND EN PRODUCTION
+          : 'http://localhost:5000');
 
     console.log('🔌 Connexion Socket.IO à:', SOCKET_URL);
+    console.log('🌐 Mode:', import.meta.env.MODE);
 
     this.socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'], // ← AJOUT : polling en fallback
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000
+      reconnectionDelay: 1000,
+      timeout: 10000 // ← AJOUT : timeout de connexion
     });
 
     return new Promise((resolve, reject) => {

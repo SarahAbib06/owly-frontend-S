@@ -72,12 +72,7 @@ const filteredByType = filterType === 'group'
       for (const conv of filteredByType) {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(
-            `http://localhost:5000/api/messages/${conv._id}?page=1&limit=1`,
-            {
-              headers: { 'Authorization': `Bearer ${token}` }
-            }
-          );
+        const response = await api.get(`/messages/${conv._id}?page=1&limit=1`);
           
           if (response.ok) {
             const data = await response.json();
