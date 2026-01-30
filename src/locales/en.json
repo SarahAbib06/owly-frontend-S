@@ -16,25 +16,27 @@
   "serverError": "Server error",
   "loginFailed": "Login failed"
 },
-  "register": {
-    "errors": {
-      "allFieldsRequired": "All fields are required",
-      "acceptTerms": "You must accept the terms",
-      "passwordMismatch": "Passwords do not match",
-       "usernameLength": "Username must be between 3 and 30 characters"
-      
-    },
-    "createAccount": "Create your account",
-    "subtitle": "Join the revolution",
-    "username": "Username",
-    "email": "example@gmail.com",
-    "password": "Password",
-    "confirmPassword": "Confirm Password",
-    "acceptTerms": "I accept the terms and conditions",
-    "signUp": "Sign up",
-    "alreadyHaveAccount": "Already have an account?",
-    "login": "Login"
+ "register": {
+  "errors": {
+    "allFieldsRequired": "All fields are required",
+    "acceptTerms": "You must accept the terms",
+    "passwordMismatch": "Passwords do not match",
+    "usernameLength": "Username must be between 3 and 30 characters"
   },
+  
+  "createAccount": "Create your account",
+  "subtitle": "Join the revolution",
+  "username": "Username",
+  "email": "example@gmail.com",
+  "password": "Password",
+  "confirmPassword": "Confirm Password",
+  "acceptTerms": "I accept the terms and conditions",
+  "signUp": "Sign up",
+  "alreadyHaveAccount": "Already have an account?",
+  "login": "Login",
+  "iAccept": "I accept the",
+  "termsOfService": "Terms of Service"
+},
 
    "profilPic": {
     "title": "Choose your profile picture",
@@ -664,6 +666,186 @@
   "titles": {
     "clearPad": "Clear pad"
   }
+},
+"terms": {
+  "title": "Terms of Service – Owly",
+  "lastUpdate": "Last update:",
+  "privacyTitle": "Data Protection",
+  "privacySubtitle": "Compliance with General Data Protection Regulation",
+  
+  "section1": {
+    "title": "Acceptance of Terms",
+    "content": "By using Owly, you accept these terms of service. If you do not accept, you must not use the application."
+  },
+  
+  "section2": {
+    "title": "Service Description",
+    "content": "Owly is a modern messaging application allowing text and voice messages and contact management. The application may evolve and certain features may be added, modified or removed at any time to improve your experience."
+  },
+  
+  "section3": {
+    "title": "Registration and Account",
+    "items": [
+      "You must create an account to use messaging features.",
+      "Your information must be accurate, complete and up to date.",
+      "You are solely responsible for the security of your password and any activity performed from your account.",
+      "You must inform us immediately of any unauthorized use of your account."
+    ]
+  },
+  
+  "section4": {
+    "title": "Acceptable Use",
+    "intro": "You agree not to:",
+    "items": [
+      "Use Owly for illegal or unauthorized purposes.",
+      "Harass, threaten, intimidate or attack other users.",
+      "Distribute offensive, violent or discriminatory content.",
+      "Attempt to hack, compromise security or disrupt the service.",
+      "Impersonate another person or entity.",
+      "Distribute viruses, malware or any malicious code.",
+      "Collect user data without their consent."
+    ]
+  },
+  
+  "section5": {
+    "title": "Intellectual Property",
+    "items": [
+      "Owly, its logo, design and content are protected",
+      "You may not copy, distribute, modify or exploit the application's content without prior written authorization.",
+      "Content you publish remains your property, but you grant Owly a license necessary for the service operation."
+    ]
+  },
+  
+  "section6": {
+    "title": "Privacy and Data Protection",
+    "intro": "Your messages are encrypted and personal data is private and secure. Owly may store certain data to:",
+    "items": [
+      "Provide and improve the messaging service.",
+      "Prevent abuse, spam and fraud.",
+      "Comply with our legal obligations."
+    ]
+  },
+  
+  "section7": {
+    "title": "Limitation of Liability",
+    "items": [
+      "Owly does not guarantee continuous, uninterrupted or error-free service.",
+      "Owly cannot be held responsible for data loss, direct or indirect damages, or interruptions related to the use of the application.",
+      "Use of the application is at your own risk.",
+      "Owly does not control content shared by users and is not responsible for it."
+    ]
+  },
+  
+  "section8": {
+    "title": "Account Termination",
+    "items": [
+      "Owly reserves the right to suspend or delete an account in case of violation of these terms of service.",
+      "You can also delete your account at any time from the application settings.",
+      "Upon deletion, your data will be erased in accordance with our privacy policy."
+    ]
+  },
+  
+  "section9": {
+    "title": "Changes to Terms",
+    "items": [
+      "Owly may modify these terms of service at any time.",
+      "Users will be informed of significant changes via the application or by email.",
+      "Continued use after modification constitutes acceptance of the new terms."
+    ]
+  },
+  
+  "privacy1": {
+    "title": "Data Collected",
+    "intro": "Owly may collect the following information:",
+    "items": [
+      "First and last name or username",
+      "Email address",
+      "Messages sent and received (encrypted)",
+      "Technical data: browser type, operating system, usage logs",
+      "Connection and usage data"
+    ]
+  },
+  
+  "privacy2": {
+    "title": "Purpose of Collection",
+    "intro": "Data is used exclusively to:",
+    "items": [
+      "Provide instant messaging service",
+      "Improve the application and develop new features",
+      "Prevent abuse, spam, fraud and malicious activities",
+      "Ensure the security and stability of the application",
+      "Comply with our legal and regulatory obligations",
+      "Contact you regarding your account or the service"
+    ]
+  },
+  
+  "privacy3": {
+    "title": "Consent",
+    "items": [
+      "By creating an account and using Owly, you explicitly consent to the collection and processing of your data in accordance with this policy.",
+      "You can withdraw your consent at any time via your account settings or by contacting our support.",
+      "Withdrawal of consent may limit access to certain service features."
+    ]
+  },
+  
+  "privacy4": {
+    "title": "User Rights",
+    "intro": "You have the following rights:",
+    "items": [
+      "Right of access: Access your personal data",
+      "Right to rectification: Correct incorrect or incomplete data",
+      "Right to erasure: Delete your account and data (\"right to be forgotten\")",
+      "Right to restriction: Restrict the processing of your data",
+      "Right to portability: Export your personal data in a structured format",
+      "Right to object: Object to processing for certain purposes",
+      "Right to complaint: File a complaint with the CNIL"
+    ],
+    "contact": "To exercise your rights: Contact us at:"
+  },
+  
+  "privacy5": {
+    "title": "Data Retention",
+    "items": [
+      "Your data is retained only for the duration necessary to provide the service or comply with our legal obligations.",
+      "After deleting your account, your personal data will be erased",
+      "Technical data (logs) may be retained for up to 12 months for security reasons."
+    ]
+  },
+  
+  "privacy6": {
+    "title": "Data Security",
+    "intro": "Owly implements robust security measures:",
+    "items": [
+      "Communication encryption (SSL/TLS)",
+      "Encryption of sensitive data in database",
+      "Secure authentication with OTP verification",
+      "Continuous monitoring against unauthorized access",
+      "Regular and secure backups",
+      "Strict access controls for authorized personnel",
+      "Regular security audits"
+    ]
+  },
+  
+  "privacy7": {
+    "title": "Data Transfer and Sharing",
+    "items": [
+      "No sale: Your data is never sold to third parties.",
+      "Service providers: Data may be shared with technical providers (hosting, support).",
+      "Legal obligations: We may disclose data if required by law or to protect our rights."
+    ]
+  },
+  
+  "footer": "All rights reserved."
+},"academic": {
+  "title": "Special Academic Clause",
+  "intro": "By accepting these terms of service, our teacher solemnly agrees to:",
+  "items": [
+    "Recognize the excellence of this Owly project",
+    "Assign a minimum grade of <strong class='text-[#f9ee34]'>18/20</strong> (or equivalent)",
+    "Appreciate our sense of humor and creativity",
+    "Not hold it against us for this little joke"
+  ],
+  "ps": "P.S.: thank you for your teaching"
 }
 
           
