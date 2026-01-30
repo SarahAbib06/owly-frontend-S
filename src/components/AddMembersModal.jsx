@@ -129,7 +129,7 @@ export default function AddMembersModal({ groupId, currentMembers, onClose, onMe
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b dark:border-neutral-700">
           <div className="flex items-center gap-2">
-            <UserPlus size={20} className="text-blue-500" />
+            <UserPlus size={20} className="text-myYellow" />
             <h2 className="text-lg font-bold">Ajouter des membres</h2>
           </div>
           <button 
@@ -149,7 +149,7 @@ export default function AddMembersModal({ groupId, currentMembers, onClose, onMe
               placeholder="Rechercher un contact..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-neutral-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-neutral-700 rounded-xl outline-none focus:ring-2 focus:ring-myYellow text-sm"
             />
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function AddMembersModal({ groupId, currentMembers, onClose, onMe
                     className={`
                       flex items-center justify-between p-3 rounded-xl cursor-pointer transition
                       ${isSelected
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-myYellow'
                         : 'hover:bg-gray-100 dark:hover:bg-neutral-700'
                       }
                     `}
@@ -201,7 +201,7 @@ export default function AddMembersModal({ groupId, currentMembers, onClose, onMe
                     </div>
 
                     {isSelected && (
-                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <div className="w-6 h-6 bg-myYellow rounded-full flex items-center justify-center">
                         <span className="text-white text-xs">✓</span>
                       </div>
                     )}

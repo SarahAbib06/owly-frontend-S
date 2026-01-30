@@ -240,7 +240,7 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
           {/* 🔥 HEADER */}
           <div className="flex items-center justify-between p-4 border-b dark:border-neutral-700 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <Users size={20} className="text-blue-500" />
+              <Users size={20} className="text-myYellow" />
               <h2 className="text-lg font-bold">
                 {isEditing ? 'Modifier le groupe' : `Groupe (${groupMembers.length} membres)`}
               </h2>
@@ -252,7 +252,7 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
                   className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-full transition"
                   title="Modifier le groupe"
                 >
-                  <Edit2 size={18} className="text-blue-500" />
+                  <Edit2 size={18} className="text-myYellow" />
                 </button>
               )}
               <button 
@@ -272,12 +272,12 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
                 <div className="relative">
                   <img 
                     src={groupPicPreview || '/group-avatar.png'}
-                    className="w-24 h-24 rounded-full object-cover border-4 border-blue-500"
+                    className="w-24 h-24 rounded-full object-cover border-4 border-myYellow"
                     alt="Groupe"
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="absolute bottom-0 right-0 bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition shadow-lg"
+                    className="absolute bottom-0 right-0 bg-myYellow text-white p-2 rounded-full hover:bg-blue-600 transition shadow-lg"
                   >
                     <Camera size={16} />
                   </button>
@@ -303,7 +303,7 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
                   type="text"
                   value={editedGroupName}
                   onChange={(e) => setEditedGroupName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 focus:ring-2 focus:ring-myYellow outline-none"
                   placeholder="Nom du groupe"
                   maxLength={50}
                 />
@@ -317,7 +317,7 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
                 <textarea
                   value={editedGroupDescription}
                   onChange={(e) => setEditedGroupDescription(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 focus:ring-2 focus:ring-myYellow outline-none resize-none"
                   placeholder="Description du groupe"
                   rows={3}
                   maxLength={200}
@@ -342,7 +342,7 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
                 <button
                   onClick={handleSaveGroupInfo}
                   disabled={saving || !editedGroupName.trim()}
-                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 bg-myYellow text-white rounded-lg hover:bg-myYellow transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {saving ? (
                     <>
@@ -397,7 +397,7 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
               <div className="p-4 overflow-y-auto flex-1">
                 {loading ? (
                   <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-myYellow mx-auto"></div>
                     <p className="mt-2 text-sm text-gray-600">Chargement...</p>
                   </div>
                 ) : (
@@ -461,7 +461,7 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
                 {myRole === 'admin' && (
                   <button 
                     onClick={() => setShowAddMembersModal(true)}
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-medium transition"
+                    className="w-full bg-myYellow hover:bg-myYellow text-white py-3 rounded-xl flex items-center justify-center gap-2 font-medium transition"
                   >
                     <UserPlus size={18} />
                     Ajouter des membres

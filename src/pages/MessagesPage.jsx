@@ -90,12 +90,7 @@ export default function Messages() {
               onConversationListRefresh={handleConversationDeleted}
             />
             {/* Bouton retour sur mobile */}
-            <button
-              onClick={closeChat}
-              className="absolute top-4 left-4 z-50 p-2 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-shadow md:hidden"
-            >
-              <PanelLeftClose size={20} />
-            </button>
+            
           </>
         ) : (
           <div className="hidden md:flex flex-1 h-full w-full justify-center items-center">

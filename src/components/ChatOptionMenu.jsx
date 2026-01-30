@@ -30,6 +30,7 @@ export default function ChatOptionsMenu({
   const [modalUserInfo, setModalUserInfo] = useState({ name: "Utilisateur", avatar: "/default-avatar.png" });
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const isGroup = selectedChat?.isGroup || selectedChat?.type === 'group';
 
   // États pour les favoris
   const [isFavorite, setIsFavorite] = useState(false);
@@ -259,16 +260,11 @@ const toggleFavorite = async () => {
           </span>
         </div>
 
-        {/* Verrouiller la conversation */}
-        <div className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-200 cursor-pointer py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
-          <Lock size={15} />
-          <span>{t("chatOptions.lockConversation") || "Verrouiller la conversation"}</span>
-        </div>
-
+       
         <hr className="border-gray-400 dark:border-gray-700 my-1" />
 
         {/* Bloquer/Débloquer (uniquement pour conversations individuelles) */}
-        {!selectedChat?.isGroup && (
+        {!isGroup && (
           <div 
             className={`flex items-center gap-2 text-xs cursor-pointer py-2 px-2 rounded-md transition-colors duration-150 ${
               localIsBlocked

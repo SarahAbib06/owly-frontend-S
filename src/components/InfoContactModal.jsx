@@ -523,12 +523,7 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange, o
   </span>
               </div>
 
-              {/* Verrouiller */}
-              <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
-                <Lock size={15} />
-                <span>{t("infoContactModal.lockConversation") || "Verrouiller la conversation"}</span>
-              </div>
-
+             
               {/* Bloquer (uniquement pour conversations privées) */}
               {!isGroup && (
                 <div
