@@ -230,7 +230,7 @@ export default function AddMembersModal({ groupId, currentMembers, onClose, onMe
             <button
               onClick={handleAddMembers}
               disabled={selectedUsers.length === 0 || adding}
-              className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-3 bg-myYellow text-white rounded-xl font-medium hover:bg-myYellow disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
             >
               {adding ? (
                 <>
