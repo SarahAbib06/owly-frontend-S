@@ -73,9 +73,12 @@ export default function ConversationItem({
 <p
   className={`
     text-[10px] md:text-[11px] truncate
-    ${selected
-      ? "text-myBlack dark:text-myBlack"
-      : "text-myGray2 dark:text-white"
+    ${unread > 0 ? 'font-bold' : 'font-normal'}
+    ${unread > 0 
+      ? "text-myBlack dark:text-white"
+      : selected
+        ? "text-myBlack dark:text-myBlack"
+        : "text-myGray2 dark:text-white"
     }
   `}
 >
