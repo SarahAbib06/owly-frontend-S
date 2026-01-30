@@ -1,11 +1,9 @@
 // src/context/AppelContext.jsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import io from 'socket.io-client';
+import socketService from '../services/socketService';
 
 const AppelContext = createContext({});
-
-const SIGNALING_SERVER = "http://localhost:5000";
 
 export const AppelProvider = ({ children }) => {
   const { user } = useAuth();
@@ -20,26 +18,18 @@ export const AppelProvider = ({ children }) => {
   const currentCallRef = React.useRef(null);
   const callAcceptedRef = React.useRef(false);
 
-  // Initialiser la connexion socket globale
+  // Utiliser la connexion socket globale depuis socketService
   useEffect(() => {
     if (!user) return;
 
-    const token = localStorage.getItem('token') || user?.token;
-    if (!token) return;
+    const socket = socketService.socket;
+    if (!socket) {
+      console.warn('⚠️ AppelContext: socketService.socket non disponible');
+      return;
+    }
 
-    console.log('Initialisation socket d\'appel global...');
-
-    socketRef.current = io(SIGNALING_SERVER, {
-      auth: { token },
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000
-    });
-
-    socketRef.current.on('connect', () => {
-      console.log('✅ Socket d\'appel global connecté:', socketRef.current.id);
-    });
+    socketRef.current = socket;
+    console.log('✅ AppelContext utilise socketService.socket:', socket.id);
 
     // Écouter les appels entrants
     socketRef.current.on('incoming-call', (data) => {
@@ -145,8 +135,16 @@ export const AppelProvider = ({ children }) => {
     });
 
     return () => {
+      // Ne pas déconnecter socketService.socket car il est partagé
+      // Juste retirer les event listeners
       if (socketRef.current) {
-        socketRef.current.disconnect();
+        socketRef.current.off('incoming-call');
+        socketRef.current.off('call-answered');
+        socketRef.current.off('call-ready');
+        socketRef.current.off('call-rejected');
+        socketRef.current.off('call-cancelled');
+        socketRef.current.off('hang-up');
+        socketRef.current.off('connect_error');
         socketRef.current = null;
       }
       stopRingtone();
