@@ -23,10 +23,8 @@ import { useTyping } from "../hooks/useTyping";
 import { useReactions } from "../hooks/useReactions";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
-import { useCall } from "../context/CallContext";
 import socketService from "../services/socketService";
 
-import VideoCallScreen from "./VideoCallScreen";
 import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
@@ -187,7 +185,7 @@ const TypingIndicator = ({ avatar, username }) => (
   </div>
 );
 
-
+/*
 // 🔥 COMPOSANT POUR AFFICHER UN MESSAGE D'APPEL
 const CallMessage = ({ callType, callResult, duration, fromMe }) => {
   // Icônes selon le type
@@ -233,10 +231,10 @@ const CallMessage = ({ callType, callResult, duration, fromMe }) => {
 
   return (
     <div className="flex items-center gap-2 py-1">
-      {/* Icône d'appel */}
+      /Icône d'appel 
       <CallIcon size={18} className={getStatusColor()} />
       
-      {/* Informations d'appel */}
+      //Informations d'appel 
       <div className="flex flex-col">
         <span className={`text-xs font-medium ${getStatusColor()}`}>
           Appel {callType === "audio" ? "audio" : "vidéo"}
@@ -255,7 +253,7 @@ const CallMessage = ({ callType, callResult, duration, fromMe }) => {
     </div>
   );
 };
-
+*/
 export default function ChatWindow({ selectedChat, onBack, onConversationDeleted }) {
 
   console.log("🔍 DEBUG selectedChat:", {
@@ -2064,19 +2062,7 @@ useEffect(() => {
 
      
 
-      {/* Search Modal */}
-      {/* ✅ VIDEO CALL SCREEN - UNE SEULE FOIS */}
-      {startOutgoingCallType && selectedChat && (
-        <VideoCallScreen
-          selectedChat={selectedChat}
-          callType={startOutgoingCallType}
-          onClose={() => {
-            console.log(`📞 [ChatWindow] Fermeture appel sortant`);
-            setStartOutgoingCallType(null);
-            clearActiveCall();
-          }}
-        />
-      )}
+    
 
       {/* MODAL PAD */} {showPad && selectedChat?._id && ( <PadModal conversationId={selectedChat._id} isOpen={showPad} onClose={() => setShowPad(false)} /> )}
 
