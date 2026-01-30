@@ -5,11 +5,10 @@ import { FaUser, FaLock, FaEnvelope } from "react-icons/fa";
 import { useAuth } from "../hooks/useAuth";
 import FormCard from "../components/FormCard.jsx";
 import InputField from "../components/InputField.jsx";
-import Checkbox from "../components/Chekbox.jsx";
 import Button from "../components/Button.jsx";
 import LanguageToggle from"../components/LanguageToggle.jsx";
 import { useTranslation } from "react-i18next";
-import MessagesPage from "../pages/MessagesPage.jsx";
+
 const Register = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -127,12 +126,29 @@ if (formData.username.length < 3 || formData.username.length > 30) {
               </p>
             )}
 
-            <Checkbox
-              
-              label={t("register.acceptTerms")}
-              checked={acceptTerms}
-              onChange={(e) => setAcceptTerms(e.target.checked)}
-            />
+            {/* Checkbox avec lien vers les conditions d'utilisation */}
+            <div className="mb-4">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  className="mt-1 w-4 h-4 accent-[#f9ee34] cursor-pointer"
+                />
+                <span className="text-[12px] text-myBlack dark:text-myWhite">
+                  {t("register.iAccept") || "J'accepte les"}{" "}
+                  <a 
+                    href="/terms-of-service" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-myBlack dark:text-myWhite hover:text-myGray2 dark:hover:text-myGray2 font-semibold underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {t("register.termsOfService") || "Conditions d'Utilisation"}
+                  </a>
+                </span>
+              </label>
+            </div>
 
             <Button
               type="submit"

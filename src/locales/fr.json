@@ -31,10 +31,12 @@
     "email": "exemple@gmail.com",
     "password": "Mot de passe",
     "confirmPassword": "Confirmez votre mot de passe",
-    "acceptTerms": "J’accepte les conditions générales",
-    "signUp": "S’inscrire",
+    "acceptTerms": "J'accepte les conditions générales",
+    "signUp": "S'inscrire",
     "alreadyHaveAccount": "Vous avez déjà un compte ?",
-    "login": "Se connecter"
+    "login": "Se connecter",
+    "iAccept": "J'accepte les",
+    "termsOfService": "Conditions d'Utilisation"
   },
 
   "profilPic": {
@@ -44,6 +46,7 @@
     "choose": "Confirmer ",
     "ignore": "Ignorer"
   },
+
 
   
   "formCard": {
@@ -675,11 +678,177 @@
    "titles": {
     "clearPad": "Vider le pad"
   }
+},
+"terms": {
+  "title": "Conditions d'Utilisation – Owly",
+  "lastUpdate": "Dernière mise à jour :",
+  "privacyTitle": "Protection des Données",
+  "privacySubtitle": "Conformité au Règlement Général sur la Protection des Données",
+  
+  "section1": {
+    "title": "Acceptation des Conditions",
+    "content": "En utilisant Owly, vous acceptez ces conditions d'utilisation. Si vous n'acceptez pas, vous ne devez pas utiliser l'application."
+  },
+  
+  "section2": {
+    "title": "Description du Service",
+    "content": "Owly est une application de messagerie moderne permettant l'envoi de messages texte, vocaux et la gestion de contacts. L'application peut évoluer et certaines fonctionnalités peuvent être ajoutées, modifiées ou supprimées à tout moment pour améliorer votre expérience."
+  },
+  
+  "section3": {
+    "title": "Inscription et Compte",
+    "items": [
+      "Vous devez créer un compte pour utiliser les fonctionnalités de messagerie.",
+      "Vos informations doivent être exactes, complètes et à jour.",
+      "Vous êtes seul responsable de la sécurité de votre mot de passe et de toute activité effectuée depuis votre compte.",
+      "Vous devez nous informer immédiatement de toute utilisation non autorisée de votre compte."
+    ]
+  },
+  
+  "section4": {
+    "title": "Utilisation Acceptable",
+    "intro": "Vous vous engagez à ne pas :",
+    "items": [
+      "Utiliser Owly à des fins illégales ou non autorisées.",
+      "Harceler, menacer, intimider ou attaquer d'autres utilisateurs.",
+      "Diffuser des contenus offensants, violents ou discriminatoires.",
+      "Tenter de pirater, compromettre la sécurité ou perturber le service.",
+      "Usurper l'identité d'une autre personne ou entité.",
+      "Distribuer des virus, malwares ou tout code malveillant.",
+      "Collecter des données d'utilisateurs sans leur consentement."
+    ]
+  },
+  
+  "section5": {
+    "title": "Propriété Intellectuelle",
+    "items": [
+      "Owly, son logo, son design et ses contenus sont protégés",
+      "Vous ne pouvez pas copier, distribuer, modifier ou exploiter le contenu de l'application sans autorisation écrite préalable.",
+      "Les contenus que vous publiez restent votre propriété, mais vous accordez à Owly une licence d'utilisation nécessaire au fonctionnement du service."
+    ]
+  },
+  
+  "section6": {
+    "title": "Confidentialité et Protection des Données",
+    "intro": "Vos messages sont chiffrés et données personnelles sont privés et sécurisés. Owly peut stocker certaines données pour :",
+    "items": [
+      "Fournir et améliorer le service de messagerie.",
+      "Prévenir les abus, spams et fraudes.",
+      "Respecter nos obligations légales."
+    ]
+  },
+  
+  "section7": {
+    "title": "Limitations de Responsabilité",
+    "items": [
+      "Owly ne garantit pas un service continu, ininterrompu ou exempt d'erreurs.",
+      "Owly ne peut être tenu responsable des pertes de données, dommages directs ou indirects, ou interruptions liés à l'utilisation de l'application.",
+      "L'utilisation de l'application se fait à vos propres risques.",
+      "Owly ne contrôle pas le contenu partagé par les utilisateurs et n'en est pas responsable."
+    ]
+  },
+  
+  "section8": {
+    "title": "Résiliation de Compte",
+    "items": [
+      "Owly se réserve le droit de suspendre ou supprimer un compte en cas de violation des présentes conditions d'utilisation.",
+      "Vous pouvez également supprimer votre compte à tout moment depuis les paramètres de l'application.",
+      "En cas de suppression, vos données seront effacées conformément à notre politique de confidentialité."
+    ]
+  },
+  
+  "section9": {
+    "title": "Modifications des Conditions",
+    "items": [
+      "Owly peut modifier ces conditions d'utilisation à tout moment.",
+      "Les utilisateurs seront informés des changements significatifs via l'application ou par e-mail.",
+      "La poursuite de l'utilisation après modification vaut acceptation des nouvelles conditions."
+    ]
+  },
+  
+  "privacy1": {
+    "title": "Données Collectées",
+    "intro": "Owly peut collecter les informations suivantes :",
+    "items": [
+      "Nom et prénom ou pseudo",
+      "Adresse e-mail",
+      "Messages envoyés et reçus (chiffrés)",
+      "Données techniques : type de navigateur, système d'exploitation, logs d'utilisation",
+      "Données de connexion et d'utilisation"
+    ]
+  },
+  
+  "privacy2": {
+    "title": "Finalité de la Collecte",
+    "intro": "Les données sont utilisées exclusivement pour :",
+    "items": [
+      "Fournir le service de messagerie instantanée",
+      "Améliorer l'application et développer de nouvelles fonctionnalités",
+      "Prévenir les abus, spams, fraudes et activités malveillantes",
+      "Assurer la sécurité et la stabilité de l'application",
+      "Respecter nos obligations légales et réglementaires",
+      "Vous contacter concernant votre compte ou le service"
+    ]
+  },
+  
+  "privacy3": {
+    "title": "Consentement",
+    "items": [
+      "En créant un compte et en utilisant Owly, vous consentez explicitement à la collecte et au traitement de vos données conformément à cette politique.",
+      "Vous pouvez retirer votre consentement à tout moment via les paramètres de votre compte ou en contactant notre support.",
+      "Le retrait du consentement peut limiter l'accès à certaines fonctionnalités du service."
+    ]
+  },
+  
+  "privacy4": {
+    "title": "Droits des Utilisateurs",
+    "intro": "Vous disposez des droits suivants :",
+    "items": [
+      "Droit d'accès : Accéder à vos données personnelles",
+      "Droit de rectification : Corriger les données incorrectes ou incomplètes",
+      "Droit à l'effacement : Supprimer votre compte et vos données (\"droit à l'oubli\")",
+      "Droit à la limitation : Restreindre le traitement de vos données",
+      "Droit à la portabilité : Exporter vos données personnelles dans un format structuré",
+      "Droit d'opposition : S'opposer au traitement pour certaines finalités",
+      "Droit de réclamation : Déposer une plainte auprès de la CNIL"
+    ],
+    "contact": "Pour exercer vos droits : Contactez-nous à l'adresse :"
+  },
+  
+  "privacy5": {
+    "title": "Conservation des Données",
+    "items": [
+      "Vos données sont conservées uniquement pour la durée nécessaire à fournir le service ou respecter nos obligations légales.",
+      "Après suppression de votre compte, vos données personnelles seront effacées",
+      "Les données techniques (logs) peuvent être conservées jusqu'à 12 mois pour des raisons de sécurité."
+    ]
+  },
+  
+  "privacy6": {
+    "title": "Sécurité des Données",
+    "intro": "Owly met en œuvre des mesures de sécurité robustes :",
+    "items": [
+      "Chiffrement des communications (SSL/TLS)",
+      "Chiffrement des données sensibles en base de données",
+      "Authentification sécurisée avec vérification OTP",
+      "Surveillance continue contre les accès non autorisés",
+      "Sauvegardes régulières et sécurisées",
+      "Contrôles d'accès stricts pour le personnel autorisé",
+      "Audits de sécurité réguliers"
+    ]
+  },
+  
+  "privacy7": {
+    "title": "Transfert et Partage de Données",
+    "items": [
+      "Aucune vente : Vos données ne sont jamais vendues à des tiers.",
+      "Prestataires de services : Les données peuvent être partagées avec des prestataires techniques (hébergement, support).",
+      "Obligations légales : Nous pouvons divulguer des données si requis par la loi ou pour protéger nos droits."
+    ]
+  },
+  
+  "footer": "Tous droits réservés."
 }
-
-
-        
-
 
 
 

@@ -22,6 +22,9 @@ import TicTacToe2 from "./components/TicTacToe2";
 import OwlyQuiz from "./components/OwlyQuiz";
 import GamesPage from "./pages/GamesPage";
 import ProfilPic from "./pages/ProfilPic.jsx";
+import TermsOfService from "./pages/TermsOfService";
+
+
 
 // ✅ Composant AppContent pour gérer le VideoCall global
 function AppContent() {
@@ -44,6 +47,8 @@ function AppContent() {
         <Route path="/OtpPage" element={<OtpPage />} />
         <Route path="/ForgotPassword" element={<ForgotPassword />} />
          <Route path="/profil-pic" element={<ProfilPic />} />
+         
+<Route path="/terms-of-service" element={<TermsOfService />} />
 
         {/* Layout protégé avec sidebar */}
         <Route element={<MainLayout />}>
