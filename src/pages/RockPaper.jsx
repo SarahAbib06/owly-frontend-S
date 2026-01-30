@@ -134,7 +134,8 @@ export default function RockPaper() {
     flex items-center justify-center
     cursor-pointer
     fixed
-    left-25 
+    left-1
+    md:left-25
      -top-0 md:top-2 
     
      
@@ -156,12 +157,13 @@ export default function RockPaper() {
         />
       ))}
 
-      <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-6 flex items-center gap-3 text-center">
-        <Sparkles className="text-yellow-300" />
-        <span className="bg-gradient-to-r from-pink-400 to-blue-400 text-transparent bg-clip-text">
-           {t("rockPaper.title")}
-        </span>
-      </h1>
+      <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-6 flex items-center justify-center gap-2 sm:gap-3 text-center">
+  <Sparkles className="text-yellow-300 self-center text-xl sm:text-2xl md:text-3xl" />
+  <span className="bg-gradient-to-r from-pink-400 to-blue-400 text-transparent bg-clip-text text-base sm:text-lg md:text-xl">
+     {t("rockPaper.title")}
+  </span>
+</h1>
+
 
       <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 text-2xl mb-6">
         <div className="flex items-center gap-2 justify-center">
@@ -172,7 +174,8 @@ export default function RockPaper() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-8 mt-6">
+     <div className="flex flex-row items-center justify-center gap-8 mt-6">
+
         {/* Player */}
         <motion.div
           animate={anim ? { y: [0, -25, 0] } : {}}
@@ -201,30 +204,41 @@ export default function RockPaper() {
       </div>
 
       <AnimatePresence>
-        {result && !anim && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1.6, opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-            className="text-3xl sm:text-5xl font-bold mt-8 text-center"
-          >
-            <span
-              className={
-                result === "win"
-                  ? "text-green-400"
-                  : result === "lose"
-                  ? "text-red-400"
-                  : "text-yellow-300"
-              }
-            >
-              {resultEmoji[result]} {t(`rockPaper.result.${result}`)}
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+  {result && !anim && (
+    <motion.div
+      initial={{ scale: 0.85, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="mt-6 text-center max-w-[90vw] px-3"
+    >
+      <span
+        className={`
+          font-bold
+          text-xl
+          sm:text-3xl
+          md:text-5xl
+          leading-tight
+          break-words
+          ${
+            result === "win"
+              ? "text-green-400"
+              : result === "lose"
+              ? "text-red-400"
+              : "text-yellow-300"
+          }
+        `}
+      >
+        {resultEmoji[result]} {t(`rockPaper.result.${result}`)}
+      </span>
+    </motion.div>
+  )}
+</AnimatePresence>
 
-      <div className="mt-10 sm:mt-20 flex flex-wrap justify-center gap-4 sm:gap-8">
+
+    <div className="mt-6 grid grid-cols-3 gap-5 sm:gap-10 place-items-center">
+
+
         {options.map((opt) => (
           <motion.button
             key={opt.name}

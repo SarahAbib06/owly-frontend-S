@@ -18,6 +18,7 @@ export default function LanguageSelect() {
 
   const handleSelect = (value) => {
     i18n.changeLanguage(value);
+    localStorage.setItem("language", value);
   };
 
   const currentOption = options.find(opt => opt.value === i18n.language);

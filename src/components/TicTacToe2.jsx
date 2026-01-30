@@ -104,8 +104,9 @@ const navigate = useNavigate();
   onClick={() => navigate("/games")}
   className="
     fixed
-    left-25
-    -top-0 md:top-2 
+    left-1
+    md:left-25
+    top-2  md:top-2 
     
     z-50
     p-3
@@ -191,7 +192,7 @@ const navigate = useNavigate();
               onChange={(e) => setGuess(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder={t("guessNumber.placeholder")}
-              className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-purple-300 rounded-lg focus:outline-none focus:border-purple-500 text-base sm:text-lg"
+              className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 text-gray-900 border-purple-300 rounded-lg focus:outline-none focus:border-purple-500 text-base sm:text-lg"
               min="1"
               max={difficulty}
             />

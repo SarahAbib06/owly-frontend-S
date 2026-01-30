@@ -1378,7 +1378,7 @@ useEffect(() => {
           : "#000"
         : "#000"
       : themeStyle.backgroundImage
-      ? "#fff"
+      ? "#000"
       : themeStyle.background
       ? isDarkColor(themeStyle.background)
         ? "#fff"
@@ -1437,27 +1437,20 @@ useEffect(() => {
               className={`${bubbleClasses(fromMe)} ${
                 isMatch ? "ring-2 ring-blue-400" : ""
               } cursor-pointer`}
-        style={{
-  background: fromMe
-    ? themeStyle.backgroundImage || bubbleBg || themeStyle.background || "#FFECA1"
+       style={{
+  background: fromMe && !themeStyle.backgroundImage // ← Condition ajoutée
+    ? bubbleBg || themeStyle.background || "#FFECA1"
     : undefined,
 
   color: textColor,
 
-  border: fromMe
-    ? themeStyle.backgroundImage
-      ? "2px solid rgba(255, 255, 255, 0.8)" // bordure visible
-      : `1px solid ${adjustColor(bubbleBg || themeStyle.background || "#FAFAFA", -40)}`
+  border: fromMe && !themeStyle.backgroundImage // ← Condition ajoutée
+    ? bubbleBg || themeStyle.background
+      ? `1px solid ${adjustColor(bubbleBg || themeStyle.background || "#FAFAFA", -40)}`
+      : undefined
     : undefined,
 
-  boxShadow: fromMe && themeStyle.backgroundImage
-    ? "0 0 8px rgba(0,0,0,0.25)" // ombre pour détacher du background
-    : "none",
-
-  // Optionnel : foncer légèrement le dégradé pour le rendre lisible
-  filter: fromMe && themeStyle.backgroundImage
-    ? "brightness(0.9)" 
-    : "none"
+  boxShadow: "none", // ← Enlever le boxShadow pour les images
 }}
 
 

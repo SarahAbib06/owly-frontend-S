@@ -163,59 +163,55 @@ export default function MemoryGame() {
   };
 
   return (
-   <div style={{ textAlign: "center", marginTop: "20px", position: "relative", padding: "10px" }}>
+    <div style={{ 
+      textAlign: "center", 
+      minHeight: "100vh", 
+      display: "flex", 
+      flexDirection: "column", 
+      justifyContent: "center", 
+      alignItems: "center",
+      position: "relative", 
+      padding: "10px",
+      overflow: "hidden"
+    }}>
 
       <button
-    onClick={() => navigate("/games")}
-    className="
-      p-3 
-      bg-black text-yellow-400 
-      rounded-full 
-      shadow-lg 
-      hover:bg-gray-800 hover:text-yellow-300 
-      transition 
-      flex items-center justify-center
-      cursor-pointer
-       fixed  top-1 left-25
-      fixed  md:top-2
-      z-50
-    "
-  >
-    <IoArrowBackOutline className="text-2xl sm:text-3xl" />
-  </button>
-     <h2 style={{ ...timerStyle, marginTop: "20px" }}>
-  ⏳  {t("memoryGame.timeLeft")}: {timeLeft}s | {t("memoryGame.level")}: {level}
-</h2>
+        onClick={() => navigate("/games")}
+        className="fixed left-4 lg:left-[100px] top-4 md:top-6 z-50 p-3 bg-black text-yellow-400 rounded-full shadow-lg hover:bg-gray-800 hover:text-yellow-300 transition flex items-center justify-center cursor-pointer"
+      >
+        <IoArrowBackOutline className="text-2xl sm:text-3xl" />
+      </button>
 
+      <h2 style={{ ...timerStyle, marginTop: "0", marginBottom: "10px" }}>
+        ⏳  {t("memoryGame.timeLeft")}: {timeLeft}s | {t("memoryGame.level")}: {level}
+      </h2>
 
-<style>
-{`
-  @media (max-width: 640px) {
-    h2 {
-      font-size: 1.2rem;
-    }
-  }
-`}
-</style>
+      <style>
+      {`
+        @media (max-width: 640px) {
+          h2 {
+            font-size: 1rem !important;
+          }
+        }
+      `}
+      </style>
 
-
-     
       {/* Boutons de contrôle Start / Pause / Reset */}
-<div
-  style={{
-    display: "flex",
-    flexDirection: "row",       // horizontal sur desktop
-    flexWrap: "wrap",           // permet d’empiler sur mobile
-    gap: "8px",
-    justifyContent: "center",   // centré
-    marginBottom: "20px",
-    marginTop: "10px",
-  }}
->
-  <button style={{ ...buttonStyle, padding: "5px 12px", fontSize: "0.85rem" }} onClick={() => setDisabled(false)}>▶ {t("memoryGame.start")}</button>
-  <button style={{ ...buttonStyle, padding: "5px 12px", fontSize: "0.85rem" }} onClick={() => setDisabled(true)}>⏸  {t("memoryGame.pause")}</button>
-  <button style={{ ...buttonStyle, padding: "5px 12px", fontSize: "0.85rem" }} onClick={() => initGame(true)}>🔄 {t("memoryGame.reset")}</button>
-</div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: "8px",
+          justifyContent: "center",
+          marginBottom: "15px",
+          marginTop: "5px",
+        }}
+      >
+        <button style={{ ...buttonStyle, padding: "5px 12px", fontSize: "0.85rem" }} onClick={() => setDisabled(false)}>▶ {t("memoryGame.start")}</button>
+        <button style={{ ...buttonStyle, padding: "5px 12px", fontSize: "0.85rem" }} onClick={() => setDisabled(true)}>⏸  {t("memoryGame.pause")}</button>
+        <button style={{ ...buttonStyle, padding: "5px 12px", fontSize: "0.85rem" }} onClick={() => initGame(true)}>🔄 {t("memoryGame.reset")}</button>
+      </div>
 
       {/* Grille responsive */}
       <div className="grid-responsive">
@@ -256,9 +252,9 @@ export default function MemoryGame() {
           backgroundColor: "rgba(0,0,0,0.6)", zIndex: 10, flexDirection: "column"
         }}>
           <h2 style={{ color: "#fff", fontSize: "2rem", marginBottom: "20px" }}>
-  {message === "WIN" && t("memoryGame.levelCompleted")}
-  {message === "LOSE" && t("memoryGame.timeOver")}
-</h2>
+            {message === "WIN" && t("memoryGame.levelCompleted")}
+            {message === "LOSE" && t("memoryGame.timeOver")}
+          </h2>
           <div>
             {gameOver && message === "WIN" && (
               <button style={buttonStyle} onClick={nextLevel}>➡ {t("memoryGame.next")}</button>
@@ -290,19 +286,53 @@ export default function MemoryGame() {
           transition: box-shadow 0.3s;
         }
 
-        @media (max-width: 1024px) { /* Tablette et mobile */
+        /* Tablette et mobile - grille 4x4 visible sans scroll */
+        @media (max-width: 1024px) {
           .grid-responsive {
-            grid-template-columns: repeat(3, 1fr); /* 3 colonnes */
-            gap: 12px;
-            max-width: 360px; /* 3x100px + gaps */
+            grid-template-columns: repeat(4, 1fr); /* 4 colonnes */
+            gap: 8px;
+            max-width: 95vw;
+            width: 100%;
           }
 
           .card {
             font-size: 1.5rem;
           }
         }
+
+        /* Petit mobile - cartes encore plus petites */
+        @media (max-width: 640px) {
+          .grid-responsive {
+            gap: 5px;
+            padding: 0 5px;
+          }
+
+          .card {
+            font-size: 1.2rem;
+            border-radius: 10px;
+          }
+        }
+
+        /* Très petit mobile */
+        @media (max-width: 400px) {
+          .grid-responsive {
+            gap: 4px;
+          }
+
+          .card {
+            font-size: 1rem;
+            border-radius: 8px;
+          }
+        }
+
+        /* iPhone SE et très petits écrans */
+        @media (max-width: 375px) {
+          .card {
+            font-size: 0.9rem;
+            border-radius: 6px;
+          }
+        }
       `}</style>
     </div>
   );
 }
-

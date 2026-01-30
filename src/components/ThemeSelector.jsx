@@ -33,12 +33,7 @@ const GRADIENTS = [
 ];
 
 // Thèmes saisonniers (emoji inclus)
-const SEASONAL = [
-  { name: "Saint Valentin", value: "#FFB6C1", type: "seasonal", emoji: "💖" },
-  { name: "Neige", value: "#D3E9FF", type: "seasonal", emoji: "☃️" },
-  { name: "Halloween", value: "#FF8C42", type: "seasonal", emoji: "🎃" },
-  { name: "Noël", value: "#228B22", type: "seasonal", emoji: "❄️" },
-];
+
 
 // Helper pour foncer les couleurs simples et saisonnelles
 function darkenColor(hex, percent = 0.25) {
@@ -101,26 +96,7 @@ export default function ThemeSelector({ isDark, onSelectTheme, onRemoveTheme, on
       </div>
 
       {/* Thèmes saisonniers */}
-      <h3 className="font-semibold mb-2 text-sm">{t("themeSelector.saison", "Saison")}</h3>
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
-        {SEASONAL.map((s) => (
-          <button
-            key={s.name}
-            className="w-10 h-10 rounded-lg border border-gray-300 dark:border-neutral-700 flex items-center justify-center text-xl"
-            style={getThemeStyle(s)}
-            onClick={() =>
-              onSelectTheme({
-                type: s.type,
-                value: s.value,
-                emoji: s.emoji, // ← IMPORTANT (emoji sauvegardé)
-              })
-            }
-            title={`${t(s.name)} ${s.emoji}`}
-          >
-            {s.emoji}
-          </button>
-        ))}
-      </div>
+     
 
       {/* Upload image */}
       <div className="mb-4">
