@@ -9,22 +9,29 @@ export const useConversations = () => {
   const [error, setError] = useState(null);
 
   // Charger les conversations
-  const loadConversations = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await conversationService.getMyConversations();
-      
-      console.log('📂 Conversations chargées:', response);
-      
-      setConversations(response.conversations || []);
-      setError(null);
-    } catch (err) {
-      console.error('❌ Erreur chargement conversations:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+const loadConversations = useCallback(async () => {
+  try {
+    setLoading(true);
+    const response = await conversationService.getMyConversations();
+    
+    console.log('📂 Conversations chargées:', response);
+    
+    // ✅ INVERSER l'ordre : plus récent EN PREMIER
+    const sorted = (response.conversations || []).sort((a, b) => 
+      new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)
+    );
+    
+    console.log('✅ Après tri:', sorted); // Debug
+    
+    setConversations(sorted);
+    setError(null);
+  } catch (err) {
+    console.error('❌ Erreur chargement conversations:', err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   // Créer un groupe
   const createGroup = useCallback(async (participantIds, groupName) => {
@@ -105,38 +112,71 @@ export const useConversations = () => {
   }, [loadConversations]);
 
   // Écouter les nouveaux messages via Socket.IO
-  useEffect(() => {
-    const handleNewMessage = (message) => {
-      console.log('📨 Nouveau message reçu:', message);
+ // Écouter les nouveaux messages via Socket.IO
+useEffect(() => {
+  console.log('🎧 Socket listeners activés');
+  
+  // Test : écouter TOUS les événements
+  socketService.socket.onAny((eventName, ...args) => {
+    console.log(`📡 Événement reçu: ${eventName}`, args);
+  });
+  
+  const handleNewMessage = (message) => {
+    console.log('🔔 SOCKET - handleNewMessage déclenché:', message);
+    
+    const currentUserId = localStorage.getItem('userId');
+    const isMyMessage = message.Id_sender === currentUserId || message.senderId === currentUserId;
+    
+    setConversations(prev => {
+      console.log('🔄 Mise à jour conversations, avant:', prev.length);
       
-      // Mettre à jour la conversation concernée
-      setConversations(prev => {
-        return prev.map(conv => {
+      // Vérifier si la conversation existe déjà
+      const exists = prev.some(conv => conv._id === message.conversationId);
+      
+      let updated;
+      if (exists) {
+        // Mettre à jour la conversation existante
+        updated = prev.map(conv => {
           if (conv._id === message.conversationId) {
             return {
               ...conv,
-              lastMessageAt: new Date(),
-              unreadCount: (conv.unreadCount || 0) + 1
+              lastMessageAt: new Date().toISOString(),
+              unreadCount: isMyMessage ? conv.unreadCount : (conv.unreadCount || 0) + 1
             };
           }
           return conv;
-        }).sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+        });
+      } else {
+        // Ajouter la nouvelle conversation (cas rare)
+        updated = [...prev];
+      }
+      
+      // ✅ TOUJOURS trier après mise à jour
+      const sorted = updated.sort((a, b) => {
+        const dateA = new Date(a.lastMessageAt || 0);
+        const dateB = new Date(b.lastMessageAt || 0);
+        return dateB - dateA; // Plus récent en premier
       });
-    };
+      
+      console.log('✅ Mise à jour conversations, après:', sorted.length);
+      console.log('📋 Première conversation:', sorted[0]?.name, sorted[0]?.lastMessageAt);
+      
+      return sorted;
+    });
+  };
 
-    socketService.onNewMessage(handleNewMessage);
+  socketService.onNewMessage(handleNewMessage);
 
-    return () => {
-      socketService.off('new_message', handleNewMessage);
-    };
-  }, []);
+  return () => {
+    socketService.off('new_message', handleNewMessage);
+    socketService.socket.offAny();
+  };
+}, []);
 
-  // Charger au montage
-  useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
-
-
+// Charger au montage
+useEffect(() => {
+  loadConversations();
+}, [loadConversations]);
   
 
   return {

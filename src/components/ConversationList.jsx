@@ -59,57 +59,60 @@ export default function ConversationList({ onSelect, onNewChat }) {
     : listToDisplay;
 
   // Charger les derniers messages
-  useEffect(() => {
-    const fetchLastMessages = async () => {
-      const messages = {};
-      
-      for (const conv of filteredByType) {
-        try {
-          const token = localStorage.getItem('token');
-          const response = await fetch(
-            `http://localhost:5000/api/messages/${conv._id}?page=1&limit=1`,
-            {
-              headers: { 'Authorization': `Bearer ${token}` }
-            }
-          );
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.messages && data.messages.length > 0) {
-              const lastMsg = data.messages[0];
-              
-              let preview = '';
-              if (lastMsg.typeMessage === 'text') {
-                preview = lastMsg.content;
-              } else if (lastMsg.typeMessage === 'image') {
-                preview = '📷 Photo';
-              } else if (lastMsg.typeMessage === 'video') {
-                preview = '🎥 Vidéo';
-              } else if (lastMsg.typeMessage === 'audio') {
-                preview = '🎤 Audio';
-              } else if (lastMsg.typeMessage === 'file') {
-                preview = '📎 Fichier';
-              }
-              
-              messages[conv._id] = {
-                content: preview,
-                senderId: lastMsg.Id_sender || lastMsg.senderId,
-                createdAt: lastMsg.createdAt || lastMsg.timestamp
-              };
-            }
+ // Charger les derniers messages AU CHARGEMENT INITIAL
+// Charger les derniers messages AU CHARGEMENT INITIAL SEULEMENT
+useEffect(() => {
+  const fetchLastMessages = async () => {
+    if (conversations.length === 0) return;
+    
+    const messages = {};
+    
+    for (const conv of conversations) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(
+          `http://localhost:5000/api/messages/${conv._id}?page=1&limit=1`,
+          {
+            headers: { 'Authorization': `Bearer ${token}` }
           }
-        } catch (error) {
-          console.error(`Erreur chargement message conv ${conv._id}:`, error);
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.messages && data.messages.length > 0) {
+            const lastMsg = data.messages[0];
+            
+            let preview = '';
+            if (lastMsg.typeMessage === 'text') {
+              preview = lastMsg.content;
+            } else if (lastMsg.typeMessage === 'image') {
+              preview = '📷 Photo';
+            } else if (lastMsg.typeMessage === 'video') {
+              preview = '🎥 Vidéo';
+            } else if (lastMsg.typeMessage === 'audio') {
+              preview = '🎤 Audio';
+            } else if (lastMsg.typeMessage === 'file') {
+              preview = '📎 Fichier';
+            }
+            
+            messages[conv._id] = {
+              content: preview,
+              senderId: lastMsg.Id_sender || lastMsg.senderId,
+              createdAt: lastMsg.createdAt || lastMsg.timestamp
+            };
+          }
         }
+      } catch (error) {
+        console.error(`Erreur chargement message conv ${conv._id}:`, error);
       }
-      
-      setLastMessages(messages);
-    };
-
-    if (filteredByType.length > 0) {
-      fetchLastMessages();
     }
-  }, [filteredByType.length]);
+    
+    setLastMessages(messages);
+  };
+
+  fetchLastMessages();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, conversations); // ✅ NE charger qu'UNE SEULE FOIS au montage
 
   // Filtrer les conversations selon la recherche
   const filteredList = filteredByType.filter((conv) => {
@@ -122,6 +125,8 @@ export default function ConversationList({ onSelect, onNewChat }) {
    
     return conversationName.toLowerCase().includes(search.toLowerCase());
   });
+
+
 
   // Écouter les nouveaux messages
   useEffect(() => {
