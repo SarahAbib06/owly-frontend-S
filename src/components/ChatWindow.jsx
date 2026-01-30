@@ -2236,25 +2236,33 @@ useEffect(() => {
 )}
         {isInfoOpen && (
 
+  
   <InfoContactModal
     chat={{
       ...selectedChat,
       openTheme: () => setShowThemeSelector(true),
       onArchive: async () => {
         try {
+          // 1. Archiver/Désarchiver
           if (isArchived) {
             await unarchiveConversation(selectedChat._id);
           } else {
             await archiveConversation(selectedChat._id);
           }
+
+          // 2. ✅ RECHARGER LA PAGE
+          window.location.reload();
+
         } catch (err) {
+          console.error("❌ Erreur archivage:", err);
           alert("Erreur lors de l'opération");
         }
       },
       isArchived: isArchived,
     }}
     onClose={() => setIsInfoOpen(false)}
-      onBlockStatusChange={() => refresh()}
+    onBlockStatusChange={() => refresh()}
+    onConversationDeleted={onConversationDeleted}
   />
 )}
 {/* 🔥 LIGHTBOX MODAL POUR MÉDIAS */}
