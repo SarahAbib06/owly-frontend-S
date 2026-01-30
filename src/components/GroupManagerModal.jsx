@@ -9,6 +9,11 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
   const [groupMembers, setGroupMembers] = useState(members || []);
   const [loading, setLoading] = useState(false);
   const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+  //promotion
+   // 🆕 MODAL PROMOTION
+  const [showPromoteModal, setShowPromoteModal] = useState(false);
+  const [memberToPromote, setMemberToPromote] = useState(null);
+  const [promoting, setPromoting] = useState(false);
   
   // 🆕 ÉDITION GROUPE
   const [isEditing, setIsEditing] = useState(false);
@@ -63,6 +68,42 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
       console.error("❌ Erreur chargement membres:", err);
     } finally {
       setLoading(false);
+    }
+  };
+  // 🆕 OUVRIR MODAL PROMOTION
+  const openPromoteModal = (member) => {
+    setMemberToPromote(member);
+    setShowPromoteModal(true);
+  };
+
+  // 🆕 CONFIRMER PROMOTION
+  const confirmPromoteToAdmin = async () => {
+    if (!memberToPromote) return;
+    
+    try {
+      setPromoting(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/members/${memberToPromote.id}/promote`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        console.log('✅ Membre promu admin');
+        await fetchMembers();
+        if (onMembersUpdated) onMembersUpdated();
+        setShowPromoteModal(false);
+        setMemberToPromote(null);
+      } else {
+        throw new Error(data.error || 'Erreur');
+      }
+    } catch (err) {
+      console.error("❌ Erreur promotion:", err);
+      alert(err.message);
+    } finally {
+      setPromoting(false);
     }
   };
 
@@ -428,14 +469,14 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
                           <div className="flex items-center gap-2">
                             {/* Promouvoir en admin */}
                             {member.role !== 'admin' && (
-                              <button 
-                                onClick={() => handlePromoteToAdmin(member.id)}
-                                className="p-2 text-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-900/20 rounded-full transition"
-                                title="Promouvoir en admin"
-                              >
-                                <Shield size={18} />
-                              </button>
-                            )}
+  <button 
+    onClick={() => openPromoteModal(member)}  
+    className="p-2 text-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-900/20 rounded-full transition"
+    title="Promouvoir en admin"
+  >
+    <Shield size={18} />
+  </button>
+)}
                             
                             {/* Retirer du groupe */}
                             {member.role !== 'admin' && (
@@ -472,6 +513,67 @@ export default function GroupManagerModal({ groupId, myRole, members, onClose, o
           )}
         </div>
       </div>
+{/* 🆕 MODAL PROMOTION ADMIN - STYLE MINIMALISTE */}
+{showPromoteModal && memberToPromote && (
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4">
+    <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-lg p-6 text-center max-w-sm w-full">
+      
+      {/* Avatar */}
+      <div className="flex justify-center mb-4">
+        <div className="relative">
+          <img 
+            src={memberToPromote.profilePicture || '/default-avatar.png'} 
+            className="w-20 h-20 rounded-full object-cover"
+            alt={memberToPromote.username}
+          />
+          <div className="absolute -bottom-1 -right-1 bg-yellow-500 p-1.5 rounded-full border-2 border-white dark:border-neutral-900">
+            <Crown size={16} className="text-white" />
+          </div>
+        </div>
+      </div>
+
+      {/* Titre */}
+      <h2 className="text-xl font-semibold mb-2">
+        Promouvoir {memberToPromote.username} ?
+      </h2>
+
+      {/* Description */}
+      <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">
+        Ce membre deviendra administrateur et pourra gérer le groupe, ajouter/retirer des membres et promouvoir d'autres admins.
+      </p>
+
+      {/* Boutons */}
+      <div className="flex justify-between gap-4 mt-6">
+        <button
+          onClick={() => {
+            setShowPromoteModal(false);
+            setMemberToPromote(null);
+          }}
+          disabled={promoting}
+          className="w-1/2 py-2 rounded-lg bg-gray-300 dark:bg-neutral-700 text-black dark:text-white font-semibold text-sm hover:bg-gray-400 dark:hover:bg-neutral-600 transition disabled:opacity-50"
+        >
+          Annuler
+        </button>
+
+        <button
+          onClick={confirmPromoteToAdmin}
+          disabled={promoting}
+          className="w-1/2 py-2 rounded-lg bg-myYellow text-white font-semibold text-sm hover:bg-myYellow2 transition disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {promoting ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>En cours...</span>
+            </>
+          ) : (
+            'Promouvoir'
+          )}
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
 
       {/* Modal ajout membres */}
       {showAddMembersModal && (
