@@ -106,13 +106,63 @@ const fetchContacts = async () => {
   // 🔥 OUVRIR/CRÉER UNE CONVERSATION AVEC UN UTILISATEUR
 // Dans SearchModal.jsx, modifiez handleOpenConversation :
 // Dans SearchModal.jsx, modifiez handleOpenConversation :
+// Dans SearchModal.jsx, modifiez handleOpenConversation :
+
 const handleOpenConversation = async (targetUser) => {
   console.log("💬 Ouverture conversation avec:", targetUser);
 
   const token = localStorage.getItem('token');
 
   try {
-    // 1️⃣ Créer ou récupérer la conversation
+    // 1️⃣ VÉRIFIER SI UNE CONVERSATION EXISTE DÉJÀ
+    const existingConvResponse = await fetch(
+      `http://localhost:5000/api/conversations/find-private/${targetUser._id}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (existingConvResponse.ok) {
+      const existingData = await existingConvResponse.json();
+      
+      if (existingData.success && existingData.conversation) {
+        console.log("✅ Conversation existante trouvée:", existingData.conversation);
+        
+        // 🔥 CRÉER L'OBJET CONVERSATION COMPLET AVEC L'HISTORIQUE
+        const conversationObj = {
+          _id: existingData.conversation._id,
+          id: existingData.conversation._id,
+          type: "private",
+          name: targetUser.username,
+          participants: existingData.conversation.participants || [targetUser],
+          unreadCount: existingData.conversation.unreadCount || 0,
+          lastMessageAt: existingData.conversation.lastMessageAt || new Date(),
+          isMessageRequest: existingData.conversation.isMessageRequest ?? false,
+          messageRequestFor: existingData.conversation.messageRequestFor,
+          messageRequestFrom: existingData.conversation.messageRequestFrom,
+          
+          // 🔥 AJOUTER targetUser avec photo
+          targetUser: {
+            _id: targetUser._id,
+            username: targetUser.username,
+            profilePicture: targetUser.profilePicture
+          }
+        };
+        
+        console.log("📦 Conversation existante à ouvrir:", conversationObj);
+        
+        // Fermer modal et ouvrir conversation
+        onUserSelect(conversationObj);
+        onClose();
+        return;
+      }
+    }
+
+    // 2️⃣ SI PAS DE CONVERSATION → CRÉER UNE NOUVELLE
+    console.log("📝 Aucune conversation trouvée, création d'une nouvelle...");
+    
     const res = await fetch('http://localhost:5000/api/conversations/private', {
       method: 'POST',
       headers: {
@@ -128,10 +178,9 @@ const handleOpenConversation = async (targetUser) => {
     }
 
     const data = await res.json();
-    console.log("✅ Conversation créée/récupérée:", data);
+    console.log("✅ Nouvelle conversation créée:", data);
 
     if (data.success && data.conversation) {
-      // Créer l'objet conversation COMPLET
       const conversationObj = {
         _id: data.conversation._id || data.conversation.id,
         id: data.conversation.id || data.conversation._id,
@@ -144,24 +193,21 @@ const handleOpenConversation = async (targetUser) => {
         messageRequestFor: data.conversation.messageRequestFor,
         messageRequestFrom: data.conversation.messageRequestFrom,
         
-        // 🔥 AJOUTEZ CE CHAMP CRUCIAL !
         targetUser: {
           _id: targetUser._id,
           username: targetUser.username,
-          profilePicture: targetUser.profilePicture // <-- IMPORTANT !
+          profilePicture: targetUser.profilePicture
         }
       };
       
-      console.log("📦 Conversation à envoyer:", conversationObj);
-      console.log("🖼️ Profile picture envoyée:", targetUser.profilePicture);
+      console.log("📦 Nouvelle conversation à ouvrir:", conversationObj);
       
-      // 2️⃣ Passer à onUserSelect
       onUserSelect(conversationObj);
       onClose();
     }
   } catch (err) {
     console.error("❌ Erreur ouverture conversation:", err);
-   alert(t('conversation_ouverture') + ": " + err.message);
+    alert("Erreur lors de l'ouverture de la conversation: " + err.message);
   }
 };
 
@@ -286,64 +332,143 @@ const handleOpenConversation = async (targetUser) => {
     requestAnimationFrame(scanFrame);
   };
 
-  const handleQRScan = async (qrData) => {
-    try {
-      stopQRScanner();
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch('http://localhost:5000/api/qr/scan', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ qrContent: qrData })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success && data.users && data.users.length > 0) {
-        setScanResult(data.users[0]);
-        setError('');
-      } else {
-        setError(t('qr_error'));
+  // Dans SearchModal.jsx, remplacez handleQRScan par ceci :
 
-      }
-    } catch (error) {
-      console.error('Erreur scan:', error);
-     setError(t('scan_error'));
 
+const handleQRScan = async (qrData) => {
+  try {
+    stopQRScanner(); // Arrêter la caméra si elle tourne
+    setError('');
+    setLoading(true); // ← AJOUT : Assurer que loading est à true
+    
+    console.log('🔍 Données QR scannées:', qrData);
+    
+    const token = localStorage.getItem('token');
+    
+    // 1️⃣ APPELER LE BACKEND
+    const response = await fetch('http://localhost:5000/api/qr/scan', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ qrContent: qrData })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      setLoading(false); // ← AJOUT
+      throw new Error(errorData.message || 'Erreur lors du scan du QR code');
     }
-  };
+    
+    const data = await response.json();
+    console.log('📦 Réponse backend:', data);
+    
+    if (data.success && data.users && data.users.length > 0) {
+      const scannedUser = data.users[0];
+      
+      console.log('👤 Utilisateur trouvé:', scannedUser);
+      
+      setLoading(false); // ← AJOUT : Arrêter loading AVANT setScanResult
+      setScanResult(scannedUser);
+      setError('');
+    } else {
+      setLoading(false); // ← AJOUT
+      setError(t('qr_error') || 'QR code invalide ou utilisateur introuvable');
+    }
+  } catch (error) {
+    console.error('❌ Erreur scan QR:', error);
+    setLoading(false); // ← AJOUT
+    setError(error.message || t('scan_error') || 'Erreur lors du scan du QR code');
+  }
+};
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  // Dans SearchModal.jsx, remplacez handleFileUpload par ceci :
+
+// 🔥 UPLOAD IMAGE ET SCAN QR CODE
+const handleFileUpload = async (e) => {
+  console.log('🎯 handleFileUpload APPELÉ');
+  
+  const file = e.target.files[0];
+  console.log('📁 Fichier:', file);
+  
+  if (!file) {
+    console.log('❌ Aucun fichier sélectionné');
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    console.log('❌ Type invalide:', file.type);
+    setError('Veuillez sélectionner une image (JPG, PNG, etc.)');
+    return;
+  }
+
+  console.log('✅ Fichier valide:', file.name, file.type);
+  
+  try {
+    setError('');
+    setLoading(true);
+    console.log('📖 Lecture du fichier...');
 
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      const img = new Image();
+    
+    reader.onload = (event) => {
+      console.log('✅ Fichier lu');
+      
+      const img = document.createElement('img'); // ← CORRECTION ICI
+      
       img.onload = () => {
+        console.log('🖼️ Image chargée:', img.width, 'x', img.height);
+        
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
+        
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
         
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        console.log('📊 ImageData extrait');
         
-        if (code) {
+        console.log('🔍 Scan jsQR...');
+        
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert"
+        });
+        
+        if (code && code.data) {
+          console.log('✅✅ QR CODE TROUVÉ:', code.data);
           handleQRScan(code.data);
         } else {
-         setError(t('no_qr_detected'));
-
+          console.log('❌ Aucun QR code détecté');
+          setLoading(false);
+          setError('Aucun QR code détecté. Assurez-vous que le QR code est bien visible et net.');
         }
       };
-      img.src = e.target.result;
+      
+      img.onerror = (err) => {
+        console.error('❌ Erreur image:', err);
+        setLoading(false);
+        setError('Impossible de charger l\'image');
+      };
+      
+      img.src = event.target.result;
     };
+    
+    reader.onerror = (err) => {
+      console.error('❌ Erreur lecture:', err);
+      setLoading(false);
+      setError('Erreur lors de la lecture du fichier');
+    };
+    
     reader.readAsDataURL(file);
-  };
+    
+  } catch (error) {
+    console.error('❌ ERREUR:', error);
+    setLoading(false);
+    setError('Erreur: ' + error.message);
+  }
+};
 
   // EFFETS
   useEffect(() => {
@@ -644,6 +769,11 @@ const { t } = useTranslation();
                         <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-2 border-r-2 border-white" />
                       </div>
                     </div>
+                  ) : loading ? (
+                    <div className="border-2 border-dashed border-blue-300 dark:border-blue-600 rounded-2xl p-8 text-center mb-6 bg-blue-50 dark:bg-blue-900/20">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                      <p className="text-blue-700 dark:text-blue-300 font-medium">Scan en cours...</p>
+                    </div>
                   ) : (
                     <div className="border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded-2xl p-8 text-center mb-6">
                       <QrCode className="mx-auto mb-4 text-gray-400" size={48} />
@@ -652,21 +782,37 @@ const { t } = useTranslation();
                   )}
 
                   <div className="mb-4">
-                    <label className="block text-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-300 mb-2 block">
-                       {t('or_upload_image')}
-                      </span>
-                      <div className="inline-flex items-center gap-2 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 px-4 py-2 rounded-xl cursor-pointer transition-colors">
-                        <Upload size={18} />
-                        <span className="text-sm">{t('choose_image')}</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                        />
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 text-center">
+                      {t('or_upload_image') || 'Ou importer une image'}
+                    </p>
+                    
+                    <input
+                      type="file"
+                      id="qr-upload-input"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    
+                    <label 
+                      htmlFor="qr-upload-input"
+                      className="block w-full cursor-pointer"
+                    >
+                      <div className="flex items-center justify-center gap-2 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 px-6 py-4 rounded-xl transition-colors border-2 border-dashed border-gray-300 dark:border-neutral-600">
+                        <Upload size={20} />
+                        <span className="font-medium">{t('choose_image') || 'Choisir une image'}</span>
                       </div>
                     </label>
+                    
+                    {/* Indicateur de chargement */}
+                    {loading && (
+                      <div className="mt-3 text-center">
+                        <div className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <span className="text-sm font-medium">Analyse en cours...</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {error && (

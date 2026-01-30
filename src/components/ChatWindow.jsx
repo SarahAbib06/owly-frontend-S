@@ -15,6 +15,7 @@ import {
   Trash2,
   ChevronLeft, 
   ChevronRight, 
+  FileText,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMessages } from "../hooks/useMessages";
@@ -43,6 +44,7 @@ import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
 import { useConversations } from "../hooks/useConversations";
 import MessageRequestBanner from "./MessageRequestBanner";
+import PadModal from "./PadModal";
 import Modal from "./Modal";
 function adjustColor(col, amt) {
   let usePound = false;
@@ -298,6 +300,7 @@ const [showGroupInfo, setShowGroupInfo] = useState(false);
 const [groupMembers, setGroupMembers] = useState([]);
 const [showGroupManager, setShowGroupManager] = useState(false);
 const [myRoleInGroup, setMyRoleInGroup] = useState('membre');
+const [showPad, setShowPad] = useState(false);
 
 
 const { conversations: myConversations, loading: convLoading } = useConversations();
@@ -1774,6 +1777,8 @@ useEffect(() => {
               }, 0);
             }}
           />
+
+          <button onClick={() => setShowPad(true)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Ouvrir le pad collaboratif" > <FileText size={16} className="text-gray-600 dark:text-gray-300" /> </button>
           
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
@@ -2072,6 +2077,9 @@ useEffect(() => {
           }}
         />
       )}
+
+      {/* MODAL PAD */} {showPad && selectedChat?._id && ( <PadModal conversationId={selectedChat._id} isOpen={showPad} onClose={() => setShowPad(false)} /> )}
+
 
       {openSearch && (
         <>
