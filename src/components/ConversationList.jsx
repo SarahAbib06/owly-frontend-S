@@ -434,9 +434,10 @@ const filteredByType = filterType === 'group'
               ? (conv.groupName || conv.name || "Groupe")
               : (otherParticipant?.username || conv.name || "Utilisateur");
            
-            const avatar = isGroup
-              ? (conv.groupAvatar || "/group-avatar.png")
-              : (otherParticipant?.profilePicture || "/default-avatar.png");
+            
+       const avatar = isGroup
+  ? (conv.groupPic || "/group-avatar.png")  
+  : (otherParticipant?.profilePicture || "/default-avatar.png");
            
             const lastMsg = lastMessages[conv._id];
             let lastMessage = t("messages.noMessages") || "Aucun message";
