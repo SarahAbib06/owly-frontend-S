@@ -621,6 +621,7 @@ const PollMessage = ({
           )}
         </button>
       )}
+      
 
       {/* Message de remerciement en jaune */}
       {hasVoted && !isClosed && (
