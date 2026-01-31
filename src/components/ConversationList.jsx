@@ -8,6 +8,7 @@ import { useConversations } from "../hooks/useConversations";
 import socketService from "../services/socketService";
 import { conversationService } from "../services/conversationService";
 import { getFavorites } from "../services/favoritesService";
+import api from '../services/api';
 
 // Shadcn Select Components
 import {
