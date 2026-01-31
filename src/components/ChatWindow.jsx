@@ -38,7 +38,7 @@ import { FiSearch } from "react-icons/fi";
 import { Archive } from "lucide-react";
 import { useChat } from "../context/ChatContext";
 
-import ChatInput from "./ChatInput.jsx";
+import ChatInput from "./Chatinput.jsx";
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
