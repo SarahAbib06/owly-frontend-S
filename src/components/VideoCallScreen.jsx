@@ -6,6 +6,7 @@ import axios from 'axios';
 import { useAuth } from '../hooks/useAuth';
 import { useCall } from '../context/CallContext';
 import './VideoCallScreen.css';
+import api from '../services/api';
 
 const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
   console.log("🧩 VideoCallScreen RENDER", { callType });
