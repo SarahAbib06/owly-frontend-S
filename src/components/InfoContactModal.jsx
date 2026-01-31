@@ -491,37 +491,38 @@ export default function InfoContactModal({ chat, onClose, onBlockStatusChange, o
               )}
 
               {/* Archiver */}
-              <div
-                className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={async () => {
-                  const message = chat.isArchived
-                    ? t("chat.unarchiveMessage")
+              {/* Archiver */}
+<div
+  className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+  onClick={async () => {
+    const message = chat.isArchived
+      ? t("chat.unarchiveMessage")
       : t("chat.archiveMessage");
 
-                  if (window.confirm(message)) {
-                    try {
-                      await chat.onArchive?.();
+    if (window.confirm(message)) {
+      try {
+        console.log('📁 Début archivage/désarchivage');
 
-                      if (chat.isArchived && typeof onConversationDeleted === 'function') {
-                        onConversationDeleted();
-                      }
+        // 1. Effectuer l'archivage
+        await chat.onArchive?.();
 
-                      onClose();
-                    } catch (err) {
+        // 2. ✅ RECHARGER LA PAGE (solution la plus simple)
+        window.location.reload();
 
-                      alert(t("chat.archiveError"));
-
-                    }
-                  }
-                }}
-              >
-                <Archive size={15} />
-                <span>
+      } catch (err) {
+        console.error('❌ Erreur archivage:', err);
+        alert(t("chat.archiveError") || "Erreur lors de l'archivage");
+      }
+    }
+  }}
+>
+  <Archive size={15} />
+  <span>
     {chat.isArchived
       ? t("chat.unarchive") + " " + t("chat.conversation")
       : t("chat.archive") + " " + t("chat.conversation")}
   </span>
-              </div>
+</div>
 
               {/* Verrouiller */}
               <div className="cursor-pointer flex items-center gap-2 py-2 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">

@@ -650,8 +650,33 @@
      "file": {
     "default_name": "Fichier",
     "download": "Télécharger"
-  }
+  },
+  "pad": {
+     "pressEscToClose": "Appuyez sur Esc pour fermer",
+     "autoSave": "Sauvegarde automatique",
+     "placeholder": "Commencez à écrire... (Collaboration en temps réel)",
+    "buttons": {
+    "close": "Fermer",
+     "clear": "Vider"
+  },
+    "title": "Pad Collaboratif",
+  "cleared": "Pad vidé ✓",
   
+  "saveStatus": {
+    "error": "Erreur",
+    "modifying": "Modification…",
+    "saved": "Sauvegardé ✓",
+    "ready": "Prêt"
+  },
+  "confirm": {
+    "clear": "Voulez-vous vraiment vider tout le contenu du pad ?"
+  },
+   
+   "titles": {
+    "clearPad": "Vider le pad"
+  }
+}
+
 
         
 

@@ -1830,54 +1830,58 @@ export default function ChatWindow({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Boutons statiques pour appels */}
-          <Phone
-            size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
-            onClick={() => {
-              console.log("📞 [ChatWindow] Lancement appel AUDIO");
-
-              setStartOutgoingCallType(null);
-              setTimeout(() => {
-                setStartOutgoingCallType("audio");
-              }, 0);
-            }}
-          />
-
-          <Video
-            size={16}
-            className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-            onClick={() => {
-              console.log("🎬 [ChatWindow] Lancement appel VIDÉO");
-
-              setStartOutgoingCallType(null);
-              setTimeout(() => {
-                setStartOutgoingCallType("video");
-              }, 0);
-            }}
-          />
-
-          {/* 🔥 BOUTON POUR CRÉER UN SONDAGE (VISIBLE UNIQUEMENT POUR LES GROUPES) */}
-          {(selectedChat?.isGroup || selectedChat?.type === "group") && (
-            <button
-              onClick={() => setShowPollModal(true)}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              title="Créer un sondage"
-            >
-              <ChartBar
+          {/* Cacher appels et pad si bloqué */}
+          {!isBlocked && (
+            <>
+              <Phone
                 size={16}
-                className="text-gray-600 dark:text-gray-300"
+                className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
+                onClick={() => {
+                  console.log("📞 [ChatWindow] Lancement appel AUDIO");
+                  setStartOutgoingCallType(null);
+                  setTimeout(() => {
+                    setStartOutgoingCallType("audio");
+                  }, 0);
+                }}
               />
-            </button>
-          )}
 
-          <button
-            onClick={() => setShowPad(true)}
-            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            title="Ouvrir le pad collaboratif"
-          >
-            <FileText size={16} className="text-gray-600 dark:text-gray-300" />
-          </button>
+              <Video
+                size={16}
+                className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                onClick={() => {
+                  console.log("🎬 [ChatWindow] Lancement appel VIDÉO");
+                  setStartOutgoingCallType(null);
+                  setTimeout(() => {
+                    setStartOutgoingCallType("video");
+                  }, 0);
+                }}
+              />
+              {/* 🔥 BOUTON POUR CRÉER UN SONDAGE (VISIBLE UNIQUEMENT POUR LES GROUPES) */}
+              {(selectedChat?.isGroup || selectedChat?.type === "group") && (
+                <button
+                  onClick={() => setShowPollModal(true)}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Créer un sondage"
+                >
+                  <ChartBar
+                    size={16}
+                    className="text-gray-600 dark:text-gray-300"
+                  />
+                </button>
+              )}
+
+              <button
+                onClick={() => setShowPad(true)}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Ouvrir le pad collaboratif"
+              >
+                <FileText
+                  size={16}
+                  className="text-gray-600 dark:text-gray-300"
+                />
+              </button>
+            </>
+          )}
 
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
