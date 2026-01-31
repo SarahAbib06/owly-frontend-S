@@ -640,6 +640,258 @@ onScreenShareStopped(callback) {
     }
   }
 
+  // ==================== PARTAGE D'ÉCRAN ====================
+/*
+  // Écouter le démarrage du partage d'écran
+  onScreenShareStarted(callback) {
+    if (this.socket) {
+      this.socket.on('screen-share-started', callback);
+    }
+  }
+
+  // Écouter l'arrêt du partage d'écran
+  onScreenShareStopped(callback) {
+    if (this.socket) {
+      this.socket.on('screen-share-stopped', callback);
+    }
+  }
+*/
+
+
+
+
+//###############################################################
+  // ==================== APPELS VIDÉO/AUDIO ====================
+
+  // Vérifier le type de conversation pour les appels
+  checkCallType(conversationId, callback) {
+    if (this.socket) {
+      this.socket.emit("check-call-type", { conversationId }, callback);
+    }
+  }
+
+  // Démarrer un appel (géré par le callManager)
+  initiateCall(conversationId, callType, callerId, callerName) {
+    if (this.socket) {
+      this.socket.emit("initiate-call", {
+        conversationId,
+        callType,
+        callerId,
+        callerName
+      });
+    }
+  }
+
+  // Démarrer un appel de groupe
+  initiateGroupCall(conversationId, callType, callerId, callerName) {
+    if (this.socket) {
+      this.socket.emit("initiate-group-call", {
+        conversationId,
+        callType,
+        callerId,
+        callerName
+      });
+    }
+  }
+
+  // Accepter un appel
+  acceptCall(callId, conversationId) {
+    if (this.socket) {
+      this.socket.emit("accept-call", { callId, conversationId });
+    }
+  }
+
+  // Rejeter un appel
+  rejectCall(callId, reason) {
+    if (this.socket) {
+      this.socket.emit("reject-call", { callId, reason });
+    }
+  }
+
+  // Annuler un appel (avant acceptation)
+  cancelCall(callId) {
+    if (this.socket) {
+      this.socket.emit("cancel-call", { callId });
+    }
+  }
+
+  // Terminer un appel
+  endCall(callId) {
+    if (this.socket) {
+      this.socket.emit("end-call", { callId });
+    }
+  }
+
+  // Rejoindre un appel de groupe
+  joinGroupCall(callId) {
+    if (this.socket) {
+      this.socket.emit("join-group-call", { callId });
+    }
+  }
+
+  // Quitter un appel de groupe
+  leaveGroupCall(callId) {
+    if (this.socket) {
+      this.socket.emit("leave-group-call", { callId });
+    }
+  }
+
+  // Signal WebRTC
+  sendWebRTCSignal(callId, targetUserId, signal, type) {
+    if (this.socket) {
+      this.socket.emit("webrtc-signal", {
+        callId,
+        targetUserId,
+        signal,
+        type
+      });
+    }
+  }
+
+  // Signal WebRTC pour groupe
+  sendGroupWebRTCSignal(callId, targetUserId, signal, type) {
+    if (this.socket) {
+      this.socket.emit("group-webrtc-signal", {
+        callId,
+        targetUserId,
+        signal,
+        type
+      });
+    }
+  }
+
+  // Changement de statut pendant l'appel
+  sendCallStatusChange(callId, statusType, statusValue) {
+    if (this.socket) {
+      this.socket.emit("call-status-change", {
+        callId,
+        statusType,
+        statusValue
+      });
+    }
+  }
+
+  // Démarrer le partage d'écran
+  startScreenShare(callId) {
+    if (this.socket) {
+      this.socket.emit("screen-share-start", { callId });
+    }
+  }
+
+  // Arrêter le partage d'écran
+  stopScreenShare(callId) {
+    if (this.socket) {
+      this.socket.emit("screen-share-stop", { callId });
+    }
+  }
+
+  // Écouter les appels entrants
+  onIncomingCall(callback) {
+    if (this.socket) {
+      this.socket.on("incoming-call", callback);
+    }
+  }
+
+  onIncomingGroupCall(callback) {
+    if (this.socket) {
+      this.socket.on("incoming-group-call", callback);
+    }
+  }
+
+  // Écouter les événements d'appel
+  onCallAccepted(callback) {
+    if (this.socket) {
+      this.socket.on("call-accepted", callback);
+    }
+  }
+
+  onCallRejected(callback) {
+    if (this.socket) {
+      this.socket.on("call-rejected", callback);
+    }
+  }
+
+  onCallCancelled(callback) {
+    if (this.socket) {
+      this.socket.on("call-cancelled", callback);
+    }
+  }
+
+  onCallStarted(callback) {
+    if (this.socket) {
+      this.socket.on("call-started", callback);
+    }
+  }
+
+  onCallEnded(callback) {
+    if (this.socket) {
+      this.socket.on("call-ended", callback);
+    }
+  }
+
+  onCallFailed(callback) {
+    if (this.socket) {
+      this.socket.on("call-failed", callback);
+    }
+  }
+
+  onCallError(callback) {
+    if (this.socket) {
+      this.socket.on("call-error", callback);
+    }
+  }
+
+  // Écouter les signaux WebRTC
+  onWebRTCSignal(callback) {
+    if (this.socket) {
+      this.socket.on("webrtc-signal", callback);
+    }
+  }
+
+  onGroupWebRTCSignal(callback) {
+    if (this.socket) {
+      this.socket.on("group-webrtc-signal", callback);
+    }
+  }
+
+  // Écouter les changements de statut des participants
+  onParticipantStatusChanged(callback) {
+    if (this.socket) {
+      this.socket.on("participant-status-changed", callback);
+    }
+  }
+
+  onParticipantDisconnected(callback) {
+    if (this.socket) {
+      this.socket.on("participant-disconnected", callback);
+    }
+  }
+
+  // Écouter le partage d'écran
+  onScreenShareStarted(callback) {
+    if (this.socket) {
+      this.socket.on("screen-share-started", callback);
+    }
+  }
+
+  onScreenShareStopped(callback) {
+    if (this.socket) {
+      this.socket.on("screen-share-stopped", callback);
+    }
+  }
+
+//###############################################################
+
+
+
+
+
+
+
+
+
+
+
   // ==================== UTILITAIRES ====================
 
   // Tester la connexion (ping/pong)

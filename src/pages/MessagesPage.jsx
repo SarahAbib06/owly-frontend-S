@@ -18,7 +18,8 @@ export default function Messages() {
   const [panelWidth, setPanelWidth] = useState(360);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const { setChatOpen } = useOutletContext();
+  const outletContext = useOutletContext();
+  const setChatOpen = outletContext?.setChatOpen ?? (() => {});
   
 
   const openChat = (chat, isFromArchived = false) => {

@@ -24,9 +24,9 @@ import { useTyping } from "../hooks/useTyping";
 import { useReactions } from "../hooks/useReactions";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { useAuth } from "../hooks/useAuth";
-import { useCall } from "../context/CallContext";
+import { useAppel } from "../context/AppelContext";
 import socketService from "../services/socketService";
- 
+
 import VideoCallScreen from "./VideoCallScreen";
 import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
@@ -38,7 +38,7 @@ import { FiSearch } from "react-icons/fi";
 import { Archive } from "lucide-react";
 import { useChat } from "../context/ChatContext";
 
-import ChatInput from "./Chatinput";
+import ChatInput from "./ChatInput";
 import { useBlockStatus } from "../hooks/useBlockStatut";
 import ConfirmBlockModal from "./ConfirmBlockModal";
 import ForwardModal from "./ForwardModal";
@@ -49,7 +49,7 @@ import Modal from "./Modal";
 import api from '../services/api';
 import ScheduleMessageModal from './ScheduleMessageModal';
 
-// 🔥 AJOUT DES IMPORTS POUR LES SONDAGEShh
+// 🔥 AJOUT DES IMPORTS POUR LES SONDAGES
 import PollModal from "./PollModal";
 import PollMessage from "./PollMessage";
 import { usePolls } from "../hooks/usePolls";
@@ -152,7 +152,7 @@ const fileToBase64 = (file) =>
 const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "🎉"];
 
 // 🔤 COMPOSANT TYPING INDICATOR
-const TypingIndicator = ({ avatar, username }) => (
+const TypingIndicator = ({ avatar, username, selectedChat }) => (
   <div className="flex justify-start items-start gap-2 mb-3">
     {/* Avatar */}
     <div className="w-8 h-8 flex-shrink-0">
@@ -286,7 +286,8 @@ export default function ChatWindow({
   });
 
   const { t } = useTranslation();
-  const { incomingCall, getActiveCall, clearActiveCall } = useCall();
+  const { user, socketConnected } = useAuth();
+  const { startCall, currentCall } = useAppel();
   const isFromArchived = selectedChat?.isFromArchived === true;
   const { conversations, archivedConversations } = useChat();
   const isArchived =
@@ -295,7 +296,6 @@ export default function ChatWindow({
   console.log("isArchived ?", isArchived, selectedChat?._id);
   const { archiveConversation, unarchiveConversation } = useChat();
 
-  const { user, socketConnected } = useAuth();
   const [selectedTargetConversation, setSelectedTargetConversation] =
     useState(null);
   const [showForwardModal, setShowForwardModal] = useState(false);
@@ -328,8 +328,6 @@ export default function ChatWindow({
     useConversations();
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
-
-  const [startOutgoingCallType, setStartOutgoingCallType] = useState(null);
 
   const otherUserId = selectedChat?.isGroup
     ? null
@@ -431,8 +429,8 @@ export default function ChatWindow({
     if (selectedChat?.isGroup && selectedChat._id) {
       const fetchGroupMembers = async () => {
         try {
-const res = await api.get(`/groups/${selectedChat._id}/members`);
-const data = res.data;
+          const res = await api.get(`/groups/${selectedChat._id}/members`);
+          const data = res.data;
 
           if (data.success) {
             setGroupMembers(data.members || []);
@@ -465,9 +463,9 @@ const data = res.data;
     if (!contactId) return;
     console.log("🧪 TEST contactId =", contactId);
 
-api.get(`/users/${contactId}/status`)
-  .then(res => {
-    const data = res.data;
+    api.get(`/users/${contactId}/status`)
+      .then(res => {
+        const data = res.data;
         console.log("🧪 REPONSE API STATUS =", data);
         setContactStatus({
           isOnline: data.isOnline,
@@ -712,13 +710,13 @@ api.get(`/users/${contactId}/status`)
     try {
       setDeletedForEveryone((prev) => [...new Set([...prev, messageId])]);
 
-const res = await api.post(`/messages/${messageId}/delete`);
-const data = res.data;
+      const res = await api.post(`/messages/${messageId}/delete`);
+      const data = res.data;
 
-if (!data.success) {
-  setDeletedForEveryone((prev) => prev.filter((id) => id !== messageId));
-  throw new Error(data.error || "Erreur lors de la suppression");
-}
+      if (!data.success) {
+        setDeletedForEveryone((prev) => prev.filter((id) => id !== messageId));
+        throw new Error(data.error || "Erreur lors de la suppression");
+      }
 
       console.log("Message supprimé pour tous :", data);
       setShowDeleteModal(false);
@@ -890,8 +888,8 @@ if (!data.success) {
 
         console.log(`👁️ ${unreadMessages.length} messages à marquer comme vus`);
 
-const response = await api.post(`/messages/${selectedChat._id}/mark-all-seen`);
-const data = response.data;
+        const response = await api.post(`/messages/${selectedChat._id}/mark-all-seen`);
+        const data = response.data;
 
         if (data.success) {
           console.log(`✅ ${data.messagesMarked} messages marqués comme vus`);
@@ -1010,6 +1008,112 @@ const data = response.data;
     }
   };
 
+  // ============ FONCTIONS D'APPEL VIDÉO/VOCAL (WebRTC) ============
+  // PRIS DU FICHIER WebRTC
+
+  // FONCTION POUR DÉMARRER UN APPEL VIDÉO
+  const handleVideoCall = () => {
+    if (!selectedChat) {
+      alert('Aucune conversation sélectionnée');
+      return;
+    }
+
+    if (selectedChat.isGroup) {
+      alert("Les appels de groupe ne sont pas encore disponibles");
+      return;
+    }
+
+    if (!selectedChat.participants || selectedChat.participants.length < 2) {
+      alert('Impossible de trouver le destinataire');
+      return;
+    }
+
+    // Vérifier les permissions AVANT de lancer l'appel
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Votre navigateur ne supporte pas les appels vidéo');
+      return;
+    }
+
+    // Demander la permission caméra/micro
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 640 },
+        height: { ideal: 480 }
+      },
+      audio: true
+    })
+      .then(stream => {
+        // Arrêter le stream temporaire (il sera redémarré dans VideoCall)
+        stream.getTracks().forEach(track => track.stop());
+
+        // Lancer l'appel vidéo
+        console.log('📹 Lancement appel vidéo avec:', selectedChat.participants);
+        startCall(selectedChat, 'video');
+      })
+      .catch(error => {
+        console.error('❌ Erreur permission vidéo:', error);
+
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          alert('Permission caméra/micro requise pour l\'appel vidéo');
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+          alert('Caméra ou micro non détecté. Vérifiez vos périphériques.');
+        } else {
+          alert('Erreur lors de l\'accès à la caméra/micro: ' + error.message);
+        }
+      });
+  };
+
+  // FONCTION POUR DÉMARRER UN APPEL VOCAL
+  const handleAudioCall = () => {
+    if (!selectedChat) {
+      alert('Aucune conversation sélectionnée');
+      return;
+    }
+
+    if (selectedChat.isGroup) {
+      alert("Les appels de groupe ne sont pas encore disponibles");
+      return;
+    }
+
+    if (!selectedChat.participants || selectedChat.participants.length < 2) {
+      alert('Impossible de trouver le destinataire');
+      return;
+    }
+
+    // Vérifier les permissions AVANT de lancer l'appel
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Votre navigateur ne supporte pas les appels vocaux');
+      return;
+    }
+
+    // Demander la permission micro
+    navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true
+      }
+    })
+      .then(stream => {
+        // Arrêter le stream temporaire
+        stream.getTracks().forEach(track => track.stop());
+
+        // Lancer l'appel vocal
+        console.log('📞 Lancement appel vocal avec:', selectedChat.participants);
+        startCall(selectedChat, 'audio');
+      })
+      .catch(error => {
+        console.error('❌ Erreur permission audio:', error);
+
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          alert('Permission micro requise pour l\'appel vocal');
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+          alert('Micro non détecté. Vérifiez vos périphériques.');
+        } else {
+          alert('Erreur lors de l\'accès au micro: ' + error.message);
+        }
+      });
+  };
+
   //theme discution
   const applyTheme = React.useCallback(
     async (theme, save = true) => {
@@ -1111,15 +1215,15 @@ const data = response.data;
   // 2️⃣ NOUVELLE FONCTION : Sauvegarder dans le backend
   const saveThemeToBackend = async (theme) => {
     try {
-const response = await api.post('/themes', {
-  conversationId: selectedChat._id,
-  type: theme.type,
-  value: theme.value,
-  emojis: theme.emojis || (theme.emoji ? [theme.emoji] : []),
-  name: theme.name || null,
-});
+      const response = await api.post('/themes', {
+        conversationId: selectedChat._id,
+        type: theme.type,
+        value: theme.value,
+        emojis: theme.emojis || (theme.emoji ? [theme.emoji] : []),
+        name: theme.name || null,
+      });
 
-const data = response.data;
+      const data = response.data;
       console.log("✅ Thème sauvegardé avec succès:", data);
     } catch (error) {
       console.error("💥 Erreur réseau sauvegarde thème:", error);
@@ -1128,9 +1232,9 @@ const data = response.data;
 
   // 3️⃣ NOUVELLE FONCTION : Charger depuis le backend
   const loadThemeFromBackend = React.useCallback(async () => {
-try {
-  const response = await api.get(`/themes/${selectedChat._id}`);
-  const data = response.data;
+    try {
+      const response = await api.get(`/themes/${selectedChat._id}`);
+      const data = response.data;
       console.log("✅ Thème chargé depuis backend:", data);
 
       if (data.success && data.data) {
@@ -1166,8 +1270,8 @@ try {
     localStorage.removeItem(chatKey);
 
     try {
-await api.delete(`/themes/${selectedChat._id}`);
-console.log("✅ Thème supprimé du backend");
+      await api.delete(`/themes/${selectedChat._id}`);
+      console.log("✅ Thème supprimé du backend");
     } catch (error) {
       console.error("💥 Erreur réseau suppression thème:", error);
     }
@@ -1328,7 +1432,7 @@ console.log("✅ Thème supprimé du backend");
       const startLongPress = () => {
         longPressTimer.current = setTimeout(() => {
           setShowMessageMenu(msg._id);
-        }, 500); // ← Retire le ); en trop ici
+        }, 500);
       };
 
       const cancelLongPress = () => {
@@ -1726,311 +1830,329 @@ console.log("✅ Thème supprimé du backend");
   }
 
   return (
-    <div
-      className="relative flex flex-col w-full h-full bg-myWhite dark:bg-neutral-900 text-myBlack dark:text-white transition-colors duration-300 min-w-[150px]"
-      style={themeStyle}
-    >
-      {/* Floating emojis */}
+    <>
+      {/* Les composants d'appel (VideoCall, AudioCall, IncomingCallModal) sont maintenant globaux dans App.jsx */}
+
       <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
+        className="relative flex flex-col w-full h-full bg-myWhite dark:bg-neutral-900 text-myBlack dark:text-white transition-colors duration-300 min-w-[150px]"
+        style={themeStyle}
       >
-        {floatingEmojis.map((e) => {
-          const randomEmoji =
-            Array.isArray(themeEmojis) && themeEmojis.length > 0
-              ? themeEmojis[Math.floor(Math.random() * themeEmojis.length)]
-              : null;
-          if (!randomEmoji) return null;
-          return (
-            <span
-              key={e.id}
-              style={{
-                position: "absolute",
-                left: `${e.left}%`,
-                top: `${e.top}%`,
-                fontSize: `${e.size}px`,
-                opacity: 0.2 + Math.random() * 0.25,
-                transform: `rotate(${e.rotate}deg)`,
-                pointerEvents: "none",
-                transition:
-                  "top 0.06s linear, left 0.06s linear, transform 0.06s linear",
-                WebkitTextStroke: "0px transparent",
-                userSelect: "none",
-              }}
-            >
-              {randomEmoji}
-            </span>
-          );
-        })}
-      </div>
-      {/* HEADER */}
-      <header className="flex items-center justify-between px-2 py-2 border-b border-gray-300 dark:border-gray-700 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
-        <div className="flex items-center gap-2 min-w-0">
-          <button onClick={onBack} className="md:hidden mr-2 text-xl">
-            ←
-          </button>
-          <img
-            src={conversationAvatar}
-            alt="avatar"
-            className="w-8 h-8 rounded-full object-cover"
-          />
-          <div className="truncate">
-            <div className="text-sm font-semibold truncate">
-              {conversationName}
-            </div>
-            <div className="text-xs truncate text-gray-700 dark:text-gray-300 flex items-center gap-1">
-              {selectedChat?.isGroup ? (
-                `${selectedChat?.participants?.length || 0} membres`
-              ) : (
-                <span className="flex items-center gap-1">
-                  {contactStatus.isOnline && (
-                    <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
-                  )}
-                  <span className="text-gray-500 text-xs">
-                    {getUserStatusText()}
+        {/* Floating emojis */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
+        >
+          {floatingEmojis.map((e) => {
+            const randomEmoji =
+              Array.isArray(themeEmojis) && themeEmojis.length > 0
+                ? themeEmojis[Math.floor(Math.random() * themeEmojis.length)]
+                : null;
+            if (!randomEmoji) return null;
+            return (
+              <span
+                key={e.id}
+                style={{
+                  position: "absolute",
+                  left: `${e.left}%`,
+                  top: `${e.top}%`,
+                  fontSize: `${e.size}px`,
+                  opacity: 0.2 + Math.random() * 0.25,
+                  transform: `rotate(${e.rotate}deg)`,
+                  pointerEvents: "none",
+                  transition:
+                    "top 0.06s linear, left 0.06s linear, transform 0.06s linear",
+                  WebkitTextStroke: "0px transparent",
+                  userSelect: "none",
+                }}
+              >
+                {randomEmoji}
+              </span>
+            );
+          })}
+        </div>
+        {/* HEADER */}
+        <header className="flex items-center justify-between px-2 py-2 border-b border-gray-300 dark:border-gray-700 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
+          <div className="flex items-center gap-2 min-w-0">
+            <button onClick={onBack} className="md:hidden mr-2 text-xl">
+              ←
+            </button>
+            <img
+              src={conversationAvatar}
+              alt="avatar"
+              className="w-8 h-8 rounded-full object-cover"
+            />
+            <div className="truncate">
+              <div className="text-sm font-semibold truncate">
+                {conversationName}
+              </div>
+              <div className="text-xs truncate text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                {selectedChat?.isGroup ? (
+                  `${selectedChat?.participants?.length || 0} membres`
+                ) : (
+                  <span className="flex items-center gap-1">
+                    {contactStatus.isOnline && (
+                      <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+                    )}
+                    <span className="text-gray-500 text-xs">
+                      {getUserStatusText()}
+                    </span>
                   </span>
-                </span>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Cacher appels et pad si bloqué */}
-          {!isBlocked && (
-            <>
-              <Phone
-                size={16}
-                className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
-                onClick={() => {
-                  console.log("📞 [ChatWindow] Lancement appel AUDIO");
-                  setStartOutgoingCallType(null);
-                  setTimeout(() => {
-                    setStartOutgoingCallType("audio");
-                  }, 0);
-                }}
-              />
+          <div className="flex items-center gap-2">
+            {/* Cacher appels et pad si bloqué */}
+            {!isBlocked && (
+              <>
+                <Phone
+                  size={16}
+                  className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
+                  onClick={handleAudioCall}
+                />
 
-              <Video
-                size={16}
-                className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-                onClick={() => {
-                  console.log("🎬 [ChatWindow] Lancement appel VIDÉO");
-                  setStartOutgoingCallType(null);
-                  setTimeout(() => {
-                    setStartOutgoingCallType("video");
-                  }, 0);
-                }}
-              />
-              {/* 🔥 BOUTON POUR CRÉER UN SONDAGE (VISIBLE UNIQUEMENT POUR LES GROUPES) */}
-              {(selectedChat?.isGroup || selectedChat?.type === "group") && (
+                <Video
+                  size={16}
+                  className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                  onClick={handleVideoCall}
+                />
+                {/* 🔥 BOUTON POUR CRÉER UN SONDAGE (VISIBLE UNIQUEMENT POUR LES GROUPES) */}
+                {(selectedChat?.isGroup || selectedChat?.type === "group") && (
+                  <button
+                    onClick={() => setShowPollModal(true)}
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Créer un sondage"
+                  >
+                    <ChartBar
+                      size={16}
+                      className="text-gray-600 dark:text-gray-300"
+                    />
+                  </button>
+                )}
+
                 <button
-                  onClick={() => setShowPollModal(true)}
+                  onClick={() => setShowPad(true)}
                   className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Créer un sondage"
+                  title="Ouvrir le pad collaboratif"
                 >
-                  <ChartBar
+                  <FileText
                     size={16}
                     className="text-gray-600 dark:text-gray-300"
                   />
                 </button>
-              )}
+              </>
+            )}
 
-              <button
-                onClick={() => setShowPad(true)}
-                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title="Ouvrir le pad collaboratif"
-              >
-                <FileText
-                  size={16}
-                  className="text-gray-600 dark:text-gray-300"
-                />
-              </button>
-            </>
-          )}
-
-          <button onClick={() => setIsOptionsOpen(true)}>
-            <MoreVertical
-              size={16}
-              className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
-            />
-          </button>
-        </div>
-      </header>
-      {/* DEMANDE DE MESSAGE */}
-      {isIncomingMessageRequest && (
-        <MessageRequestBanner
-          conversationName={conversationName}
-          conversationAvatar={conversationAvatar}
-          onAccept={async () => {
-            const token = localStorage.getItem("token");
-            try {
-              console.log(
-                "🟢 Acceptation demande pour conversation:",
-                selectedChat._id,
-              );
-
-const res = await api.post('/relations/accept-request', { 
-  conversationId: selectedChat._id 
-});
-
-              const data = await res.json();
-              console.log("✅ Réponse accept:", data);
-
-              if (res.ok) {
-                window.location.reload();
-              } else {
-                console.error("❌ Erreur accept:", data);
-                alert(data.error || t("accept_error"));
-              }
-            } catch (err) {
-              console.error("❌ Erreur réseau accept:", err);
-              alert(t("network_error"));
-            }
-          }}
-          onDelete={async () => {
-            if (!confirm("Supprimer cette demande de message ?")) return;
-
-            const token = localStorage.getItem("token");
-            try {
-              console.log(
-                "🔴 Suppression demande pour conversation:",
-                selectedChat._id,
-              );
-
-const res = await api.post('/relations/delete-request', { 
-  conversationId: selectedChat._id 
-});
-
-              const data = await res.json();
-              console.log("✅ Réponse delete:", data);
-
-              if (res.ok) {
-                onBack();
-              } else {
-                console.error("❌ Erreur delete:", data);
-                alert(data.error || "Erreur lors de la suppression");
-              }
-            } catch (err) {
-              console.error("❌ Erreur réseau delete:", err);
-              alert(t("network_error"));
-            }
-          }}
-        />
-      )}
-      {/* PINNED MESSAGES SECTION */}
-      {showPinnedSection && pinnedMessages.length > 0 && (
-        <div className="border-b border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/40 z-20">
-          <div className="flex items-center justify-between px-3 py-1.5">
-            <div className="flex items-center gap-1.5">
-              <Pin size={14} className="text-yellow-600 dark:text-yellow-400" />
-              <span className="text-xs font-medium text-yellow-800 dark:text-yellow-300">
-                {pinnedMessages.length} {t("messages.pinned")}
-                {pinnedMessages.length > 1 ? t("messages.plural") : ""}
-              </span>
-            </div>
-            <button
-              onClick={() => setShowPinnedSection(false)}
-              className="text-yellow-600 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-800/50 rounded p-0.5 transition"
-            >
-              <X size={14} />
+            <button onClick={() => setIsOptionsOpen(true)}>
+              <MoreVertical
+                size={16}
+                className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
+              />
             </button>
           </div>
+        </header>
+        {/* DEMANDE DE MESSAGE */}
+        {isIncomingMessageRequest && (
+          <MessageRequestBanner
+            conversationName={conversationName}
+            conversationAvatar={conversationAvatar}
+            onAccept={async () => {
+              try {
+                console.log(
+                  "🟢 Acceptation demande pour conversation:",
+                  selectedChat._id,
+                );
 
-          <div className="max-h-28 overflow-y-auto px-3 pb-2 scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-yellow-100 dark:scrollbar-thumb-yellow-300 dark:scrollbar-track-yellow-900/50">
-            <div className="space-y-1.5">
-              {pinnedMessages.map((msg) => (
-                <button
-                  key={msg._id}
-                  onClick={() => {
-                    const element = document.getElementById(
-                      `message-${msg._id}`,
-                    );
-                    if (element) {
-                      element.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                      });
-                      element.classList.add("ring-3", "ring-yellow-400");
-                      setTimeout(
-                        () =>
-                          element.classList.remove("ring-3", "ring-yellow-400"),
-                        1500,
+                const res = await api.post('/relations/accept-request', { 
+                  conversationId: selectedChat._id 
+                });
+
+                const data = await res.json();
+                console.log("✅ Réponse accept:", data);
+
+                if (res.ok) {
+                  window.location.reload();
+                } else {
+                  console.error("❌ Erreur accept:", data);
+                  alert(data.error || t("accept_error"));
+                }
+              } catch (err) {
+                console.error("❌ Erreur réseau accept:", err);
+                alert(t("network_error"));
+              }
+            }}
+            onDelete={async () => {
+              if (!confirm("Supprimer cette demande de message ?")) return;
+
+              try {
+                console.log(
+                  "🔴 Suppression demande pour conversation:",
+                  selectedChat._id,
+                );
+
+                const res = await api.post('/relations/delete-request', { 
+                  conversationId: selectedChat._id 
+                });
+
+                const data = await res.json();
+                console.log("✅ Réponse delete:", data);
+
+                if (res.ok) {
+                  onBack();
+                } else {
+                  console.error("❌ Erreur delete:", data);
+                  alert(data.error || "Erreur lors de la suppression");
+                }
+              } catch (err) {
+                console.error("❌ Erreur réseau delete:", err);
+                alert(t("network_error"));
+              }
+            }}
+          />
+        )}
+        {/* PINNED MESSAGES SECTION */}
+        {showPinnedSection && pinnedMessages.length > 0 && (
+          <div className="border-b border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/40 z-20">
+            <div className="flex items-center justify-between px-3 py-1.5">
+              <div className="flex items-center gap-1.5">
+                <Pin size={14} className="text-yellow-600 dark:text-yellow-400" />
+                <span className="text-xs font-medium text-yellow-800 dark:text-yellow-300">
+                  {pinnedMessages.length} {t("messages.pinned")}
+                  {pinnedMessages.length > 1 ? t("messages.plural") : ""}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowPinnedSection(false)}
+                className="text-yellow-600 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-800/50 rounded p-0.5 transition"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="max-h-28 overflow-y-auto px-3 pb-2 scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-yellow-100 dark:scrollbar-thumb-yellow-300 dark:scrollbar-track-yellow-900/50">
+              <div className="space-y-1.5">
+                {pinnedMessages.map((msg) => (
+                  <button
+                    key={msg._id}
+                    onClick={() => {
+                      const element = document.getElementById(
+                        `message-${msg._id}`,
                       );
-                    }
-                  }}
-                  className="w-full text-left bg-white dark:bg-gray-800 rounded shadow-sm hover:shadow transition p-2 text-xs border border-yellow-200 dark:border-yellow-700 block"
-                >
-                  <div className="line-clamp-1 text-gray-800 dark:text-gray-200 font-medium">
-                    {msg.typeMessage === "text" && msg.content}
-                    {msg.typeMessage === "image" && "📷 Photo"}
-                    {msg.typeMessage === "video" && "🎥 Vidéo"}
-                    {msg.typeMessage === "audio" && "🎤 Vocal"}
-                    {msg.typeMessage === "file" &&
-                      `📎 ${msg.fileName || "Fichier"}`}
-                    {msg.typeMessage === "poll" && "📊 Sondage"}
-                  </div>
-                  <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                    {new Date(msg.createdAt).toLocaleTimeString("fr-FR", {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </button>
-              ))}
+                      if (element) {
+                        element.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                        element.classList.add("ring-3", "ring-yellow-400");
+                        setTimeout(
+                          () =>
+                            element.classList.remove("ring-3", "ring-yellow-400"),
+                          1500,
+                        );
+                      }
+                    }}
+                    className="w-full text-left bg-white dark:bg-gray-800 rounded shadow-sm hover:shadow transition p-2 text-xs border border-yellow-200 dark:border-yellow-700 block"
+                  >
+                    <div className="line-clamp-1 text-gray-800 dark:text-gray-200 font-medium">
+                      {msg.typeMessage === "text" && msg.content}
+                      {msg.typeMessage === "image" && "📷 Photo"}
+                      {msg.typeMessage === "video" && "🎥 Vidéo"}
+                      {msg.typeMessage === "audio" && "🎤 Vocal"}
+                      {msg.typeMessage === "file" &&
+                        `📎 ${msg.fileName || "Fichier"}`}
+                      {msg.typeMessage === "poll" && "📊 Sondage"}
+                    </div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                      {new Date(msg.createdAt).toLocaleTimeString("fr-FR", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {/* THEME SELECTOR */}
-      {showThemeSelector && (
-        <ThemeSelector
-          onSelectTheme={applyTheme}
-          onRemoveTheme={removeTheme}
-          onClose={() => setShowThemeSelector(false)}
-        />
-      )}
-      {/* MESSAGES */}
-      <main
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-2 py-2 space-y-3 relative z-10"
-        onClick={(e) => {
-          if (
-            e.target.closest(".message-menu") ||
-            e.target.closest(".reaction-picker")
-          ) {
-            return;
-          }
-          setShowMessageMenu(null);
-          setShowReactionPicker(null);
-        }}
-      >
-        {/*Modifier pour supprimer  */}
-        {messages.map((msg, i) => {
-          const showDate =
-            i === 0 ||
-            messages[i - 1]?.createdAt?.split("T")[0] !==
-              msg.createdAt?.split("T")[0];
+        )}
+        {/* THEME SELECTOR */}
+        {showThemeSelector && (
+          <ThemeSelector
+            onSelectTheme={applyTheme}
+            onRemoveTheme={removeTheme}
+            onClose={() => setShowThemeSelector(false)}
+          />
+        )}
+        {/* MESSAGES */}
+        <main
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto px-2 py-2 space-y-3 relative z-10"
+          onClick={(e) => {
+            if (
+              e.target.closest(".message-menu") ||
+              e.target.closest(".reaction-picker")
+            ) {
+              return;
+            }
+            setShowMessageMenu(null);
+            setShowReactionPicker(null);
+          }}
+        >
+          {/*Modifier pour supprimer  */}
+          {messages.map((msg, i) => {
+            const showDate =
+              i === 0 ||
+              messages[i - 1]?.createdAt?.split("T")[0] !==
+                msg.createdAt?.split("T")[0];
 
-          const isDeletedByMe = deletedMessages.includes(msg._id);
-          const isDeletedForEveryone = deletedForEveryone.includes(msg._id);
+            const isDeletedByMe = deletedMessages.includes(msg._id);
+            const isDeletedForEveryone = deletedForEveryone.includes(msg._id);
 
-          const currentUserId = user?._id || user?.id || user?.userId;
-          const rawSender =
-            msg.senderId ||
-            msg.sender ||
-            msg.Id_sender ||
-            msg.Id_User ||
-            msg.userId;
-          const messageSenderId =
-            typeof rawSender === "object" && rawSender?._id
-              ? rawSender._id
-              : rawSender;
-          const wasFromMe =
-            currentUserId &&
-            messageSenderId &&
-            String(currentUserId) === String(messageSenderId);
+            const currentUserId = user?._id || user?.id || user?.userId;
+            const rawSender =
+              msg.senderId ||
+              msg.sender ||
+              msg.Id_sender ||
+              msg.Id_User ||
+              msg.userId;
+            const messageSenderId =
+              typeof rawSender === "object" && rawSender?._id
+                ? rawSender._id
+                : rawSender;
+            const wasFromMe =
+              currentUserId &&
+              messageSenderId &&
+              String(currentUserId) === String(messageSenderId);
 
-          if (isDeletedByMe || isDeletedForEveryone) {
+            if (isDeletedByMe || isDeletedForEveryone) {
+              return (
+                <div key={msg._id}>
+                  {showDate && (
+                    <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
+                      <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
+                        {formatDateLabel(msg.createdAt, t)}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    className={`flex ${wasFromMe ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`
+              max-w-[85%] px-4 py-3 rounded-lg text-sm italic text-gray-500 dark:text-gray-400
+              ${
+                wasFromMe
+                  ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none"
+                  : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"
+              }
+            `}
+                    >
+                      {t("messageDeletedForYou")}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={msg._id}>
                 {showDate && (
@@ -2040,415 +2162,377 @@ const res = await api.post('/relations/delete-request', {
                     </span>
                   </div>
                 )}
-                <div
-                  className={`flex ${wasFromMe ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`
-              max-w-[85%] px-4 py-3 rounded-lg text-sm italic text-gray-500 dark:text-gray-400
-              ${
-                wasFromMe
-                  ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none"
-                  : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"
-              }
-            `}
-                  >
-                    {t("messageDeletedForYou")}
-                  </div>
-                </div>
+                <MessageBubble
+                  msg={msg}
+                  index={i}
+                  deletedMessages={deletedMessages}
+                  setDeletedMessages={setDeletedMessages}
+                />
               </div>
             );
-          }
+          })}
 
-          return (
-            <div key={msg._id}>
-              {showDate && (
-                <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
-                  <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
-                    {formatDateLabel(msg.createdAt, t)}
-                  </span>
-                </div>
-              )}
-              <MessageBubble
-                msg={msg}
-                index={i}
-                deletedMessages={deletedMessages}
-                setDeletedMessages={setDeletedMessages}
-              />
-            </div>
-          );
-        })}
-
-        {/* 🔥 INDICATEUR "EN TRAIN D'ÉCRIRE" */}
-        {isTyping && typingUsers.length > 0 && (
-          <TypingIndicator
-            avatar={otherUserAvatar}
-            username={selectedChat?.isGroup ? typingUsers[0]?.username : null}
-          />
-        )}
-
-        <div ref={messagesEndRef} />
-      </main>
-      {/* INPUT */}
-      <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
-        {isBlocked && blockedBy === "me" ? (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-            <div className="text-center space-y-3">
-              <p className="text-sm text-red-800 dark:text-red-200 font-medium">
-                {t("chat.youBlocked") || "Vous avez bloqué"}{" "}
-                {otherUserName || "cet utilisateur"}
-              </p>
-              <p className="text-xs text-red-600 dark:text-red-300">
-                {t("chat.blockMessage") ||
-                  "Vous ne pouvez pas contacter cette personne."}
-              </p>
-              <button
-                onClick={() => setIsConfirmUnblockModalOpen(true)}
-                className="px-4 py-2 bg-myYellow hover:bg-yellow-400 text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                {t("chat.unblock") || "Débloquer"}
-              </button>
-            </div>
-          </div>
-        ) : isBlocked && blockedBy === "them" ? (
-          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-            <p className="text-sm text-center text-gray-600 dark:text-gray-400">
-              {t("chat.blockedByOther") ||
-                "Vous ne pouvez pas envoyer de message à cette personne"}
-            </p>
-          </div>
-        ) : (
-          <ChatInput
-            onSendMessage={handleSendMessage}
-            onScheduleMessage={() => setShowScheduleModal(true)}
-            isRecording={isRecording}
-            recordingTime={recordingTime}
-            onMicClick={handleMicClick}
-            onCancelRecording={cancelRecording}
-            selectedFile={selectedFile}
-            filePreview={filePreview}
-            onFileSelect={(file) => {
-              setSelectedFile(file);
-              if (
-                file.type.startsWith("image/") ||
-                file.type.startsWith("video/")
-              ) {
-                setFilePreview(URL.createObjectURL(file));
-              } else {
-                setFilePreview(null);
-              }
-            }}
-            onClearFile={() => {
-              setSelectedFile(null);
-              setFilePreview(null);
-            }}
-            t={t}
-          />
-        )}
-      </footer>
-
-      
-      {/* Search Modal */}
-      {/* ✅ VIDEO CALL SCREEN - UNE SEULE FOIS */}
-      {startOutgoingCallType && selectedChat && (
-        <VideoCallScreen
-          selectedChat={selectedChat}
-          callType={startOutgoingCallType}
-          onClose={() => {
-            console.log(`📞 [ChatWindow] Fermeture appel sortant`);
-            setStartOutgoingCallType(null);
-            clearActiveCall();
-          }}
-        />
-      )}
-      {/* MODAL PAD */}{" "}
-      {showPad && selectedChat?._id && (
-        <PadModal
-          conversationId={selectedChat._id}
-          isOpen={showPad}
-          onClose={() => setShowPad(false)}
-        />
-      )}
-      {/* 🔥 MODAL DE CRÉATION DE SONDAGE */}
-      {showPollModal && (
-        <PollModal
-          isOpen={showPollModal}
-          onClose={() => setShowPollModal(false)}
-          onCreate={handleCreatePoll}
-          loading={isCreatingPoll}
-        />
-      )}
-
-      {/* 🔥 MODAL DE PROGRAMMATION DE MESSAGE */}
-{showScheduleModal && (
-  <ScheduleMessageModal
-    isOpen={showScheduleModal}
-    onClose={() => setShowScheduleModal(false)}
-    onSchedule={handleScheduleMessage}
-  />
-)}
-      {openSearch && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpenSearch(false)}
-          ></div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="absolute bottom-20 right-6 w-[300px] bg-white dark:bg-gray-700 rounded-lg shadow-lg p-3 z-50"
-          >
-            <input
-              type="text"
-              placeholder={t("chat.searchPlaceholder") || "Rechercher..."}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 text-xs text-myBlack dark:text-white bg-transparent"
+          {/* 🔥 INDICATEUR "EN TRAIN D'ÉCRIRE" */}
+          {isTyping && typingUsers.length > 0 && (
+            <TypingIndicator
+              avatar={otherUserAvatar}
+              username={selectedChat?.isGroup ? typingUsers[0]?.username : null}
+              selectedChat={selectedChat}
             />
-          </motion.div>
-        </>
-      )}
-      {/* Confirm Unblock Modal */}
-      <ConfirmBlockModal
-        isOpen={isConfirmUnblockModalOpen}
-        onClose={() => setIsConfirmUnblockModalOpen(false)}
-        onConfirm={async () => {
-          setIsConfirmUnblockModalOpen(false);
-          await unblock();
-        }}
-        actionType="unblock"
-        userInfo={{
-          name: otherUserName,
-          avatar: conversationAvatar,
-        }}
-      />
-      {/* Forward Modal */}
-      <ForwardModal
-        isOpen={showForwardModal}
-        onClose={() => {
-          setShowForwardModal(false);
-          setMessageToForward(null);
-        }}
-        message={messageToForward}
-        conversations={myConversations}
-        currentConversationId={selectedChat?._id}
-        onForward={(targetConversationId) => {
-          forwardMessage(messageToForward?._id, targetConversationId);
-        }}
-      />
-      {/* Delete Modal */}
-      {showDeleteModal && (
-        <Modal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-        >
-          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-neutral-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {t("deleteMessageTitle")}
-              </h3>
-            </div>
+          )}
 
-            {/* Corps */}
-            <div className="px-6 py-6 space-y-6">
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                {t("deleteMessageQuestion")}
-              </p>
-
-              <div className="space-y-3">
-                {/* Supprimer pour moi */}
+          <div ref={messagesEndRef} />
+        </main>
+        {/* INPUT */}
+        <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
+          {isBlocked && blockedBy === "me" ? (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+              <div className="text-center space-y-3">
+                <p className="text-sm text-red-800 dark:text-red-200 font-medium">
+                  {t("chat.youBlocked") || "Vous avez bloqué"}{" "}
+                  {otherUserName || "cet utilisateur"}
+                </p>
+                <p className="text-xs text-red-600 dark:text-red-300">
+                  {t("chat.blockMessage") ||
+                    "Vous ne pouvez pas contacter cette personne ou l'appeler dans cette discussion. Vous ne recevez pas ses messages ou appels."}
+                </p>
                 <button
-                  onClick={() => {
-                    handleDeleteForMe(messageToDelete);
-                    setShowDeleteModal(false);
-                  }}
-                  className="w-full px-4 py-3 text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+                  onClick={() => setIsConfirmUnblockModalOpen(true)}
+                  className="px-4 py-2 bg-myYellow hover:bg-yellow-400 text-white rounded-lg text-sm font-medium transition-colors"
                 >
-                  <div className="font-medium">{t("deleteForMe")}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {t("deleteForMeInfo")}
-                  </div>
-                </button>
-
-                {/* Supprimer pour tout le monde */}
-                <button
-                  onClick={async () => {
-                    await handleDeleteForEveryone(messageToDelete);
-                    setShowDeleteModal(false);
-                  }}
-                  className="w-full px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-                >
-                  <div className="font-medium">{t("deleteForEveryone")}</div>
-                  <div className="text-xs text-red-500/80 dark:text-red-400/80">
-                    {t("deleteWarningAll")}
-                  </div>
+                  {t("chat.unblock") || "Débloquer"}
                 </button>
               </div>
             </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 bg-gray-50 dark:bg-neutral-900 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
-              >
-                {t("cancel")}
-              </button>
+          ) : isBlocked && blockedBy === "them" ? (
+            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+              <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+                {t("chat.blockedByOther") ||
+                  "Vous ne pouvez pas envoyer de message à cette personne"}
+              </p>
             </div>
-          </div>
-        </Modal>
-      )}
-      {isOptionsOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/30 z-30"
-            onClick={() => setIsOptionsOpen(false)}
-          ></div>
-          <ChatOptionsMenu
-            selectedChat={{
+          ) : (
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              onScheduleMessage={() => setShowScheduleModal(true)}
+              isRecording={isRecording}
+              recordingTime={recordingTime}
+              onMicClick={handleMicClick}
+              onCancelRecording={cancelRecording}
+              selectedFile={selectedFile}
+              filePreview={filePreview}
+              onFileSelect={(file) => {
+                setSelectedFile(file);
+                if (
+                  file.type.startsWith("image/") ||
+                  file.type.startsWith("video/")
+                ) {
+                  setFilePreview(URL.createObjectURL(file));
+                } else {
+                  setFilePreview(null);
+                }
+              }}
+              onClearFile={() => {
+                setSelectedFile(null);
+                setFilePreview(null);
+              }}
+              t={t}
+            />
+          )}
+        </footer>
+
+        
+        {/* Search Modal */}
+        {/* Les composants d'appel sont maintenant globaux dans App.jsx */}
+        {/* MODAL PAD */}{" "}
+        {showPad && selectedChat?._id && (
+          <PadModal
+            conversationId={selectedChat._id}
+            isOpen={showPad}
+            onClose={() => setShowPad(false)}
+          />
+        )}
+        {/* 🔥 MODAL DE CRÉATION DE SONDAGE */}
+        {showPollModal && (
+          <PollModal
+            isOpen={showPollModal}
+            onClose={() => setShowPollModal(false)}
+            onCreate={handleCreatePoll}
+            loading={isCreatingPoll}
+          />
+        )}
+
+        {/* 🔥 MODAL DE PROGRAMMATION DE MESSAGE */}
+        {showScheduleModal && (
+          <ScheduleMessageModal
+            isOpen={showScheduleModal}
+            onClose={() => setShowScheduleModal(false)}
+            onSchedule={handleScheduleMessage}
+          />
+        )}
+        {openSearch && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setOpenSearch(false)}
+            ></div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-20 right-6 w-[300px] bg-white dark:bg-gray-700 rounded-lg shadow-lg p-3 z-50"
+            >
+              <input
+                type="text"
+                placeholder={t("chat.searchPlaceholder") || "Rechercher..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 text-xs text-myBlack dark:text-white bg-transparent"
+              />
+            </motion.div>
+          </>
+        )}
+        {/* Confirm Unblock Modal */}
+        <ConfirmBlockModal
+          isOpen={isConfirmUnblockModalOpen}
+          onClose={() => setIsConfirmUnblockModalOpen(false)}
+          onConfirm={async () => {
+            setIsConfirmUnblockModalOpen(false);
+            await unblock();
+          }}
+          actionType="unblock"
+          userInfo={{
+            name: otherUserName,
+            avatar: conversationAvatar,
+          }}
+        />
+        {/* Forward Modal */}
+        <ForwardModal
+          isOpen={showForwardModal}
+          onClose={() => {
+            setShowForwardModal(false);
+            setMessageToForward(null);
+          }}
+          message={messageToForward}
+          conversations={myConversations}
+          currentConversationId={selectedChat?._id}
+          onForward={(targetConversationId) => {
+            forwardMessage(messageToForward?._id, targetConversationId);
+          }}
+        />
+        {/* Delete Modal */}
+        {showDeleteModal && (
+          <Modal
+            isOpen={showDeleteModal}
+            onClose={() => setShowDeleteModal(false)}
+          >
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-gray-200 dark:border-neutral-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {t("deleteMessageTitle")}
+                </h3>
+              </div>
+
+              {/* Corps */}
+              <div className="px-6 py-6 space-y-6">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {t("deleteMessageQuestion")}
+                </p>
+
+                <div className="space-y-3">
+                  {/* Supprimer pour moi */}
+                  <button
+                    onClick={() => {
+                      handleDeleteForMe(messageToDelete);
+                      setShowDeleteModal(false);
+                    }}
+                    className="w-full px-4 py-3 text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+                  >
+                    <div className="font-medium">{t("deleteForMe")}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {t("deleteForMeInfo")}
+                    </div>
+                  </button>
+
+                  {/* Supprimer pour tout le monde */}
+                  <button
+                    onClick={async () => {
+                      await handleDeleteForEveryone(messageToDelete);
+                      setShowDeleteModal(false);
+                    }}
+                    className="w-full px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                  >
+                    <div className="font-medium">{t("deleteForEveryone")}</div>
+                    <div className="text-xs text-red-500/80 dark:text-red-400/80">
+                      {t("deleteWarningAll")}
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 bg-gray-50 dark:bg-neutral-900 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+                >
+                  {t("cancel")}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+        {isOptionsOpen && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/30 z-30"
+              onClick={() => setIsOptionsOpen(false)}
+            ></div>
+            <ChatOptionsMenu
+              selectedChat={{
+                ...selectedChat,
+                userId: selectedChat?.isGroup
+                  ? null
+                  : selectedChat?.participants?.find((participant) => {
+                      const participantId = participant._id || participant.id;
+                      const currentUserId = user?._id || user?.id || user?.userId;
+                      return String(participantId) !== String(currentUserId);
+                    })?._id,
+                openInfo: () => setIsInfoOpen(true),
+                openTheme: () => {
+                  setShowThemeSelector(true);
+                  setIsOptionsOpen(false);
+                },
+              }}
+              onClose={() => setIsOptionsOpen(false)}
+              onOpenSearch={() => setOpenSearch(true)}
+              onBlockStatusChange={() => refresh()}
+            />
+          </>
+        )}
+        {isInfoOpen && (
+          <InfoContactModal
+            chat={{
               ...selectedChat,
-              userId: selectedChat?.isGroup
-                ? null
-                : selectedChat?.participants?.find((participant) => {
-                    const participantId = participant._id || participant.id;
-                    const currentUserId = user?._id || user?.id || user?.userId;
-                    return String(participantId) !== String(currentUserId);
-                  })?._id,
-              openInfo: () => setIsInfoOpen(true),
-              openTheme: () => {
-                setShowThemeSelector(true);
-                setIsOptionsOpen(false);
+              openTheme: () => setShowThemeSelector(true),
+              onArchive: async () => {
+                try {
+                  if (isArchived) {
+                    await unarchiveConversation(selectedChat._id);
+                  } else {
+                    await archiveConversation(selectedChat._id);
+                  }
+                } catch (err) {
+                  alert("Erreur lors de l'opération");
+                }
               },
+              isArchived: isArchived,
             }}
-            onClose={() => setIsOptionsOpen(false)}
-            onOpenSearch={() => setOpenSearch(true)}
+            onClose={() => setIsInfoOpen(false)}
             onBlockStatusChange={() => refresh()}
           />
-        </>
-      )}
-      {isInfoOpen && (
-        <InfoContactModal
-          chat={{
-            ...selectedChat,
-            openTheme: () => setShowThemeSelector(true),
-            onArchive: async () => {
-              try {
-                if (isArchived) {
-                  await unarchiveConversation(selectedChat._id);
-                } else {
-                  await archiveConversation(selectedChat._id);
-                }
-              } catch (err) {
-                alert("Erreur lors de l'opération");
-              }
-            },
-            isArchived: isArchived,
-          }}
-          onClose={() => setIsInfoOpen(false)}
-          onBlockStatusChange={() => refresh()}
-        />
-      )}
-      {/* 🔥 LIGHTBOX MODAL POUR MÉDIAS */}
-      {mediaLightboxOpen && mediaList.length > 0 && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
-          {/* Bouton Fermer */}
-          <button
-            onClick={closeMediaLightbox}
-            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-50"
-          >
-            <X className="w-8 h-8" />
-          </button>
-
-          {/* Bouton Précédent */}
-          {mediaList.length > 1 && (
+        )}
+        {/* 🔥 LIGHTBOX MODAL POUR MÉDIAS */}
+        {mediaLightboxOpen && mediaList.length > 0 && (
+          <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
+            {/* Bouton Fermer */}
             <button
-              onClick={goToPreviousMedia}
-              className="absolute left-4 text-white hover:text-gray-300 transition-colors z-50"
+              onClick={closeMediaLightbox}
+              className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-50"
             >
-              <ChevronLeft className="w-10 h-10" />
+              <X className="w-8 h-8" />
             </button>
-          )}
 
-          {/* Image ou Vidéo */}
-          <div className="max-w-[90vw] max-h-[90vh] flex items-center justify-center">
-            {mediaList[currentMediaIndex]?.type === "image" ? (
-              <img
-                src={mediaList[currentMediaIndex]?.url}
-                alt="Image en grand"
-                className="max-w-full max-h-[90vh] object-contain"
-              />
-            ) : (
-              <video
-                src={mediaList[currentMediaIndex]?.url}
-                controls
-                className="max-w-full max-h-[90vh] object-contain"
-              />
+            {/* Bouton Précédent */}
+            {mediaList.length > 1 && (
+              <button
+                onClick={goToPreviousMedia}
+                className="absolute left-4 text-white hover:text-gray-300 transition-colors z-50"
+              >
+                <ChevronLeft className="w-10 h-10" />
+              </button>
             )}
+
+            {/* Image ou Vidéo */}
+            <div className="max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+              {mediaList[currentMediaIndex]?.type === "image" ? (
+                <img
+                  src={mediaList[currentMediaIndex]?.url}
+                  alt="Image en grand"
+                  className="max-w-full max-h-[90vh] object-contain"
+                />
+              ) : (
+                <video
+                  src={mediaList[currentMediaIndex]?.url}
+                  controls
+                  className="max-w-full max-h-[90vh] object-contain"
+                />
+              )}
+            </div>
+
+            {/* Bouton Suivant */}
+            {mediaList.length > 1 && (
+              <button
+                onClick={goToNextMedia}
+                className="absolute right-4 text-white hover:text-gray-300 transition-colors z-50"
+              >
+                <ChevronRight className="w-10 h-10" />
+              </button>
+            )}
+
+            {/* Compteur de médias */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black/50 px-4 py-2 rounded-lg">
+              {currentMediaIndex + 1} / {mediaList.length}
+            </div>
           </div>
+        )}
+        {/* Info Contact Modal */}
+        {isInfoOpen && (
+          <InfoContactModal
+            chat={{
+              ...selectedChat,
+              openTheme: () => setShowThemeSelector(true),
+              onArchive: async () => {
+                try {
+                  if (isArchived) {
+                    await unarchiveConversation(selectedChat._id);
 
-          {/* Bouton Suivant */}
-          {mediaList.length > 1 && (
-            <button
-              onClick={goToNextMedia}
-              className="absolute right-4 text-white hover:text-gray-300 transition-colors z-50"
-            >
-              <ChevronRight className="w-10 h-10" />
-            </button>
-          )}
-
-          {/* Compteur de médias */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black/50 px-4 py-2 rounded-lg">
-            {currentMediaIndex + 1} / {mediaList.length}
-          </div>
-        </div>
-      )}
-      {/* Info Contact Modal */}
-      {isInfoOpen && (
-        <InfoContactModal
-          chat={{
-            ...selectedChat,
-            openTheme: () => setShowThemeSelector(true),
-            onArchive: async () => {
-              try {
-                if (isArchived) {
-                  await unarchiveConversation(selectedChat._id);
-
-                  if (typeof onConversationDeleted === "function") {
-                    onConversationDeleted();
+                    if (typeof onConversationDeleted === "function") {
+                      onConversationDeleted();
+                    }
+                  } else {
+                    await archiveConversation(selectedChat._id);
                   }
-                } else {
-                  await archiveConversation(selectedChat._id);
+                } catch (err) {
+                  alert("Erreur lors de l'opération");
                 }
-              } catch (err) {
-                alert("Erreur lors de l'opération");
-              }
-            },
-            isArchived: isArchived,
-          }}
-          onClose={() => setIsInfoOpen(false)}
-          onBlockStatusChange={() => refresh()}
-          onConversationDeleted={onConversationDeleted}
-        />
-      )}
-      {showGroupInfo && (
-        <GroupManagerModal
-          groupId={selectedChat._id}
-          myRole={myRoleInGroup}
-          members={groupMembers}
-          onClose={() => setShowGroupInfo(false)}
-          onMembersUpdated={() => {
-         api.get(`/groups/${selectedChat._id}/members`)
-  .then(res => {
-    const data = res.data;
-    if (data.success) {
-      setGroupMembers(data.members || []);
-    }
-  });
-          }}
-        />
-      )}
-    </div>
+              },
+              isArchived: isArchived,
+            }}
+            onClose={() => setIsInfoOpen(false)}
+            onBlockStatusChange={() => refresh()}
+            onConversationDeleted={onConversationDeleted}
+          />
+        )}
+        {showGroupInfo && (
+          <GroupManagerModal
+            groupId={selectedChat._id}
+            myRole={myRoleInGroup}
+            members={groupMembers}
+            onClose={() => setShowGroupInfo(false)}
+            onMembersUpdated={() => {
+              api.get(`/groups/${selectedChat._id}/members`)
+                .then(res => {
+                  const data = res.data;
+                  if (data.success) {
+                    setGroupMembers(data.members || []);
+                  }
+                });
+            }}
+          />
+        )}
+      </div>
+    </>
   );
 }

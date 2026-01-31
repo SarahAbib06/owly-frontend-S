@@ -1,139 +1,113 @@
-// 🔥 CORRECTION - IncomingCallModal.jsx
-// Gérer TOUS les cas de fin d'appel (timeout, annulation, rejet)
+// src/components/IncomingCallModal.jsx
+import React, { useEffect } from 'react';
+import { useAppel } from '../context/AppelContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Phone, Video, X } from 'lucide-react';
 
-import React, { useEffect } from "react";
-import { Phone, Video, X, Check } from "lucide-react";
-import { useCall } from "../context/CallContext";
-import socketService from "../services/socketService";
-import "./IncomingCallModal.css";
+export default function IncomingCallModal() {
+  const { incomingCall, showCallModal, acceptIncomingCall, rejectIncomingCall } = useAppel();
 
-const IncomingCallModal = () => {
-  const {
-    incomingCall,
-    showIncomingCallModal,
-    acceptCall,
-    rejectCall,
-    setShowIncomingCallModal,
-    setIncomingCall
-  } = useCall();
 
-  const stopRingtone = () => {
-    const audio = document.querySelector('audio');
-    if (audio) audio.pause();
-  };
-
-  // 🔥 ÉCOUTER TOUS LES ÉVÉNEMENTS DE FIN D'APPEL
+  // Timeout automatique après 30 secondes
   useEffect(() => {
-    const socket = socketService.socket;
-    if (!socket) return;
+    if (showCallModal && incomingCall) {
+      const timeout = setTimeout(() => {
+        if (showCallModal) {
+          rejectIncomingCall();
+        }
+      }, 30000);
 
-    // 1️⃣ Annulation par l'appelant (avant que tu acceptes)
-    const handleCallCancelled = (data) => {
-      console.log("📴 [call-cancelled] Appel annulé par l'appelant", data);
-      
-      // Vérifier que c'est bien notre appel
-      if (incomingCall && data.callId === incomingCall.callId) {
-        setShowIncomingCallModal(false);
-        stopRingtone();
-        setIncomingCall(null);
-      }
-    };
+      return () => {
+        clearTimeout(timeout);
+      };
+    }
+  }, [showCallModal, incomingCall, rejectIncomingCall]);
 
-    // 2️⃣ Fin d'appel (timeout, ou autre raison)
-    const handleCallEnded = (data) => {
-      console.log("📴 [call:ended] Appel terminé", data);
-      
-      // Vérifier que c'est notre appel
-      if (incomingCall && data.callId === incomingCall.callId) {
-        setShowIncomingCallModal(false);
-        stopRingtone();
-        setIncomingCall(null);
-      }
-    };
-
-    // 3️⃣ Échec de l'appel (utilisateur hors ligne, etc.)
-    const handleCallFailed = (data) => {
-      console.log("❌ [call-failed] Appel échoué", data);
-      
-      if (incomingCall && data.callId === incomingCall.callId) {
-        setShowIncomingCallModal(false);
-        stopRingtone();
-        setIncomingCall(null);
-      }
-    };
-
-    // 4️⃣ Erreur d'appel
-    const handleCallError = (data) => {
-      console.log("💥 [call-error] Erreur d'appel", data);
-      
-      setShowIncomingCallModal(false);
-      stopRingtone();
-      setIncomingCall(null);
-    };
-
-    // Écouter tous les événements
-    socket.on("call-cancelled", handleCallCancelled);
-    socket.on("call:ended", handleCallEnded);
-    socket.on("call-failed", handleCallFailed);
-    socket.on("call-error", handleCallError);
-
-    return () => {
-      socket.off("call-cancelled", handleCallCancelled);
-      socket.off("call:ended", handleCallEnded);
-      socket.off("call-failed", handleCallFailed);
-      socket.off("call-error", handleCallError);
-    };
-  }, [incomingCall, setShowIncomingCallModal, setIncomingCall]);
-
-  if (!showIncomingCallModal || !incomingCall) return null;
-
-  // 🔥 DIFFÉRENCIATION AUDIO/VIDÉO
-  const isVideoCall = incomingCall.callType === "video";
+  if (!showCallModal || !incomingCall) return null;
 
   return (
-    <div className="incoming-call-overlay">
-      <div className="incoming-call-modal">
-        {/* Icône animée selon le type d'appel */}
-        <div className={`call-icon ${isVideoCall ? 'video' : 'audio'}`}>
-          {isVideoCall ? (
-            <Video size={48} strokeWidth={1.5} />
-          ) : (
-            <Phone size={48} strokeWidth={1.5} />
-          )}
-        </div>
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      >
+        <motion.div
+          initial={{ scale: 0.9, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.9, y: 20 }}
+          className={`rounded-2xl p-8 mx-4 max-w-md w-full shadow-2xl ${incomingCall.callType === 'video'
+            ? 'bg-gradient-to-br from-[#d9b899] to-[#c4a882]'
+            : 'bg-gradient-to-br from-yellow-400 to-yellow-600'
+            }`}
+        >
+          <div className="text-center text-white">
+            {/* 🆕 Avatar/Image - Vraie photo de profil avec fallback initiales */}
+            <div className="w-24 h-24 mx-auto mb-6 rounded-full border-4 border-white/30 flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300">
+              {incomingCall.fromAvatar ? (
+                <img
+                  src={incomingCall.fromAvatar}
+                  alt={incomingCall.fromUsername || "Utilisateur"}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback vers initiales si l'image ne charge pas
+                    e.target.onerror = null;
+                    const name = incomingCall.fromUsername || "User";
+                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F9EE34&color=000&bold=true&size=128`;
+                  }}
+                />
+              ) : (
+                // Afficher initiales directement si pas de photo
+                <img
+                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(incomingCall.fromUsername || "User")}&background=F9EE34&color=000&bold=true&size=128`}
+                  alt={incomingCall.fromUsername || "Utilisateur"}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
 
-        {/* Titre selon le type */}
-        <h3>
-          {isVideoCall ? " Appel vidéo entrant" : " Appel audio entrant"}
-        </h3>
-        
-        <p className="caller-name">{incomingCall.callerName}</p>
-        <p className="call-type-label">
-          {isVideoCall ? "Souhaite vous appeler en vidéo" : "Souhaite vous appeler"}
-        </p>
+            {/* Informations */}
+            <h2 className="text-2xl font-bold mb-2">
+              {incomingCall.callType === 'audio' ? "Appel vocal entrant" : "Appel vidéo entrant"}
+            </h2>
+            <p className="text-lg mb-1">
+              <strong>{incomingCall.fromUsername || "Utilisateur"}</strong>
+            </p>
+            <p className="text-sm text-white/80 mb-8">
+              vous appelle...
+            </p>
 
-        <div className="incoming-call-actions">
-          <button 
-            onClick={rejectCall} 
-            className="reject"
-            aria-label="Refuser l'appel"
-          >
-            <X size={24} />
-            <span>Refuser</span>
-          </button>
+            {/* Boutons */}
+            <div className="flex justify-center gap-6">
+              {/* Bouton Refuser */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={rejectIncomingCall}
+                className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
+              >
+                <X size={24} />
+              </motion.button>
 
-          <button 
-            onClick={acceptCall} 
-            className="accept"
-            aria-label="Accepter l'appel"
-          >
-            <Check size={24} />
-            <span>Accepter</span>
-          </button>
-        </div>
-      </div>
-    </div>
+              {/* Bouton Accepter */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={acceptIncomingCall}
+                className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center shadow-lg hover:bg-green-600 transition-colors"
+              >
+                <Phone size={24} />
+              </motion.button>
+            </div>
+
+            {/* Texte info */}
+            <p className="text-sm text-white/60 mt-8">
+              L'appel s'arrêtera automatiquement dans 30 secondes
+            </p>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
-};
-
-export default IncomingCallModal;
+}

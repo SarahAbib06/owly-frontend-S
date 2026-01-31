@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Mic, MicOff, Video, VideoOff, Phone, Monitor } from 'lucide-react';
-import agoraService from '../services/agoraService';
 import socketService from '../services/socketService';
 import axios from 'axios';
 import { useAuth } from '../hooks/useAuth';
 import { useCall } from '../context/CallContext';
-import './VideoCallScreen.css';
-import api from '../services/api';
 
 const VideoCallScreen = ({ selectedChat, callType = 'video', onClose }) => {
   console.log("🧩 VideoCallScreen RENDER", { callType });
@@ -61,7 +58,7 @@ useEffect(() => {
     console.log("📞 Type d'appel:", effectiveCallType);
     
     const channel = acceptedCall.channelName;
-    if (!channel) {
+    if (!channel) { 
       console.error("❌ channelName manquant côté receveur");
       return;
     }
