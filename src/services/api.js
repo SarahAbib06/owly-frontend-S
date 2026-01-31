@@ -3,7 +3,7 @@ import axios from 'axios';
 // 🔥 DÉTECTION AUTOMATIQUE DE L'ENVIRONNEMENT
 const API_BASE_URL = import.meta.env.VITE_API_URL 
   || (import.meta.env.MODE === 'production' 
-      ? 'https://owly-backend-1.onrender.com/api'  // ← TON URL RENDER
+      ? 'https://owly-backend-s.onrender.com/api'  // ← TON URL RENDER
       : 'http://localhost:5000/api');
 
 console.log('🌐 Environment:', import.meta.env.MODE);
