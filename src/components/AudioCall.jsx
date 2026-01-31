@@ -153,12 +153,40 @@ export default function AudioCall() {
 
   const createPeerConnection = () => {
     console.log("🔗 [AudioCall] Création PeerConnection...");
+
+    // 🔥 CONFIGURATION PRODUCTION avec serveurs TURN
+    const iceServers = [
+      // Serveurs STUN Google (gratuits)
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+
+      // 🆕 Serveurs TURN publics gratuits (Open Relay Project)
+      {
+        urls: "turn:openrelay.metered.ca:80",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443?transport=tcp",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      }
+    ];
+
+    console.log("🌐 [AudioCall] ICE Servers configurés:", iceServers.length, "serveurs");
+
     const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-      ]
+      iceServers,
+      iceCandidatePoolSize: 10,
+      iceTransportPolicy: 'all', // 🆕 Utiliser tous les types de connexion (relay, srflx, host)
     });
+
     pcRef.current = pc;
 
     // Add local audio
@@ -197,23 +225,54 @@ export default function AudioCall() {
     };
 
     pc.onicecandidate = (event) => {
-      if (event.candidate && globalSocket?.connected && currentCall?.targetUserId) {
-        globalSocket.emit("ice-candidate", {
-          conversationId: currentCall.conversation?._id,
-          candidate: event.candidate,
-          toUserId: currentCall.targetUserId,
-          callId: currentCall.callId
+      if (event.candidate) {
+        // 🆕 Logging amélioré pour diagnostic
+        console.log("🧊 [AudioCall] ICE Candidate généré:", {
+          type: event.candidate.type,
+          protocol: event.candidate.protocol,
+          address: event.candidate.address,
+          port: event.candidate.port,
+          candidateType: event.candidate.candidate.split(' ')[7] // typ host/srflx/relay
         });
+
+        if (globalSocket?.connected && currentCall?.targetUserId) {
+          globalSocket.emit("ice-candidate", {
+            conversationId: currentCall.conversation?._id,
+            candidate: event.candidate,
+            toUserId: currentCall.targetUserId,
+            callId: currentCall.callId
+          });
+        }
+      } else {
+        console.log("✅ [AudioCall] Tous les ICE candidates générés");
       }
     };
 
     pc.oniceconnectionstatechange = () => {
       const iceState = pc.iceConnectionState;
-      console.log("🔗 [AudioCall] ICE state:", iceState);
+      console.log("🔗 [AudioCall] ICE Connection State:", iceState);
+
       if (iceState === "connected" || iceState === "completed") {
+        console.log("✅ [AudioCall] Connexion ICE établie!");
         setIsPeerConnected(true);
         if (!callDuration) startCallTimer();
+      } else if (iceState === "failed") {
+        console.error("❌ [AudioCall] Échec connexion ICE");
+      } else if (iceState === "disconnected") {
+        console.warn("⚠️ [AudioCall] Connexion ICE déconnectée");
+      } else if (iceState === "checking") {
+        console.log("🔍 [AudioCall] Vérification des ICE candidates...");
       }
+    };
+
+    // 🆕 Logging de l'état de la connexion globale
+    pc.onconnectionstatechange = () => {
+      console.log("🔌 [AudioCall] Connection State:", pc.connectionState);
+    };
+
+    // 🆕 Logging ICE gathering state
+    pc.onicegatheringstatechange = () => {
+      console.log("📡 [AudioCall] ICE Gathering State:", pc.iceGatheringState);
     };
 
     return pc;

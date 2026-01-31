@@ -302,18 +302,37 @@ export default function VideoCall() {
     try {
       console.log("🔗 [VideoCall] Création PeerConnection...");
 
+      // 🔥 CONFIGURATION PRODUCTION avec serveurs TURN
+      const iceServers = [
+        // Serveurs STUN Google (gratuits)
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+        
+        // 🆕 Serveurs TURN publics gratuits (Open Relay Project)
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443?transport=tcp",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        }
+      ];
+
+      console.log("🌐 [VideoCall] ICE Servers configurés:", iceServers.length, "serveurs");
+
       const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" }
-          // 📌 TODO PRODUCTION: Ajouter un serveur TURN
-          // {
-          //   urls: "turn:your-turn-server.com:3478",
-          //   username: "username",
-          //   credential: "password"
-          // }
-        ],
-        iceCandidatePoolSize: 10 // 🆕 Optimisation: pré-générer des candidates
+        iceServers,
+        iceCandidatePoolSize: 10,
+        iceTransportPolicy: 'all', // 🆕 Utiliser tous les types de connexion (relay, srflx, host)
       });
 
       pcRef.current = pc;
@@ -364,20 +383,35 @@ export default function VideoCall() {
       };
 
       pc.onicecandidate = (event) => {
-        if (event.candidate && globalSocket?.connected && currentCall?.targetUserId) {
-          globalSocket.emit("ice-candidate", {
-            conversationId: currentCall.conversation?._id,
-            candidate: event.candidate,
-            toUserId: currentCall.targetUserId,
-            callId: currentCall.callId
+        if (event.candidate) {
+          // 🆕 Logging amélioré pour diagnostic
+          console.log("🧊 [VideoCall] ICE Candidate généré:", {
+            type: event.candidate.type,
+            protocol: event.candidate.protocol,
+            address: event.candidate.address,
+            port: event.candidate.port,
+            candidateType: event.candidate.candidate.split(' ')[7] // typ host/srflx/relay
           });
+          
+          if (globalSocket?.connected && currentCall?.targetUserId) {
+            globalSocket.emit("ice-candidate", {
+              conversationId: currentCall.conversation?._id,
+              candidate: event.candidate,
+              toUserId: currentCall.targetUserId,
+              callId: currentCall.callId
+            });
+          }
+        } else {
+          console.log("✅ [VideoCall] Tous les ICE candidates générés");
         }
       };
 
       pc.oniceconnectionstatechange = () => {
         const iceState = pc.iceConnectionState;
-        console.log("🔗 [VideoCall] ICE state:", iceState);
+        console.log("🔗 [VideoCall] ICE Connection State:", iceState);
+        
         if (iceState === "connected" || iceState === "completed") {
+          console.log("✅ [VideoCall] Connexion ICE établie!");
           setIsPeerConnected(true);
           setCallState('connected');
           if (globalSocket?.connected) {
@@ -388,9 +422,24 @@ export default function VideoCall() {
             });
           }
         } else if (iceState === "failed") {
+          console.error("❌ [VideoCall] Échec connexion ICE - Tentative de reconnexion...");
           setCallState('failed');
           retryConnection();
+        } else if (iceState === "disconnected") {
+          console.warn("⚠️ [VideoCall] Connexion ICE déconnectée");
+        } else if (iceState === "checking") {
+          console.log("🔍 [VideoCall] Vérification des ICE candidates...");
         }
+      };
+
+      // 🆕 Logging de l'état de la connexion globale
+      pc.onconnectionstatechange = () => {
+        console.log("🔌 [VideoCall] Connection State:", pc.connectionState);
+      };
+
+      // 🆕 Logging ICE gathering state
+      pc.onicegatheringstatechange = () => {
+        console.log("📡 [VideoCall] ICE Gathering State:", pc.iceGatheringState);
       };
 
       return pc;
