@@ -24,7 +24,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log('📤 Request:', config.method.toUpperCase(), config.url);
+   
     return config;
   },
   (error) => {
@@ -36,7 +36,7 @@ api.interceptors.request.use(
 // Intercepteur pour gérer les erreurs
 api.interceptors.response.use(
   (response) => {
-    console.log('📥 Response:', response.config.url, response.status);
+    
     return response;
   },
   (error) => {
