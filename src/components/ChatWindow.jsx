@@ -27,7 +27,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useAppel } from "../context/AppelContext";
 import socketService from "../services/socketService";
 
-import VideoCallScreen from "./VideoCallScreen";
+
 import ThemeSelector from "./ThemeSelector";
 import AudioMessage from "./AudioMessage";
 import ChatOptionsMenu from "./ChatOptionMenu";
@@ -320,7 +320,7 @@ export default function ChatWindow({
   // 🔥 AJOUT DES ÉTATS POUR LES SONDAGES
   const [showPollModal, setShowPollModal] = useState(false);
   const [isCreatingPoll, setIsCreatingPoll] = useState(false);
-    // 🆕 message programme  
+  // 🆕 message programme  
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduledMessages, setScheduledMessages] = useState([]);
 
@@ -332,18 +332,18 @@ export default function ChatWindow({
   const otherUserId = selectedChat?.isGroup
     ? null
     : selectedChat?.participants?.find((participant) => {
-        const participantId = participant._id || participant.id;
-        const currentUserId = user?._id || user?.id || user?.userId;
-        return String(participantId) !== String(currentUserId);
-      })?._id;
+      const participantId = participant._id || participant.id;
+      const currentUserId = user?._id || user?.id || user?.userId;
+      return String(participantId) !== String(currentUserId);
+    })?._id;
 
   const otherParticipant = selectedChat?.isGroup
     ? null
     : selectedChat?.participants?.find((participant) => {
-        const participantId = participant._id || participant.id;
-        const currentUserId = user?._id || user?.id || user?.userId;
-        return String(participantId) !== String(currentUserId);
-      });
+      const participantId = participant._id || participant.id;
+      const currentUserId = user?._id || user?.id || user?.userId;
+      return String(participantId) !== String(currentUserId);
+    });
 
   // Hook pour vérifier le blocage
   const { isBlocked, blockedBy, unblock, refresh } =
@@ -408,7 +408,7 @@ export default function ChatWindow({
     return () => clearInterval(interval);
   }, [contactStatus.lastSeen, contactStatus.isOnline]);
 
-    // 🆕 Charger les messages programmés
+  // 🆕 Charger les messages programmés
   useEffect(() => {
     if (selectedChat?._id) {
       loadScheduledMessages();
@@ -486,7 +486,7 @@ export default function ChatWindow({
     getPollById,
   } = usePolls(selectedChat?._id);
 
-    // 🆕 Programmer un message
+  // 🆕 Programmer un message
   const handleScheduleMessage = async (data) => {
     try {
       await api.post('/scheduled-messages', {
@@ -1419,10 +1419,10 @@ export default function ChatWindow({
   const otherUserAvatar = selectedChat?.isGroup
     ? "/group-avatar.png"
     : selectedChat?.participants?.find((participant) => {
-        const participantId = participant._id || participant.id;
-        const currentUserId = user?._id || user?.id || user?.userId;
-        return String(participantId) !== String(currentUserId);
-      })?.profilePicture || "/default-avatar.png";
+      const participantId = participant._id || participant.id;
+      const currentUserId = user?._id || user?.id || user?.userId;
+      return String(participantId) !== String(currentUserId);
+    })?.profilePicture || "/default-avatar.png";
 
   // Composant MessageBubble
   const MessageBubble = React.memo(
@@ -1530,9 +1530,8 @@ export default function ChatWindow({
             <div className="relative">
               <div
                 id={`message-${msg._id}`}
-                className={`${bubbleClasses(fromMe)} ${
-                  isMatch ? "ring-2 ring-blue-400" : ""
-                } cursor-pointer`}
+                className={`${bubbleClasses(fromMe)} ${isMatch ? "ring-2 ring-blue-400" : ""
+                  } cursor-pointer`}
                 style={{
                   background:
                     fromMe && !themeStyle.backgroundImage
@@ -1584,12 +1583,12 @@ export default function ChatWindow({
                       // Fallback : utiliser les données du message
                       const pollData = msg.poll ||
                         msg.content?.poll || {
-                          _id: msg._id,
-                          question: msg.content || "Sondage",
-                          options: [],
-                          isClosed: false,
-                          createdBy: msg.senderId || msg.Id_sender,
-                        };
+                        _id: msg._id,
+                        question: msg.content || "Sondage",
+                        options: [],
+                        isClosed: false,
+                        createdBy: msg.senderId || msg.Id_sender,
+                      };
 
                       return (
                         <PollMessage
@@ -1689,9 +1688,8 @@ export default function ChatWindow({
 
               {showMessageMenu === msg._id && (
                 <div
-                  className={`message-menu absolute ${
-                    fromMe ? "right-0" : "left-0"
-                  } top-full mt-1 bg-white dark:bg-neutral-800 rounded-lg shadow-xl z-50 py-1 min-w-[150px]`}
+                  className={`message-menu absolute ${fromMe ? "right-0" : "left-0"
+                    } top-full mt-1 bg-white dark:bg-neutral-800 rounded-lg shadow-xl z-50 py-1 min-w-[150px]`}
                 >
                   <button
                     onClick={() => {
@@ -1738,9 +1736,8 @@ export default function ChatWindow({
 
               {showReactionPicker === msg._id && (
                 <div
-                  className={`reaction-picker absolute ${
-                    fromMe ? "right-0" : "left-0"
-                  } top-full mt-1 bg-white dark:bg-neutral-800 rounded-full shadow-xl z-50 px-2 py-1 flex gap-1`}
+                  className={`reaction-picker absolute ${fromMe ? "right-0" : "left-0"
+                    } top-full mt-1 bg-white dark:bg-neutral-800 rounded-full shadow-xl z-50 px-2 py-1 flex gap-1`}
                 >
                   {EMOJI_REACTIONS.map((emoji) => (
                     <button
@@ -1774,16 +1771,15 @@ export default function ChatWindow({
             )}
 
             <div
-              className={`text-[10px] mt-1 flex items-center gap-1.5 ${
-                fromMe ? "justify-end" : "justify-start"
-              } text-gray-500 dark:text-gray-400`}
+              className={`text-[10px] mt-1 flex items-center gap-1.5 ${fromMe ? "justify-end" : "justify-start"
+                } text-gray-500 dark:text-gray-400`}
             >
               <span>{messageTime}</span>
 
               {fromMe && (
                 <span className="flex items-center gap-1">
                   {msg._id.startsWith("pending_") ||
-                  msg.status === "sending" ? (
+                    msg.status === "sending" ? (
                     <span className="flex items-center gap-1 text-gray-400">
                       ✓
                     </span>
@@ -1816,7 +1812,7 @@ export default function ChatWindow({
       return (
         msgUnchanged &&
         prevProps.deletedMessages.includes(prevProps.msg._id) ===
-          nextProps.deletedMessages.includes(nextProps.msg._id)
+        nextProps.deletedMessages.includes(nextProps.msg._id)
       );
     },
   );
@@ -1963,8 +1959,8 @@ export default function ChatWindow({
                   selectedChat._id,
                 );
 
-                const res = await api.post('/relations/accept-request', { 
-                  conversationId: selectedChat._id 
+                const res = await api.post('/relations/accept-request', {
+                  conversationId: selectedChat._id
                 });
 
                 const data = await res.json();
@@ -1990,8 +1986,8 @@ export default function ChatWindow({
                   selectedChat._id,
                 );
 
-                const res = await api.post('/relations/delete-request', { 
-                  conversationId: selectedChat._id 
+                const res = await api.post('/relations/delete-request', {
+                  conversationId: selectedChat._id
                 });
 
                 const data = await res.json();
@@ -2102,7 +2098,7 @@ export default function ChatWindow({
             const showDate =
               i === 0 ||
               messages[i - 1]?.createdAt?.split("T")[0] !==
-                msg.createdAt?.split("T")[0];
+              msg.createdAt?.split("T")[0];
 
             const isDeletedByMe = deletedMessages.includes(msg._id);
             const isDeletedForEveryone = deletedForEveryone.includes(msg._id);
@@ -2139,11 +2135,10 @@ export default function ChatWindow({
                     <div
                       className={`
               max-w-[85%] px-4 py-3 rounded-lg text-sm italic text-gray-500 dark:text-gray-400
-              ${
-                wasFromMe
-                  ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none"
-                  : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"
-              }
+              ${wasFromMe
+                          ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none"
+                          : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"
+                        }
             `}
                     >
                       {t("messageDeletedForYou")}
@@ -2241,7 +2236,7 @@ export default function ChatWindow({
           )}
         </footer>
 
-        
+
         {/* Search Modal */}
         {/* Les composants d'appel sont maintenant globaux dans App.jsx */}
         {/* MODAL PAD */}{" "}
@@ -2395,10 +2390,10 @@ export default function ChatWindow({
                 userId: selectedChat?.isGroup
                   ? null
                   : selectedChat?.participants?.find((participant) => {
-                      const participantId = participant._id || participant.id;
-                      const currentUserId = user?._id || user?.id || user?.userId;
-                      return String(participantId) !== String(currentUserId);
-                    })?._id,
+                    const participantId = participant._id || participant.id;
+                    const currentUserId = user?._id || user?.id || user?.userId;
+                    return String(participantId) !== String(currentUserId);
+                  })?._id,
                 openInfo: () => setIsInfoOpen(true),
                 openTheme: () => {
                   setShowThemeSelector(true);

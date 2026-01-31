@@ -7,23 +7,39 @@ import { Phone, Video, X } from 'lucide-react';
 export default function IncomingCallModal() {
   const { incomingCall, showCallModal, acceptIncomingCall, rejectIncomingCall } = useAppel();
 
+  // 🔧 Log pour diagnostic
+  useEffect(() => {
+    console.log('📊 [IncomingCallModal] États mis à jour:', {
+      hasIncomingCall: !!incomingCall,
+      showCallModal,
+      callId: incomingCall?.callId,
+      fromUser: incomingCall?.fromUsername
+    });
+  }, [incomingCall, showCallModal]);
 
   // Timeout automatique après 30 secondes
   useEffect(() => {
     if (showCallModal && incomingCall) {
+      console.log('⏱️ [IncomingCallModal] D\u00e9marrage timeout 30s pour callId:', incomingCall.callId);
       const timeout = setTimeout(() => {
         if (showCallModal) {
+          console.log('⏱️ [IncomingCallModal] Timeout expir\u00e9, rejet automatique');
           rejectIncomingCall();
         }
       }, 30000);
 
       return () => {
         clearTimeout(timeout);
+        console.log('🧹 [IncomingCallModal] Timeout nettoy\u00e9');
       };
     }
   }, [showCallModal, incomingCall, rejectIncomingCall]);
 
-  if (!showCallModal || !incomingCall) return null;
+  if (!showCallModal || !incomingCall) {
+    return null;
+  }
+
+  console.log('✅ [IncomingCallModal] RENDU DU MODAL');
 
   return (
     <AnimatePresence>

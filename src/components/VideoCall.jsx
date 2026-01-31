@@ -34,8 +34,7 @@ export default function VideoCall() {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
-  const remoteStreamRef = useRef(new MediaStream());
-  const remoteAudioRef = useRef(null);
+  const remoteStreamRef = useRef(null); // 🔧 Simplification: plus besoin d'initialiser avec new MediaStream()
   const pendingIceCandidatesRef = useRef([]);
   const isInitializedRef = useRef(false);
   const durationIntervalRef = useRef(null);
@@ -78,7 +77,7 @@ export default function VideoCall() {
   };
 
   const cleanupResources = () => {
-    console.log("🔴 Nettoyage des ressources vidéo...");
+    console.log("🔴 [VideoCall] Nettoyage des ressources...");
 
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
@@ -107,11 +106,8 @@ export default function VideoCall() {
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
     }
-    if (remoteAudioRef.current) {
-      remoteAudioRef.current.srcObject = null;
-    }
 
-    remoteStreamRef.current = new MediaStream();
+    remoteStreamRef.current = null; // 🔧 Simplification
     pendingIceCandidatesRef.current = [];
     isInitializedRef.current = false;
 
@@ -129,7 +125,7 @@ export default function VideoCall() {
   // --- Handlers ---
 
   const handleEndCall = () => {
-    console.log("📞 Fin appel vidéo");
+    console.log("📞 [VideoCall] Fin appel vidéo");
 
     // 🔧 Empêcher les émissions multiples
     if (callEndedEmittedRef.current) {
@@ -304,7 +300,7 @@ export default function VideoCall() {
 
   const createPeerConnection = () => {
     try {
-      console.log("🔗 Création PeerConnection vidéo...");
+      console.log("🔗 [VideoCall] Création PeerConnection...");
 
       const pc = new RTCPeerConnection({
         iceServers: [
@@ -329,34 +325,42 @@ export default function VideoCall() {
         });
       }
 
-      // Handle remote tracks
+      // 🔧 CORRECTION MAJEURE: Handle remote tracks - VERSION SIMPLIFIÉE
       pc.ontrack = (event) => {
-        console.log("🎬 TRACK DISTANT REÇU:", event.track.kind);
+        console.log("🎬 [VideoCall] TRACK DISTANT REÇU:", {
+          kind: event.track.kind,
+          id: event.track.id,
+          readyState: event.track.readyState,
+          streams: event.streams?.length
+        });
 
-        // Priority to full stream
-        const incomingStream = event.streams?.[0];
-
-        if (incomingStream) {
-          // Standard case
-          if (remoteVideoRef.current && incomingStream.getVideoTracks().length > 0) {
-            remoteVideoRef.current.srcObject = incomingStream;
-            remoteStreamRef.current = incomingStream; // keep reference
-          }
-          if (remoteAudioRef.current && incomingStream.getAudioTracks().length > 0) {
-            remoteAudioRef.current.srcObject = incomingStream;
-          }
-        } else {
-          // Fallback for individual tracks
-          remoteStreamRef.current.addTrack(event.track);
-          const videoTracks = remoteStreamRef.current.getVideoTracks();
-          if (videoTracks.length > 0 && remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = remoteStreamRef.current;
-          }
+        // Créer ou réutiliser le stream distant
+        if (!remoteStreamRef.current) {
+          remoteStreamRef.current = new MediaStream();
+          console.log("✨ [VideoCall] Création nouveau remote stream");
         }
 
-        setIsPeerConnected(true);
-        setCallState('connected');
-        if (!callDuration) startCallTimer();
+        // Ajouter le track au stream distant
+        remoteStreamRef.current.addTrack(event.track);
+        console.log("➕ [VideoCall] Track ajouté au remote stream:", {
+          trackKind: event.track.kind,
+          totalVideoTracks: remoteStreamRef.current.getVideoTracks().length,
+          totalAudioTracks: remoteStreamRef.current.getAudioTracks().length
+        });
+
+        // Mettre à jour le srcObject (pour vidéo ET audio)
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStreamRef.current;
+          console.log("✅ [VideoCall] Remote stream mis à jour sur video element");
+        }
+
+        // Marquer comme connecté dès le premier track
+        if (!isPeerConnected) {
+          console.log("🎉 [VideoCall] Premier track reçu, marquage comme connecté");
+          setIsPeerConnected(true);
+          setCallState('connected');
+          if (!callDuration) startCallTimer();
+        }
       };
 
       pc.onicecandidate = (event) => {
@@ -372,7 +376,7 @@ export default function VideoCall() {
 
       pc.oniceconnectionstatechange = () => {
         const iceState = pc.iceConnectionState;
-        console.log("🔗 ICE state:", iceState);
+        console.log("🔗 [VideoCall] ICE state:", iceState);
         if (iceState === "connected" || iceState === "completed") {
           setIsPeerConnected(true);
           setCallState('connected');
@@ -391,7 +395,7 @@ export default function VideoCall() {
 
       return pc;
     } catch (error) {
-      console.error("❌ Erreur PeerConnection:", error);
+      console.error("❌ [VideoCall] Erreur PeerConnection:", error);
       throw error;
     }
   };
@@ -550,13 +554,17 @@ export default function VideoCall() {
               fromUserId: currentCall.targetUserId,
               callId: currentCall.callId
             });
-            // ❌ SUPPRIMÉ: setTimeout de 800ms (latence arbitraire)
-            // Émission immédiate pour réduire la latence
-            globalSocket.emit('call-ready', {
-              conversationId: currentCall.conversation?._id,
-              fromUserId: currentCall.targetUserId,
-              callId: currentCall.callId
-            });
+            // 🔧 CORRECTION: Délai de 150ms pour laisser la PeerConnection se stabiliser
+            setTimeout(() => {
+              if (globalSocket?.connected) {
+                console.log("✅ [VideoCall] Émission call-ready après stabilisation");
+                globalSocket.emit('call-ready', {
+                  conversationId: currentCall.conversation?._id,
+                  fromUserId: currentCall.targetUserId,
+                  callId: currentCall.callId
+                });
+              }
+            }, 150);
           }
           setCallAccepted(true);
         } else {
@@ -591,9 +599,6 @@ export default function VideoCall() {
           }
         `}
       >
-        {/* Audio Element Hidden */}
-        <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
-
         {/* RESTORE BUTTON when minimized */}
         {isMinimized && (
           <button

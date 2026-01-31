@@ -30,21 +30,47 @@ export const AppelProvider = ({ children }) => {
 
     socketRef.current = socket;
     console.log('✅ AppelContext utilise socketService.socket:', socket.id);
+    console.log('🔌 [AppelContext] Installation des listeners socket à:', new Date().toISOString());
 
     // Écouter les appels entrants
-    socketRef.current.on('incoming-call', (data) => {
-      console.log('📞 Appel entrant reçu:', data);
+    const handleIncomingCall = (data) => {
+      const timestamp = new Date().toISOString();
+      console.log('📞 [AppelContext] Appel entrant reçu à', timestamp, ':', data);
+
+      // Validation des données
+      if (!data || !data.callId || !data.fromUserId) {
+        console.error('❌ Données d\'appel invalides:', data);
+        return;
+      }
+
+      // Jouer la sonnerie IMMÉDIATEMENT (avant setState)
+      console.log('🎵 Déclenchement sonnerie immédiat');
+      playRingtone();
+
+      // Mettre à jour les états
+      console.log('→ setIncomingCall:', data);
       setIncomingCall(data);
+
+      console.log('→ setShowCallModal: true');
       setShowCallModal(true);
+
+      console.log('→ setCallState: ringing');
       setCallState('ringing');
 
-      // Jouer le son d'appel
-      playRingtone();
-    });
+      // Log de confirmation après 100ms
+      setTimeout(() => {
+        console.log('📊 [AppelContext] États après incoming-call:', {
+          hasIncomingCall: !!data,
+          showCallModal: true,
+          callState: 'ringing',
+          timestamp
+        });
+      }, 100);
+    };
 
     // Appel accepté (notification UI : la cible a accepté l'appel)
-    socketRef.current.on('call-answered', (data) => {
-      console.log('✅ Appel accepté (notif):', data);
+    const handleCallAnswered = (data) => {
+      console.log('✅ [AppelContext] call-answered reçu:', data);
       setCallState('connecting');
 
       // Vérifier callId correspond en utilisant la ref à jour
@@ -56,11 +82,11 @@ export const AppelProvider = ({ children }) => {
       } else {
         console.log('⚠️ call-answered reçu pour un autre callId', data.callId, activeCall.callId);
       }
-    });
+    };
 
     // Destinataire prêt pour WebRTC (NOUVEAU ÉVÉNEMENT)
-    socketRef.current.on('call-ready', (data) => {
-      console.log('🔔 AppelContext: call-ready reçu:', data);
+    const handleCallReady = (data) => {
+      console.log('🔔 [AppelContext] call-ready reçu:', data);
       setCallState('connecting');
 
       const activeCall = currentCallRef.current;
@@ -71,11 +97,11 @@ export const AppelProvider = ({ children }) => {
       } else {
         console.log('⚠️ call-ready: pas de currentCall actif ou callId ne correspond pas', { dataCallId: data.callId, activeCallId: activeCall?.callId });
       }
-    });
+    };
 
     // Appel refusé
-    socketRef.current.on('call-rejected', (data) => {
-      console.log('❌ Appel refusé:', data);
+    const handleCallRejected = (data) => {
+      console.log('❌ [AppelContext] call-rejected reçu:', data);
       const active = currentCallRef.current;
       if (active && data.callId && active.callId && data.callId === active.callId) {
         // 🆕 CRÉER UN MESSAGE D'APPEL MANQUÉ SI C'EST L'INITIATEUR
@@ -92,11 +118,11 @@ export const AppelProvider = ({ children }) => {
       }
       setShowCallModal(false);
       setIncomingCall(null);
-    });
+    };
 
     // Appel annulé
-    socketRef.current.on('call-cancelled', (data) => {
-      console.log('📴 Appel annulé:', data);
+    const handleCallCancelled = (data) => {
+      console.log('📴 [AppelContext] call-cancelled reçu:', data);
       if (incomingCall?.fromUserId === data.fromUserId) {
         setShowCallModal(false);
         setIncomingCall(null);
@@ -104,11 +130,11 @@ export const AppelProvider = ({ children }) => {
         setCallState('ended');
         stopRingtone();
       }
-    });
+    };
 
     // Raccroché (relay depuis serveur)
-    socketRef.current.on('hang-up', (data) => {
-      console.log('📴 Hang-up reçu:', data);
+    const handleHangUp = (data) => {
+      console.log('📴 [AppelContext] hang-up reçu:', data);
       const active = currentCallRef.current;
       if (active && data.callId && active.callId && data.callId === active.callId) {
         console.log('🧹 hang-up correspond au currentCall actif — nettoyage');
@@ -127,24 +153,44 @@ export const AppelProvider = ({ children }) => {
         setCallState('ended');
         stopRingtone();
       }
-    });
+    };
 
     // Gestion des erreurs
-    socketRef.current.on('connect_error', (error) => {
-      console.error('❌ Erreur connexion socket:', error);
+    const handleConnectError = (error) => {
+      console.error('❌ [AppelContext] Erreur connexion socket:', error);
+    };
+
+    // Installation des listeners
+    socketRef.current.on('incoming-call', handleIncomingCall);
+    socketRef.current.on('call-answered', handleCallAnswered);
+    socketRef.current.on('call-ready', handleCallReady);
+    socketRef.current.on('call-rejected', handleCallRejected);
+    socketRef.current.on('call-cancelled', handleCallCancelled);
+    socketRef.current.on('hang-up', handleHangUp);
+    socketRef.current.on('connect_error', handleConnectError);
+
+    console.log('✅ [AppelContext] Tous les listeners installés:', {
+      'incoming-call': true,
+      'call-answered': true,
+      'call-ready': true,
+      'call-rejected': true,
+      'call-cancelled': true,
+      'hang-up': true,
+      'connect_error': true
     });
 
     return () => {
       // Ne pas déconnecter socketService.socket car il est partagé
       // Juste retirer les event listeners
       if (socketRef.current) {
-        socketRef.current.off('incoming-call');
-        socketRef.current.off('call-answered');
-        socketRef.current.off('call-ready');
-        socketRef.current.off('call-rejected');
-        socketRef.current.off('call-cancelled');
-        socketRef.current.off('hang-up');
-        socketRef.current.off('connect_error');
+        console.log('🧹 [AppelContext] Nettoyage des listeners socket');
+        socketRef.current.off('incoming-call', handleIncomingCall);
+        socketRef.current.off('call-answered', handleCallAnswered);
+        socketRef.current.off('call-ready', handleCallReady);
+        socketRef.current.off('call-rejected', handleCallRejected);
+        socketRef.current.off('call-cancelled', handleCallCancelled);
+        socketRef.current.off('hang-up', handleHangUp);
+        socketRef.current.off('connect_error', handleConnectError);
         socketRef.current = null;
       }
       stopRingtone();
@@ -169,9 +215,10 @@ export const AppelProvider = ({ children }) => {
     }
 
     try {
-      console.log('🎵 playing ringtone...');
+      console.log('🎵 [AppelContext] Tentative de lecture sonnerie...');
       const audio = new Audio('/sounds/ringtone.mp3');
       audio.loop = true;
+      audio.volume = 0.7; // Volume à 70%
       ringtoneRef.current = audio;
 
       // Tentative de lecture avec gestion promesse
@@ -180,14 +227,19 @@ export const AppelProvider = ({ children }) => {
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            console.log('✅ Ringtone playing');
+            console.log('✅ [AppelContext] Sonnerie en cours de lecture');
           })
           .catch(error => {
-            console.error('❌ Ringtone play failed:', error);
+            console.error('❌ [AppelContext] Échec lecture sonnerie:', error.name, error.message);
+            if (error.name === 'NotAllowedError') {
+              console.warn('⚠️ Autoplay bloqué par le navigateur. Interaction utilisateur requise.');
+            } else if (error.name === 'NotSupportedError') {
+              console.error('❌ Format audio non supporté');
+            }
           });
       }
     } catch (e) {
-      console.error('❌ Impossible de jouer le son d\'appel', e);
+      console.error('❌ [AppelContext] Impossible de créer l\'audio:', e);
     }
   };
 

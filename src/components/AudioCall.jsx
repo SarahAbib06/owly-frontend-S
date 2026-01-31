@@ -70,7 +70,7 @@ export default function AudioCall() {
   };
 
   const cleanupResources = () => {
-    console.log("🔴 Nettoyage des ressources audio...");
+    console.log("🔴 [AudioCall] Nettoyage des ressources...");
     if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
@@ -83,7 +83,7 @@ export default function AudioCall() {
     if (remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = null;
     }
-    remoteStreamRef.current = new MediaStream();
+    remoteStreamRef.current = null; // 🔧 Simplification
     pendingIceCandidatesRef.current = [];
     isInitializedRef.current = false;
 
@@ -96,7 +96,7 @@ export default function AudioCall() {
   };
 
   const handleEndCall = () => {
-    console.log("📞 Fin appel audio");
+    console.log("📞 [AudioCall] Fin appel audio");
     if (globalSocket?.connected) {
       // 🆕 Détecter si c'est une annulation (pas encore accepté) ou un hang-up normal
       const isCallCancellation = !callAccepted && currentCall?.isInitiator;
@@ -152,6 +152,7 @@ export default function AudioCall() {
   // --- WebRTC Logic ---
 
   const createPeerConnection = () => {
+    console.log("🔗 [AudioCall] Création PeerConnection...");
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
@@ -165,19 +166,33 @@ export default function AudioCall() {
       localStreamRef.current.getTracks().forEach(t => pc.addTrack(t, localStreamRef.current));
     }
 
-    // Handle remote audio
+    // 🔧 CORRECTION: Handle remote audio - VERSION SIMPLIFIÉE
     pc.ontrack = (event) => {
-      console.log("🎬 TRACK AUDIO REÇU:", event.track.kind);
+      console.log("🎬 [AudioCall] TRACK AUDIO REÇU:", {
+        kind: event.track.kind,
+        id: event.track.id,
+        readyState: event.track.readyState
+      });
+
       if (remoteAudioRef.current) {
-        // Simple assignment works best usually
+        // Créer ou utiliser event.streams
         if (event.streams && event.streams[0]) {
           remoteAudioRef.current.srcObject = event.streams[0];
+          console.log("✅ [AudioCall] Remote audio stream assigné (event.streams)");
         } else {
           const stream = new MediaStream();
           stream.addTrack(event.track);
           remoteAudioRef.current.srcObject = stream;
+          console.log("✅ [AudioCall] Remote audio stream créé  et assigné");
         }
-        remoteAudioRef.current.play().catch(e => console.warn("Audio play error", e));
+        remoteAudioRef.current.play().catch(e => console.warn("[AudioCall] Audio play error:", e));
+      }
+
+      // Marquer comme connecté dès le premier track
+      if (!isPeerConnected) {
+        console.log("🎉 [AudioCall] Premier track reçu, marquage comme connecté");
+        setIsPeerConnected(true);
+        if (!callDuration) startCallTimer();
       }
     };
 
@@ -193,7 +208,9 @@ export default function AudioCall() {
     };
 
     pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+      const iceState = pc.iceConnectionState;
+      console.log("🔗 [AudioCall] ICE state:", iceState);
+      if (iceState === "connected" || iceState === "completed") {
         setIsPeerConnected(true);
         if (!callDuration) startCallTimer();
       }
@@ -306,7 +323,11 @@ export default function AudioCall() {
               fromUserId: currentCall.targetUserId,
               callId: currentCall.callId
             });
-            setCallAccepted(true);
+            // 🔧 CORRECTION: Délai de 150ms avant de marquer comme accepté
+            setTimeout(() => {
+              console.log("✅ [AudioCall] Appel accepté après stabilisation");
+              setCallAccepted(true);
+            }, 150);
           }
         } else {
           // Initiator waits for acceptance (we don't get call-ready in audio strictly, but we can wait or start offer if we know they accepted)
