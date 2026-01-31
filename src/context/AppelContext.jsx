@@ -162,12 +162,32 @@ export const AppelProvider = ({ children }) => {
   }, [callAccepted]);
 
   const playRingtone = () => {
+    // Arrêter l'ancien son si existant
+    if (ringtoneRef.current) {
+      ringtoneRef.current.pause();
+      ringtoneRef.current.currentTime = 0;
+    }
+
     try {
-      ringtoneRef.current = new Audio('/sounds/ringtone.mp3');
-      ringtoneRef.current.loop = true;
-      ringtoneRef.current.play().catch(e => console.log('Son d\'appel ignoré'));
+      console.log('🎵 playing ringtone...');
+      const audio = new Audio('/sounds/ringtone.mp3');
+      audio.loop = true;
+      ringtoneRef.current = audio;
+
+      // Tentative de lecture avec gestion promesse
+      const playPromise = audio.play();
+
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('✅ Ringtone playing');
+          })
+          .catch(error => {
+            console.error('❌ Ringtone play failed:', error);
+          });
+      }
     } catch (e) {
-      console.log('Impossible de jouer le son d\'appel');
+      console.error('❌ Impossible de jouer le son d\'appel', e);
     }
   };
 

@@ -1,26 +1,16 @@
 // src/components/IncomingCallModal.jsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useAppel } from '../context/AppelContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, Video, X } from 'lucide-react';
 
 export default function IncomingCallModal() {
   const { incomingCall, showCallModal, acceptIncomingCall, rejectIncomingCall } = useAppel();
-  const ringtoneRef = useRef(null);
 
-  // Jouer/arrêter le son d'appel
+
+  // Timeout automatique après 30 secondes
   useEffect(() => {
     if (showCallModal && incomingCall) {
-      // Jouer le son
-      try {
-        ringtoneRef.current = new Audio('/sounds/ringtone.mp3');
-        ringtoneRef.current.loop = true;
-        ringtoneRef.current.play().catch(e => console.log('Son ignoré'));
-      } catch (e) {
-        console.log('Impossible de jouer le son');
-      }
-
-      // Timeout automatique après 30 secondes
       const timeout = setTimeout(() => {
         if (showCallModal) {
           rejectIncomingCall();
@@ -29,10 +19,6 @@ export default function IncomingCallModal() {
 
       return () => {
         clearTimeout(timeout);
-        if (ringtoneRef.current) {
-          ringtoneRef.current.pause();
-          ringtoneRef.current.currentTime = 0;
-        }
       };
     }
   }, [showCallModal, incomingCall, rejectIncomingCall]);
