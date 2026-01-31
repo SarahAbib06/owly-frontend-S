@@ -16,7 +16,7 @@ class SocketService {
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL 
       || (import.meta.env.MODE === 'production'
-          ? 'https://owly-backend.onrender.com'  // ← TON URL BACKEND EN PRODUCTION
+          ? 'https://owly-backend-1.onrender.com'  // ← TON URL BACKEND EN PRODUCTION
           : 'http://localhost:5000');
 
     console.log('🔌 Connexion Socket.IO à:', SOCKET_URL);
