@@ -406,16 +406,32 @@ useEffect(() => {
     const channelName = `call_${callChat._id}`;
     channelNameRef.current = channelName;
     
-    try {
-      if (!socketService.socket?.connected) {
-        const token = localStorage.getItem('token');
-        if (token) {
-          socketService.connect(token);
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-      }
-      
-      console.log('✅ Socket prêt, émission événement...');
+   try {
+  // ✅ Vérification robuste de la connexion
+  if (!socketService.socket?.connected) {
+    console.warn('⚠️ Socket déconnecté, tentative de reconnexion...');
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Token manquant, impossible de reconnecter');
+    }
+    
+    socketService.connect(token);
+    await new Promise(resolve => setTimeout(resolve, 1000)); // ✅ Délai plus long
+    
+    if (!socketService.socket?.connected) {
+      throw new Error('Impossible de se reconnecter au serveur');
+    }
+  }
+  
+  console.log('✅ Socket prêt, émission événement initiate-call...');
+  
+  // ✅ Vérifier à nouveau juste avant d'émettre
+  if (!socketService.socket?.connected) {
+    throw new Error('Socket déconnecté au moment de l\'émission');
+  }
+  
+  
       
       const callData = {
         chatId: callChat._id,
