@@ -4,6 +4,7 @@ import { Search, X, User, MessageCircle, QrCode, Camera, Upload, UserCheck, User
 import jsQR from 'jsqr';
 import { useTranslation } from 'react-i18next';
 import { getApiUrl } from '../utils/apiUrl';
+import api from '../services/api';
 
 
 const SearchModal = ({ onClose, onUserSelect, loadConversations }) => {
