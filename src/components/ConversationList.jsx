@@ -70,40 +70,41 @@ const filteredByType = filterType === 'group'
     const fetchLastMessages = async () => {
       const messages = {};
       
-      for (const conv of filteredByType) {
-        try {
-          const token = localStorage.getItem('token');
-        const response = await api.get(`/messages/${conv._id}?page=1&limit=1`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.messages && data.messages.length > 0) {
-              const lastMsg = data.messages[0];
-              
-              let preview = '';
-              if (lastMsg.typeMessage === 'text') {
-                preview = lastMsg.content;
-              } else if (lastMsg.typeMessage === 'image') {
-                preview = '📷 Photo';
-              } else if (lastMsg.typeMessage === 'video') {
-                preview = '🎥 Vidéo';
-              } else if (lastMsg.typeMessage === 'audio') {
-                preview = '🎤 Audio';
-              } else if (lastMsg.typeMessage === 'file') {
-                preview = '📎 Fichier';
-              }
-              
-              messages[conv._id] = {
-                content: preview,
-                senderId: lastMsg.Id_sender || lastMsg.senderId,
-                createdAt: lastMsg.createdAt || lastMsg.timestamp
-              };
-            }
-          }
-        } catch (error) {
-          console.error(`Erreur chargement message conv ${conv._id}:`, error);
-        }
+for (const conv of filteredByType) {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await api.get(`/messages/${conv._id}?page=1&limit=1`);
+    const data = response.data;  // ✅ AJOUT : récupérer les données directement
+    
+    // ✅ SUPPRIMÉ : if (response.ok)
+    // ✅ SUPPRIMÉ : const data = await response.json();
+    
+    if (data.messages && data.messages.length > 0) {  // ✅ GARDÉ TEL QUEL
+      const lastMsg = data.messages[0];
+      
+      let preview = '';
+      if (lastMsg.typeMessage === 'text') {
+        preview = lastMsg.content;
+      } else if (lastMsg.typeMessage === 'image') {
+        preview = '📷 Photo';
+      } else if (lastMsg.typeMessage === 'video') {
+        preview = '🎥 Vidéo';
+      } else if (lastMsg.typeMessage === 'audio') {
+        preview = '🎤 Audio';
+      } else if (lastMsg.typeMessage === 'file') {
+        preview = '📎 Fichier';
       }
+      
+      messages[conv._id] = {
+        content: preview,
+        senderId: lastMsg.Id_sender || lastMsg.senderId,
+        createdAt: lastMsg.createdAt || lastMsg.timestamp
+      };
+    }
+  } catch (error) {
+    console.error(`Erreur chargement message conv ${conv._id}:`, error);
+  }
+}
       
       setLastMessages(messages);
     };

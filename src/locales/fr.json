@@ -638,7 +638,7 @@
   "searching": "Recherche...",
   "results": "Résultats",
   "send_message": "Envoyer un message",
-  "no_results": "Aucun résultat pour \"{{query}}\"",
+  "no_results": "Tapez sur entrer",
   "loading": "Chargement...",
   "no_contacts": "Aucun contact pour le moment",
   "scan_qr_user": "Scannez le code QR d'un utilisateur",

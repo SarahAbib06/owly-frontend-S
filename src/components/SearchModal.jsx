@@ -35,10 +35,7 @@ const fetchContacts = async () => {
     const token = localStorage.getItem('token');
     
 const response = await api.get('/relations/contacts');
-    
-    if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
-    
-    const data = await response.json();
+const data = response.data; // axios met les données dans .data
     console.log('📊 Contacts reçus:', data);
     
     // 🔥 DEBUG : Afficher les IDs pour voir les doublons
@@ -80,10 +77,7 @@ const response = await api.get('/relations/contacts');
 
       const token = localStorage.getItem('token');
 const response = await api.get(`/search/users?username=${encodeURIComponent(searchQuery)}`);
-      
-      if (!response.ok) throw new Error(t("search_error"));
-      
-      const data = await response.json();
+const data = response.data;
       console.log("📋 Résultats de recherche:", data);
 
       setUsers(Array.isArray(data) ? data : []);
@@ -113,9 +107,9 @@ const handleOpenConversation = async (targetUser) => {
   try {
     // 1️⃣ VÉRIFIER SI UNE CONVERSATION EXISTE DÉJÀ
 const existingConvResponse = await api.get(`/conversations/find-private/${targetUser._id}`);
+const existingData = existingConvResponse.data;
 
-    if (existingConvResponse.ok) {
-      const existingData = await existingConvResponse.json();
+if (existingData.success && existingData.conversation) {
       
       if (existingData.success && existingData.conversation) {
         console.log("✅ Conversation existante trouvée:", existingData.conversation);
@@ -153,16 +147,11 @@ const existingConvResponse = await api.get(`/conversations/find-private/${target
     // 2️⃣ SI PAS DE CONVERSATION → CRÉER UNE NOUVELLE
     console.log("📝 Aucune conversation trouvée, création d'une nouvelle...");
     
-  const res = await api.post('/conversations/private', { 
+const res = await api.post('/conversations/private', { 
   receiverId: targetUser._id 
 });
 
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Erreur serveur');
-    }
-
-    const data = await res.json();
+const data = res.data;
     console.log("✅ Nouvelle conversation créée:", data);
 
     if (data.success && data.conversation) {
@@ -219,17 +208,17 @@ const existingConvResponse = await api.get(`/conversations/find-private/${target
         formData.append('groupPic', groupPic);
       }
 
-     const response = await api.post('/groups', formData, {
+const response = await api.post('/groups', formData, {
   headers: {
     'Content-Type': 'multipart/form-data'
   }
 });
 
-      const data = await response.json();
+const data = response.data;
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Erreur création groupe');
-      }
+if (!data.success) {
+  throw new Error(data.error || 'Erreur création groupe');
+}
 
       console.log('✅ Groupe créé:', data.group);
       
@@ -329,17 +318,11 @@ const handleQRScan = async (qrData) => {
     const token = localStorage.getItem('token');
     
     // 1️⃣ APPELER LE BACKEND
-   const response = await api.post('/qr/scan', { 
+const response = await api.post('/qr/scan', { 
   qrContent: qrData 
 });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      setLoading(false); // ← AJOUT
-      throw new Error(errorData.message || 'Erreur lors du scan du QR code');
-    }
-    
-    const data = await response.json();
+
+const data = response.data;
     console.log('📦 Réponse backend:', data);
     
     if (data.success && data.users && data.users.length > 0) {
