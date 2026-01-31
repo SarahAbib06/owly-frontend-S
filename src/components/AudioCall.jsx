@@ -154,37 +154,61 @@ export default function AudioCall() {
   const createPeerConnection = () => {
     console.log("🔗 [AudioCall] Création PeerConnection...");
 
-    // 🔥 CONFIGURATION PRODUCTION avec serveurs TURN
+    // 🔥 CONFIGURATION PRODUCTION avec MULTIPLES serveurs TURN pour fiabilité maximale
     const iceServers = [
       // Serveurs STUN Google (gratuits)
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" },
 
-      // 🆕 Serveurs TURN publics gratuits (Open Relay Project)
+      // 🆕 Serveurs TURN - Option 1: numb.viagenie.ca (Canada, fiable)
       {
-        urls: "turn:openrelay.metered.ca:80",
-        username: "openrelayproject",
-        credential: "openrelayproject",
+        urls: "turn:numb.viagenie.ca",
+        username: "webrtc@live.com",
+        credential: "muazkh"
       },
+
+      // 🆕 Serveurs TURN - Option 2: OpenRelay (Multiples endpoints)
       {
-        urls: "turn:openrelay.metered.ca:443",
+        urls: [
+          "turn:openrelay.metered.ca:80",
+          "turn:openrelay.metered.ca:80?transport=tcp",
+          "turn:openrelay.metered.ca:443",
+          "turn:openrelay.metered.ca:443?transport=tcp"
+        ],
         username: "openrelayproject",
-        credential: "openrelayproject",
+        credential: "openrelayproject"
       },
+
+      // 🆕 Serveurs TURN - Option 3: stunserver.stunprotocol.org
       {
-        urls: "turn:openrelay.metered.ca:443?transport=tcp",
-        username: "openrelayproject",
-        credential: "openrelayproject",
+        urls: "turn:turn.stunprotocol.org:3478",
+        username: "guest",
+        credential: "somepassword"
+      },
+
+      // 🆕 Serveurs TURN - Option 4: Twilio (serveurs publics temporaires)
+      {
+        urls: [
+          "turn:global.turn.twilio.com:3478?transport=udp",
+          "turn:global.turn.twilio.com:3478?transport=tcp",
+          "turn:global.turn.twilio.com:443?transport=tcp"
+        ],
+        username: "f4b4035eaa76f4a55de5f4351567653ee4ff6fa97b50b6b334fcc1be9c27212d",
+        credential: "w1uxM55V9yVoqyVFjt+mxDBV0F/tvW4RRvI0WHRqjaI="
       }
     ];
 
-    console.log("🌐 [AudioCall] ICE Servers configurés:", iceServers.length, "serveurs");
+    console.log("🌐 [AudioCall] ICE Servers configurés:", iceServers.length, "serveurs TURN");
 
     const pc = new RTCPeerConnection({
       iceServers,
       iceCandidatePoolSize: 10,
-      iceTransportPolicy: 'all', // 🆕 Utiliser tous les types de connexion (relay, srflx, host)
+      iceTransportPolicy: 'all', // Options: 'all' (défaut) | 'relay' (force TURN)
+      bundlePolicy: 'max-bundle', // 🆕 Optimisation: regrouper tous les média
+      rtcpMuxPolicy: 'require' // 🆕 Optimisation: multiplexer RTCP
     });
 
     pcRef.current = pc;
@@ -194,32 +218,47 @@ export default function AudioCall() {
       localStreamRef.current.getTracks().forEach(t => pc.addTrack(t, localStreamRef.current));
     }
 
-    // 🔧 CORRECTION: Handle remote audio - VERSION SIMPLIFIÉE
+    // 🔧 CORRECTION CRITIQUE: Handle remote audio avec autoplay forcé
     pc.ontrack = (event) => {
       console.log("🎬 [AudioCall] TRACK AUDIO REÇU:", {
         kind: event.track.kind,
         id: event.track.id,
-        readyState: event.track.readyState
+        readyState: event.track.readyState,
+        hasStreams: event.streams?.length > 0
       });
 
       if (remoteAudioRef.current) {
-        // Créer ou utiliser event.streams
+        // ✅ METHODE FIABLE: Utiliser event.streams[0] directement
         if (event.streams && event.streams[0]) {
           remoteAudioRef.current.srcObject = event.streams[0];
-          console.log("✅ [AudioCall] Remote audio stream assigné (event.streams)");
+          console.log("✅ [AudioCall] Remote audio stream assigné (event.streams[0])");
         } else {
-          const stream = new MediaStream();
-          stream.addTrack(event.track);
+          // Fallback: créer un MediaStream manuellement
+          const stream = new MediaStream([event.track]);
           remoteAudioRef.current.srcObject = stream;
-          console.log("✅ [AudioCall] Remote audio stream créé  et assigné");
+          console.log("✅ [AudioCall] Remote audio stream créé manuellement");
         }
-        remoteAudioRef.current.play().catch(e => console.warn("[AudioCall] Audio play error:", e));
+
+        // 🆕 CRITIQUE: S'assurer que l'audio joue automatiquement
+        remoteAudioRef.current.autoplay = true;
+        remoteAudioRef.current.play()
+          .then(() => console.log("🔊 [AudioCall] Audio distant démarré avec succès"))
+          .catch(e => {
+            console.error("❌ [AudioCall] Erreur lecture audio distant:", e);
+            // Tentative de récupération après 500ms
+            setTimeout(() => {
+              remoteAudioRef.current?.play()
+                .then(() => console.log("🔊 [AudioCall] Audio distant démarré (retry réussi)"))
+                .catch(err => console.error("❌ Retry failed:", err));
+            }, 500);
+          });
       }
 
       // Marquer comme connecté dès le premier track
       if (!isPeerConnected) {
         console.log("🎉 [AudioCall] Premier track reçu, marquage comme connecté");
         setIsPeerConnected(true);
+        setStatus("Appel établi");
         if (!callDuration) startCallTimer();
       }
     };

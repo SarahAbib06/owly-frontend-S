@@ -302,37 +302,64 @@ export default function VideoCall() {
     try {
       console.log("🔗 [VideoCall] Création PeerConnection...");
 
-      // 🔥 CONFIGURATION PRODUCTION avec serveurs TURN
+      // 🔥 CONFIGURATION PRODUCTION avec MULTIPLES serveurs TURN pour fiabilité maximale
       const iceServers = [
         // Serveurs STUN Google (gratuits)
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
         { urls: "stun:stun2.l.google.com:19302" },
-        
-        // 🆕 Serveurs TURN publics gratuits (Open Relay Project)
+        { urls: "stun:stun3.l.google.com:19302" },
+        { urls: "stun:stun4.l.google.com:19302" },
+
+        // 🆕 Serveurs TURN - Option 1: numb.viagenie.ca (Canada, fiable)
         {
-          urls: "turn:openrelay.metered.ca:80",
-          username: "openrelayproject",
-          credential: "openrelayproject",
+          urls: "turn:numb.viagenie.ca",
+          username: "webrtc@live.com",
+          credential: "muazkh"
         },
+
+        // 🆕 Serveurs TURN - Option 2: OpenRelay (Multiples endpoints)
         {
-          urls: "turn:openrelay.metered.ca:443",
+          urls: [
+            "turn:openrelay.metered.ca:80",
+            "turn:openrelay.metered.ca:80?transport=tcp",
+            "turn:openrelay.metered.ca:443",
+            "turn:openrelay.metered.ca:443?transport=tcp"
+          ],
           username: "openrelayproject",
-          credential: "openrelayproject",
+          credential: "openrelayproject"
         },
+
+        // 🆕 Serveurs TURN - Option 3: stunserver.stunprotocol.org
         {
-          urls: "turn:openrelay.metered.ca:443?transport=tcp",
-          username: "openrelayproject",
-          credential: "openrelayproject",
+          urls: "turn:turn.stunprotocol.org:3478",
+          username: "guest",
+          credential: "somepassword"
+        },
+
+        // 🆕 Serveurs TURN - Option 4: Twilio (serveurs publics temporaires)
+        {
+          urls: [
+            "turn:global.turn.twilio.com:3478?transport=udp",
+            "turn:global.turn.twilio.com:3478?transport=tcp",
+            "turn:global.turn.twilio.com:443?transport=tcp"
+          ],
+          username: "f4b4035eaa76f4a55de5f4351567653ee4ff6fa97b50b6b334fcc1be9c27212d",
+          credential: "w1uxM55V9yVoqyVFjt+mxDBV0F/tvW4RRvI0WHRqjaI="
         }
       ];
 
-      console.log("🌐 [VideoCall] ICE Servers configurés:", iceServers.length, "serveurs");
+      console.log("🌐 [VideoCall] ICE Servers configurés:", iceServers.length, "serveurs TURN");
+
+      // 🔧 OPTION: Forcer TURN pour tester (décommenter si besoin)
+      // const forceRelay = true; // Pour debug: forcer TURN même sur même réseau
 
       const pc = new RTCPeerConnection({
         iceServers,
         iceCandidatePoolSize: 10,
-        iceTransportPolicy: 'all', // 🆕 Utiliser tous les types de connexion (relay, srflx, host)
+        iceTransportPolicy: 'all', // Options: 'all' (défaut) | 'relay' (force TURN)
+        bundlePolicy: 'max-bundle', // 🆕 Optimisation: regrouper tous les média
+        rtcpMuxPolicy: 'require' // 🆕 Optimisation: multiplexer RTCP
       });
 
       pcRef.current = pc;
@@ -392,7 +419,7 @@ export default function VideoCall() {
             port: event.candidate.port,
             candidateType: event.candidate.candidate.split(' ')[7] // typ host/srflx/relay
           });
-          
+
           if (globalSocket?.connected && currentCall?.targetUserId) {
             globalSocket.emit("ice-candidate", {
               conversationId: currentCall.conversation?._id,
@@ -409,7 +436,7 @@ export default function VideoCall() {
       pc.oniceconnectionstatechange = () => {
         const iceState = pc.iceConnectionState;
         console.log("🔗 [VideoCall] ICE Connection State:", iceState);
-        
+
         if (iceState === "connected" || iceState === "completed") {
           console.log("✅ [VideoCall] Connexion ICE établie!");
           setIsPeerConnected(true);
