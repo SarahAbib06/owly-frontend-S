@@ -13,9 +13,10 @@ import {
   CornerUpRight,
   Pin,
   Trash2,
-  ChevronLeft, 
-  ChevronRight, 
+  ChevronLeft,
+  ChevronRight,
   FileText,
+  ChartBar,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMessages } from "../hooks/useMessages";
@@ -35,8 +36,7 @@ import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
 
 import { Archive } from "lucide-react";
-import { useChat } from "../context/ChatContext"; // ← AJOUTE CET IMPORT
-//import EmojiPicker from 'emoji-picker-react';
+import { useChat } from "../context/ChatContext";
 
 import ChatInput from "./ChatInput";
 import { useBlockStatus } from "../hooks/useBlockStatut";
@@ -46,6 +46,12 @@ import { useConversations } from "../hooks/useConversations";
 import MessageRequestBanner from "./MessageRequestBanner";
 import PadModal from "./PadModal";
 import Modal from "./Modal";
+
+// 🔥 AJOUT DES IMPORTS POUR LES SONDAGES
+import PollModal from "./PollModal";
+import PollMessage from "./PollMessage";
+import { usePolls } from "../hooks/usePolls";
+
 function adjustColor(col, amt) {
   let usePound = false;
   if (col[0] === "#") {
@@ -53,21 +59,28 @@ function adjustColor(col, amt) {
     usePound = true;
   }
 
-  let num = parseInt(col,16);
+  let num = parseInt(col, 16);
   let r = (num >> 16) + amt;
-  let g = ((num >> 8) & 0x00FF) + amt;
-  let b = (num & 0x0000FF) + amt;
+  let g = ((num >> 8) & 0x00ff) + amt;
+  let b = (num & 0x0000ff) + amt;
 
   r = Math.min(255, Math.max(0, r));
   g = Math.min(255, Math.max(0, g));
   b = Math.min(255, Math.max(0, b));
 
-  return (usePound ? "#" : "") + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+  return (
+    (usePound ? "#" : "") +
+    ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")
+  );
 }
 
-
 const SeenIconGray = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 48 48">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="15"
+    height="15"
+    viewBox="0 0 48 48"
+  >
     <path
       d="M14 27L7 20l1.6-1.6 5.4 5.4 9.5-9.5 1.6 1.6-12 12z"
       fill="none"
@@ -96,13 +109,13 @@ const formatDateLabel = (dateString, t) => {
 
   if (diff === 0) return t("chat.today") || "Aujourd'hui";
   if (diff === 86400000) return t("chat.yesterday") || "Hier";
- // ⚡ utiliser la locale depuis i18next
+  // ⚡ utiliser la locale depuis i18next
   const locale = t("chat.locale") || "fr-FR";
 
   return msgDate.toLocaleDateString(locale, {
     day: "numeric",
     month: "long",
-    year: "numeric"
+    year: "numeric",
   });
 };
 
@@ -147,7 +160,7 @@ const TypingIndicator = ({ avatar, username }) => (
         className="w-8 h-8 rounded-full object-cover"
       />
     </div>
-    
+
     {/* Bulle de message avec animation */}
     <div className="flex flex-col max-w-[70%]">
       {username && !selectedChat?.isGroup && (
@@ -155,27 +168,27 @@ const TypingIndicator = ({ avatar, username }) => (
           {username}
         </p>
       )}
-      
+
       <div className="bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-3">
         <div className="flex items-center gap-1">
           {/* Animation des trois points */}
           <div className="flex items-center gap-1">
-            <div 
+            <div
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
-              style={{ animationDelay: '0ms' }}
+              style={{ animationDelay: "0ms" }}
             ></div>
-            <div 
+            <div
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
-              style={{ animationDelay: '150ms' }}
+              style={{ animationDelay: "150ms" }}
             ></div>
-            <div 
+            <div
               className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
-              style={{ animationDelay: '300ms' }}
+              style={{ animationDelay: "300ms" }}
             ></div>
           </div>
         </div>
       </div>
-      
+
       {/* Timestamp (optionnel) */}
       <div className="text-[10px] mt-1 text-gray-500 dark:text-gray-400">
         {new Date().toLocaleTimeString("fr-FR", {
@@ -187,12 +200,11 @@ const TypingIndicator = ({ avatar, username }) => (
   </div>
 );
 
-
 // 🔥 COMPOSANT POUR AFFICHER UN MESSAGE D'APPEL
 const CallMessage = ({ callType, callResult, duration, fromMe }) => {
   // Icônes selon le type
   const CallIcon = callType === "audio" ? Phone : Video;
-  
+
   // Couleur selon le statut
   const getStatusColor = () => {
     switch (callResult) {
@@ -235,13 +247,13 @@ const CallMessage = ({ callType, callResult, duration, fromMe }) => {
     <div className="flex items-center gap-2 py-1">
       {/* Icône d'appel */}
       <CallIcon size={18} className={getStatusColor()} />
-      
+
       {/* Informations d'appel */}
       <div className="flex flex-col">
         <span className={`text-xs font-medium ${getStatusColor()}`}>
           Appel {callType === "audio" ? "audio" : "vidéo"}
         </span>
-        
+
         <div className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-400">
           <span>{getStatusText()}</span>
           {durationText && (
@@ -256,8 +268,11 @@ const CallMessage = ({ callType, callResult, duration, fromMe }) => {
   );
 };
 
-export default function ChatWindow({ selectedChat, onBack, onConversationDeleted }) {
-
+export default function ChatWindow({
+  selectedChat,
+  onBack,
+  onConversationDeleted,
+}) {
   console.log("🔍 DEBUG selectedChat:", {
     _id: selectedChat?._id,
     name: selectedChat?.name,
@@ -265,138 +280,127 @@ export default function ChatWindow({ selectedChat, onBack, onConversationDeleted
     isGroup: selectedChat?.isGroup,
     type: selectedChat?.type,
     participants: selectedChat?.participants?.length,
-    "Clés disponibles": Object.keys(selectedChat || {})
+    "Clés disponibles": Object.keys(selectedChat || {}),
   });
-  
+
   const { t } = useTranslation();
-  const {
-    incomingCall,
-    getActiveCall,
-    clearActiveCall
-  } = useCall();
+  const { incomingCall, getActiveCall, clearActiveCall } = useCall();
   const isFromArchived = selectedChat?.isFromArchived === true;
   const { conversations, archivedConversations } = useChat();
-  const isArchived = isFromArchived || archivedConversations.some(c => c._id === selectedChat?._id);
+  const isArchived =
+    isFromArchived ||
+    archivedConversations.some((c) => c._id === selectedChat?._id);
   console.log("isArchived ?", isArchived, selectedChat?._id);
   const { archiveConversation, unarchiveConversation } = useChat();
 
- const { user, socketConnected } = useAuth();
-const [selectedTargetConversation, setSelectedTargetConversation] = useState(null);
-const [showForwardModal, setShowForwardModal] = useState(false);
-const [messageToForward, setMessageToForward] = useState(null);
-const [deletedMessages, setDeletedMessages] = useState([]); // ajouter pour supprimer le message
-// Ajoute ces deux lignes
-const [showDeleteModal, setShowDeleteModal] = useState(false);
-const [messageToDelete, setMessageToDelete] = useState(null);
-const [deletedForEveryone, setDeletedForEveryone] = useState([]);
+  const { user, socketConnected } = useAuth();
+  const [selectedTargetConversation, setSelectedTargetConversation] =
+    useState(null);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [messageToForward, setMessageToForward] = useState(null);
+  const [deletedMessages, setDeletedMessages] = useState([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState(null);
+  const [deletedForEveryone, setDeletedForEveryone] = useState([]);
 
-//const [showEmojiPicker, setShowEmojiPicker] = useState(false); //imojie
-// États pour la lightbox média kenza 
-const [mediaLightboxOpen, setMediaLightboxOpen] = useState(false);
-const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-const [mediaList, setMediaList] = useState([]);
-//groupe 
-const [showGroupInfo, setShowGroupInfo] = useState(false);
-const [groupMembers, setGroupMembers] = useState([]);
-const [showGroupManager, setShowGroupManager] = useState(false);
-const [myRoleInGroup, setMyRoleInGroup] = useState('membre');
-const [showPad, setShowPad] = useState(false);
+  // États pour la lightbox média
+  const [mediaLightboxOpen, setMediaLightboxOpen] = useState(false);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [mediaList, setMediaList] = useState([]);
 
+  // Groupe
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [showGroupManager, setShowGroupManager] = useState(false);
+  const [myRoleInGroup, setMyRoleInGroup] = useState("membre");
+  const [showPad, setShowPad] = useState(false);
 
-const { conversations: myConversations, loading: convLoading } = useConversations();
+  // 🔥 AJOUT DES ÉTATS POUR LES SONDAGES
+  const [showPollModal, setShowPollModal] = useState(false);
+  const [isCreatingPoll, setIsCreatingPoll] = useState(false);
+
+  const { conversations: myConversations, loading: convLoading } =
+    useConversations();
 
   const chatKey = `theme_${selectedChat?._id ?? "default"}`;
-  
+
   const [startOutgoingCallType, setStartOutgoingCallType] = useState(null);
-  
-  const otherUserId = selectedChat?.isGroup 
-    ? null 
-    : selectedChat?.participants?.find(
-        participant => {
-          const participantId = participant._id || participant.id;
-          const currentUserId = user?._id || user?.id || user?.userId;
-          return String(participantId) !== String(currentUserId);
-        }
-      )?._id;
+
+  const otherUserId = selectedChat?.isGroup
+    ? null
+    : selectedChat?.participants?.find((participant) => {
+        const participantId = participant._id || participant.id;
+        const currentUserId = user?._id || user?.id || user?.userId;
+        return String(participantId) !== String(currentUserId);
+      })?._id;
 
   const otherParticipant = selectedChat?.isGroup
     ? null
-    : selectedChat?.participants?.find(
-        participant => {
-          const participantId = participant._id || participant.id;
-          const currentUserId = user?._id || user?.id || user?.userId;
-          return String(participantId) !== String(currentUserId);
-        }
-      );
+    : selectedChat?.participants?.find((participant) => {
+        const participantId = participant._id || participant.id;
+        const currentUserId = user?._id || user?.id || user?.userId;
+        return String(participantId) !== String(currentUserId);
+      });
 
+  // Hook pour vérifier le blocage
+  const { isBlocked, blockedBy, unblock, refresh } =
+    useBlockStatus(otherUserId);
 
-  //  Hook pour vérifier le blocage
+  console.log("🔍 DEBUG MESSAGE REQUEST:", {
+    isMessageRequest: selectedChat?.isMessageRequest,
+    messageRequestFor: selectedChat?.messageRequestFor,
+    messageRequestFrom: selectedChat?.messageRequestFrom,
+    currentUserId: user?.id,
+    isForMe:
+      selectedChat?.messageRequestFor?.toString() === user?.id?.toString(),
+  });
 
-const { isBlocked, blockedBy, unblock, refresh } = useBlockStatus(otherUserId);
+  // ✅ CORRECTION ICI : Vérifier que JE SUIS le destinataire (messageRequestFor)
+  const isIncomingMessageRequest =
+    selectedChat?.isMessageRequest === true &&
+    selectedChat?.messageRequestFor?.toString() === user?.id?.toString();
 
+  console.log("🚨 isIncomingMessageRequest =", isIncomingMessageRequest);
 
+  const [contactStatus, setContactStatus] = useState({
+    isOnline: false,
+    lastSeen: null,
+  });
 
-console.log('🔍 DEBUG MESSAGE REQUEST:', {
-  isMessageRequest: selectedChat?.isMessageRequest,
-  messageRequestFor: selectedChat?.messageRequestFor,
-  messageRequestFrom: selectedChat?.messageRequestFrom,
-  currentUserId: user?.id,
-  isForMe: selectedChat?.messageRequestFor?.toString() === user?.id?.toString()
-});
+  const getUserStatusText = () => {
+    // 🟢 Online
+    if (contactStatus.isOnline) {
+      return t("status.online");
+    }
+    // 🔒 Si pas de lastSeen ET offline → Statut masqué
+    if (!contactStatus.lastSeen) {
+      return "";
+    }
+    // ⚪ Offline avec lastSeen
+    if (contactStatus.lastSeen) {
+      const last = new Date(contactStatus.lastSeen);
+      const now = new Date();
+      const diffMs = now - last;
 
-// ✅ CORRECTION ICI : Vérifier que JE SUIS le destinataire (messageRequestFor)
-const isIncomingMessageRequest = 
-  selectedChat?.isMessageRequest === true && 
-  selectedChat?.messageRequestFor?.toString() === user?.id?.toString();
+      const diffMin = Math.floor(diffMs / 60000);
+      const diffHour = Math.floor(diffMin / 60);
 
-console.log('🚨 isIncomingMessageRequest =', isIncomingMessageRequest);
+      if (diffMin < 1) return t("status.onlineSeconds");
+      if (diffMin < 60) return t("status.onlineMinutes", { count: diffMin });
+      if (diffHour < 24) return t("status.onlineHours", { count: diffHour });
 
-// 🔥 NOUVEAU : Bannière Demande de message (comme Messenger)
+      return t("status.onlineLong");
+    }
 
+    return t("status.onlineMoment");
+  };
 
+  useEffect(() => {
+    if (!contactStatus.lastSeen || contactStatus.isOnline) return;
 
-
-
-   const [contactStatus, setContactStatus] = useState({
-  isOnline: false,
-  lastSeen: null,
-});
-
-const getUserStatusText = () => {
-  
-  // 🟢 Online
-  if (contactStatus.isOnline) {
-    return  t("status.online");
-  }
-// 🔒 Si pas de lastSeen ET offline → Statut masqué (statusVisibility = "Personne")
-  if (!contactStatus.lastSeen) {
-    return ""; // ← Ne rien afficher
-  }
-  // ⚪ Offline avec lastSeen
-  if (contactStatus.lastSeen) {
-    const last = new Date(contactStatus.lastSeen);
-    const now = new Date();
-    const diffMs = now - last;
-
-    const diffMin = Math.floor(diffMs / 60000);
-    const diffHour = Math.floor(diffMin / 60);
-
-    if (diffMin < 1) return t("status.onlineSeconds");
-    if (diffMin < 60) return t("status.onlineMinutes", { count: diffMin });
-    if (diffHour < 24) return t("status.onlineHours", { count: diffHour });
-
-    return t("status.onlineLong");
-  }
-
-  return t("status.onlineMoment");
-};
-useEffect(() => {
-  if (!contactStatus.lastSeen || contactStatus.isOnline) return;
-
-  const interval = setInterval(() => {
-    // force le recalcul du texte
-    setContactStatus((prev) => ({ ...prev }));
-  }, 60000); // toutes les 1 min
+    const interval = setInterval(() => {
+      setContactStatus((prev) => ({ ...prev }));
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [contactStatus.lastSeen, contactStatus.isOnline]);
@@ -406,24 +410,29 @@ useEffect(() => {
     if (selectedChat?.isGroup && selectedChat._id) {
       const fetchGroupMembers = async () => {
         try {
-          const token = localStorage.getItem('token');
-          const res = await fetch(`http://localhost:5000/api/groups/${selectedChat._id}/members`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const token = localStorage.getItem("token");
+          const res = await fetch(
+            `http://localhost:5000/api/groups/${selectedChat._id}/members`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
           const data = await res.json();
-          
+
           if (data.success) {
             setGroupMembers(data.members || []);
-            
-            const userId = localStorage.getItem('userId');
-            const myMember = data.members.find(m => String(m.id) === String(userId));
-            setMyRoleInGroup(myMember?.role || 'membre');
+
+            const userId = localStorage.getItem("userId");
+            const myMember = data.members.find(
+              (m) => String(m.id) === String(userId),
+            );
+            setMyRoleInGroup(myMember?.role || "membre");
           }
         } catch (err) {
           console.error("❌ Erreur chargement membres:", err);
         }
       };
-      
+
       fetchGroupMembers();
     }
   }, [selectedChat?._id]);
@@ -431,7 +440,7 @@ useEffect(() => {
   const contactId = React.useMemo(() => {
     if (!selectedChat || selectedChat.isGroup || !user) return null;
     const other = selectedChat.participants.find(
-      (p) => String(p._id) !== String(user._id)
+      (p) => String(p._id) !== String(user._id),
     );
     return other?._id || null;
   }, [selectedChat, user]);
@@ -442,74 +451,104 @@ useEffect(() => {
     console.log("🧪 TEST contactId =", contactId);
 
     fetch(`http://localhost:5000/api/users/${contactId}/status`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         console.log("🧪 REPONSE API STATUS =", data);
         setContactStatus({
           isOnline: data.isOnline,
           lastSeen: data.lastSeen,
         });
       })
-      .catch(err => console.error("Erreur statut:", err));
+      .catch((err) => console.error("Erreur statut:", err));
   }, [contactId]);
+
+  // 🔥 AJOUT DU HOOK POUR LES SONDAGES
+  const {
+    polls,
+    loading: pollsLoading,
+    createPoll,
+    votePoll,
+    closePoll,
+    deletePoll,
+    getPollById,
+  } = usePolls(selectedChat?._id);
+
+  // 🔥 FONCTION POUR CRÉER UN SONDAGE
+  const handleCreatePoll = async (pollData) => {
+    try {
+      setIsCreatingPoll(true);
+      const result = await createPoll({
+        ...pollData,
+        conversationId: selectedChat._id,
+      });
+
+      if (result.success) {
+        setShowPollModal(false);
+        console.log("✅ Sondage créé avec succès:", result);
+      }
+    } catch (error) {
+      console.error("❌ Erreur création sondage:", error);
+      alert("Erreur lors de la création du sondage: " + error.message);
+    } finally {
+      setIsCreatingPoll(false);
+    }
+  };
+
+  // 🔥 FONCTION POUR VOTER À UN SONDAGE
+  const handleVotePoll = async (pollId, optionIndexes) => {
+    try {
+      await votePoll(pollId, optionIndexes);
+    } catch (error) {
+      console.error("❌ Erreur lors du vote:", error);
+      alert("Erreur lors du vote: " + error.message);
+    }
+  };
 
   // Sauvegarder les messages supprimés
   useEffect(() => {
     if (selectedChat?._id && deletedMessages.length > 0) {
       localStorage.setItem(
         `deleted_${selectedChat._id}`,
-        JSON.stringify(deletedMessages)
+        JSON.stringify(deletedMessages),
       );
     }
   }, [deletedMessages, selectedChat?._id]);
 
   const otherUserName = React.useMemo(() => {
     if (selectedChat?.isGroup) return null;
-   
-    const otherParticipant = selectedChat?.participants?.find(
-      participant => {
-        const participantId = participant._id || participant.id || participant.userId;
-        const currentUserId = user?._id || user?.id || user?.userId;
-        return participantId && currentUserId && String(participantId) !== String(currentUserId);
-      }
-    );
-    
+
+    const otherParticipant = selectedChat?.participants?.find((participant) => {
+      const participantId =
+        participant._id || participant.id || participant.userId;
+      const currentUserId = user?._id || user?.id || user?.userId;
+      return (
+        participantId &&
+        currentUserId &&
+        String(participantId) !== String(currentUserId)
+      );
+    });
+
     if (otherParticipant?.username) {
       return otherParticipant.username;
     }
-    
+
     if (selectedChat?.name) {
       return selectedChat.name;
     }
-    
+
     if (selectedChat?.targetUser?.username) {
       return selectedChat.targetUser.username;
     }
-    
+
     return null;
   }, [selectedChat, user]);
 
-
-/*
-useEffect(() => {
-  const handleClickOutside = (event) => {
-    if (showEmojiPicker && !event.target.closest('.EmojiPickerReact')) {
-      setShowEmojiPicker(false);
-    }
-  };
-
-  document.addEventListener('mousedown', handleClickOutside);
-  return () => document.removeEventListener('mousedown', handleClickOutside);
-}, [showEmojiPicker]);
-// Après les autres useEffect (vers la fin du composant, avant les returns), ajoute :
-// ajouter pour supprimer 
-*/
   // Sauvegarder les messages supprimés
   useEffect(() => {
     if (selectedChat?._id && deletedMessages.length > 0) {
       localStorage.setItem(
         `deleted_${selectedChat._id}`,
-        JSON.stringify(deletedMessages)
+        JSON.stringify(deletedMessages),
       );
     }
   }, [deletedMessages, selectedChat?._id]);
@@ -531,10 +570,10 @@ useEffect(() => {
   // Écouter les changements en temps réel via socket
   useEffect(() => {
     if (!socketService.socket || !contactId) return;
-    
+
     window.socket = socketService.socket;
     console.log("🌐 Socket accessible via window.socket");
-    
+
     const handleOnline = ({ userId }) => {
       if (!contactId) return;
       if (String(userId) === String(contactId)) {
@@ -546,13 +585,21 @@ useEffect(() => {
     };
 
     const handleOffline = ({ userId, lastSeen }) => {
-      console.log("🔴 user offline reçu:", userId, lastSeen, "contactId:", contactId);
+      console.log(
+        "🔴 user offline reçu:",
+        userId,
+        lastSeen,
+        "contactId:",
+        contactId,
+      );
       if (!contactId) return;
 
       if (String(userId) === String(contactId)) {
         setContactStatus({
           isOnline: false,
-          lastSeen: lastSeen ? new Date(lastSeen).toISOString() : new Date().toISOString(),
+          lastSeen: lastSeen
+            ? new Date(lastSeen).toISOString()
+            : new Date().toISOString(),
         });
       }
     };
@@ -568,7 +615,7 @@ useEffect(() => {
 
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeStyle, setThemeStyle] = useState({});
-  
+
   useEffect(() => {
     if (!socketService.socket || !selectedChat) return;
 
@@ -589,9 +636,8 @@ useEffect(() => {
   const [bubbleBg, setBubbleBg] = useState("");
   const [sendBtnColor, setSendBtnColor] = useState("");
   const [themeEmojis, setThemeEmojis] = useState([]);
-  //const [inputText, setInputText] = useState("");
-  const [selectedFile, setSelectedFile] = useState(null); 
-  const [filePreview, setFilePreview] = useState(null); 
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState([]);
@@ -599,136 +645,126 @@ useEffect(() => {
   const [searchTerm, setSearchTerm] = useState("");
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showPinnedSection, setShowPinnedSection] = useState(false);
-  
+
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
 
   // ────────────────────────────────────────────────
-// Gestion suppression message (AJOUTER ÇA ICI)
-const handleDeleteForMe = (messageId) => {
-  setDeletedMessages((prev) => {
-    if (prev.includes(messageId)) return prev;
-    return [...prev, messageId];
-  });
-  setShowMessageMenu(null);
-  setShowDeleteModal(false); // ferme le modal directement
-};
-
-const handleDeleteForEveryone = async (messageId) => {
-  try {
-    // Optimistic : affiche déjà le placeholder chez toi immédiatement
-    setDeletedForEveryone((prev) => [...new Set([...prev, messageId])]);
-
-    const token = localStorage.getItem("token");
-    const res = await fetch(`http://localhost:5000/api/messages/${messageId}/delete`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+  // Gestion suppression message
+  const handleDeleteForMe = (messageId) => {
+    setDeletedMessages((prev) => {
+      if (prev.includes(messageId)) return prev;
+      return [...prev, messageId];
     });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      // Erreur → on retire le placeholder chez toi
-      setDeletedForEveryone((prev) => prev.filter((id) => id !== messageId));
-      throw new Error(data.error || "Erreur lors de la suppression");
-    }
-
-    console.log("Message supprimé pour tous :", data);
+    setShowMessageMenu(null);
     setShowDeleteModal(false);
-
-  } catch (err) {
-    console.error("Échec suppression pour tous :", err);
-    // Optionnel : petite notification toast ici si tu veux
-  }
-};
-// ────────────────────────────────────────────────
-
-useEffect(() => {
-  if (!socketService.socket || !selectedChat?._id) return;
-
-  const handleMessageDeleted = (data) => {
-    const { messageId, conversationId: convId } = data;
-
-    if (convId !== selectedChat._id) return;
-
-    // IMPORTANT : on ajoute le message à la liste des supprimés pour tout le monde
-    // → ça va déclencher le placeholder chez TOUT LE MONDE (toi + destinataire)
-    setDeletedForEveryone((prev) => [...new Set([...prev, messageId])]);
-
-    // Petit scroll pour que le placeholder soit visible
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
   };
-  socketService.socket.on("message:deleted", handleMessageDeleted);
-  return () => {
-    socketService.socket.off("message:deleted", handleMessageDeleted);
+
+  const handleDeleteForEveryone = async (messageId) => {
+    try {
+      setDeletedForEveryone((prev) => [...new Set([...prev, messageId])]);
+
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `http://localhost:5000/api/messages/${messageId}/delete`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setDeletedForEveryone((prev) => prev.filter((id) => id !== messageId));
+        throw new Error(data.error || "Erreur lors de la suppression");
+      }
+
+      console.log("Message supprimé pour tous :", data);
+      setShowDeleteModal(false);
+    } catch (err) {
+      console.error("Échec suppression pour tous :", err);
+    }
   };
-}, [selectedChat?._id]);
-// 🔥 NAVIGATION CLAVIER POUR LIGHTBOX MÉDIA kenza 
-useEffect(() => {
-  const handleKeyDown = (e) => {
-    if (!mediaLightboxOpen) return;
-    
-    if (e.key === 'Escape') closeMediaLightbox();
-    if (e.key === 'ArrowLeft') goToPreviousMedia();
-    if (e.key === 'ArrowRight') goToNextMedia();
-};
 
-  window.addEventListener('keydown', handleKeyDown);
-  return () => window.removeEventListener('keydown', handleKeyDown);
-}, [mediaLightboxOpen, mediaList.length]);
+  useEffect(() => {
+    if (!socketService.socket || !selectedChat?._id) return;
 
-// Sauvegarde permanente des suppressions "pour tout le monde"
-useEffect(() => {
-  if (selectedChat?._id && deletedForEveryone.length > 0) {
-    localStorage.setItem(
-      `deletedEveryone_${selectedChat._id}`,
-      JSON.stringify(deletedForEveryone)
-    );
-  }
-}, [deletedForEveryone, selectedChat?._id]);
+    const handleMessageDeleted = (data) => {
+      const { messageId, conversationId: convId } = data;
 
-// Charge les suppressions "pour tout le monde" au démarrage
-useEffect(() => {
-  if (selectedChat?._id) {
-    const saved = localStorage.getItem(`deletedEveryone_${selectedChat._id}`);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setDeletedForEveryone(parsed);
+      if (convId !== selectedChat._id) return;
+
+      setDeletedForEveryone((prev) => [...new Set([...prev, messageId])]);
+
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    };
+    socketService.socket.on("message:deleted", handleMessageDeleted);
+    return () => {
+      socketService.socket.off("message:deleted", handleMessageDeleted);
+    };
+  }, [selectedChat?._id]);
+
+  // 🔥 NAVIGATION CLAVIER POUR LIGHTBOX MÉDIA
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!mediaLightboxOpen) return;
+
+      if (e.key === "Escape") closeMediaLightbox();
+      if (e.key === "ArrowLeft") goToPreviousMedia();
+      if (e.key === "ArrowRight") goToNextMedia();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mediaLightboxOpen, mediaList.length]);
+
+  // Sauvegarde permanente des suppressions "pour tout le monde"
+  useEffect(() => {
+    if (selectedChat?._id && deletedForEveryone.length > 0) {
+      localStorage.setItem(
+        `deletedEveryone_${selectedChat._id}`,
+        JSON.stringify(deletedForEveryone),
+      );
+    }
+  }, [deletedForEveryone, selectedChat?._id]);
+
+  // Charge les suppressions "pour tout le monde" au démarrage
+  useEffect(() => {
+    if (selectedChat?._id) {
+      const saved = localStorage.getItem(`deletedEveryone_${selectedChat._id}`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setDeletedForEveryone(parsed);
+          }
+        } catch (e) {
+          console.error("Erreur chargement deletedEveryone :", e);
         }
-      } catch (e) {
-        console.error("Erreur chargement deletedEveryone :", e);
       }
     }
-  }
-}, [selectedChat?._id]);
-
-    // 🔥 AJOUT : Détection si c'est une demande de message
-    // const otherUserId = selectedChat?.participants?.[0]?._id?.replace('direct_', '') || selectedChat?.participants?.[0]?._id || null;
-    // || selectedChat?.participants?.[0]?._id; // ← fallback important pour nouvelles conversations
-     // fallback si c'est une nouvelle conversation
-  // dernier recours si la clé contient l'ID
-      console.log("selectedChat:", selectedChat);
-  console.log("otherUserId:", otherUserId);
+  }, [selectedChat?._id]);
 
   console.log("selectedChat:", selectedChat);
   console.log("otherUserId:", otherUserId);
 
-  const isMessageRequest = selectedChat?.isMessageRequest === true ||
+  const isMessageRequest =
+    selectedChat?.isMessageRequest === true ||
     selectedChat?.messageRequestForMe === true;
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesContainerRef = useRef(null);
-  
-  const [isConfirmUnblockModalOpen, setIsConfirmUnblockModalOpen] = useState(false);
+
+  const [isConfirmUnblockModalOpen, setIsConfirmUnblockModalOpen] =
+    useState(false);
 
   // Hooks pour la messagerie
   const {
@@ -749,8 +785,13 @@ useEffect(() => {
   const { typingUsers, sendTyping, isTyping } = useTyping(selectedChat?._id);
 
   // Hook pour l'enregistrement audio
-  const { isRecording, recordingTime, startRecording, stopAndSend, cancelRecording } =
-    useAudioRecorder(selectedChat?._id);
+  const {
+    isRecording,
+    recordingTime,
+    startRecording,
+    stopAndSend,
+    cancelRecording,
+  } = useAudioRecorder(selectedChat?._id);
 
   // Charger les messages épinglés
   useEffect(() => {
@@ -758,11 +799,11 @@ useEffect(() => {
 
     const handleSaveCallMessage = async (data) => {
       console.log("💾 [ChatWindow] Enregistrement message d'appel:", data);
-      
+
       try {
         socketService.emit("call-message", {
           ...data,
-          chatId: selectedChat._id
+          chatId: selectedChat._id,
         });
       } catch (error) {
         console.error("❌ Erreur save call message:", error);
@@ -797,10 +838,12 @@ useEffect(() => {
 
     const markMessagesAsSeen = async () => {
       try {
-        // 🔍 Trouver les messages NON VUS de l'autre utilisateur
-        const unreadMessages = messages.filter(msg => {
-          const isFromOther = String(msg.senderId || msg.Id_sender) !== String(user.id);
-          const notSeenByMe = !msg.readBy?.some(r => String(r.userId) === String(user.id));
+        const unreadMessages = messages.filter((msg) => {
+          const isFromOther =
+            String(msg.senderId || msg.Id_sender) !== String(user.id);
+          const notSeenByMe = !msg.readBy?.some(
+            (r) => String(r.userId) === String(user.id),
+          );
           return isFromOther && notSeenByMe;
         });
 
@@ -812,20 +855,20 @@ useEffect(() => {
         console.log(`👁️ ${unreadMessages.length} messages à marquer comme vus`);
 
         const token = localStorage.getItem("token");
-        
+
         const response = await fetch(
           `http://localhost:5000/api/messages/${selectedChat._id}/mark-all-seen`,
           {
             method: "POST",
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json"
-            }
-          }
+              "Content-Type": "application/json",
+            },
+          },
         );
 
         const data = await response.json();
-        
+
         if (data.success) {
           console.log(`✅ ${data.messagesMarked} messages marqués comme vus`);
         }
@@ -834,423 +877,396 @@ useEffect(() => {
       }
     };
 
-    // 🔥 MARQUER IMMÉDIATEMENT au chargement
     const initialTimeout = setTimeout(markMessagesAsSeen, 500);
 
-    // 🔥 RÉÉCOUTER À CHAQUE NOUVEAU MESSAGE
     const messageCheckInterval = setInterval(() => {
       markMessagesAsSeen();
-    }, 1000); // Vérifier toutes les secondes
+    }, 1000);
 
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(messageCheckInterval);
     };
   }, [selectedChat?._id, user?.id, messages]);
-/*
-  const handleInputChange = (e) => {
-    setInputText(e.target.value);
-    if (e.target.value.length > 0) {
-      sendTyping();
-    }
-  };*/
 
   // Envoyer un message
-  // ✅ REMPLACE PAR CECI
-const handleSendMessage = async (text, file) => {
-  try {
-    if (file) {
-      if (file.type.startsWith("image/")) {
-        await sendImage(file);
-      } else if (file.type.startsWith("video/")) {
-        await sendVideo(file);
-      } else {
-        await sendFile(file);
+  const handleSendMessage = async (text, file) => {
+    try {
+      if (file) {
+        if (file.type.startsWith("image/")) {
+          await sendImage(file);
+        } else if (file.type.startsWith("video/")) {
+          await sendVideo(file);
+        } else {
+          await sendFile(file);
+        }
+        setSelectedFile(null);
+        setFilePreview(null);
+        return;
       }
-      setSelectedFile(null);
-      setFilePreview(null);
-      return;
+
+      if (!text || !text.trim()) return;
+
+      sendTyping();
+
+      await sendMessage(text);
+    } catch (error) {
+      console.error("Erreur envoi:", error);
     }
+  };
 
-    if (!text || !text.trim()) return;
-    
-    // 🔥 ENVOYER LE TYPING INDICATOR
-    sendTyping();
-    
-    await sendMessage(text);
-  } catch (error) {
-    console.error("Erreur envoi:", error);
-  }
-};
   // 🔥 OUVRIR LA LIGHTBOX POUR MÉDIA
-const openMediaLightbox = (mediaUrl, mediaType) => {
-  // Récupérer toutes les images et vidéos du chat
-  const allMedia = messages
-    .filter(msg => msg.typeMessage === 'image' || msg.typeMessage === 'video')
-    .map(msg => ({
-      url: msg.content,
-      type: msg.typeMessage
-    }));
-  
-  // Trouver l'index du média cliqué
-  const index = allMedia.findIndex(m => m.url === mediaUrl);
-  
-  setMediaList(allMedia);
-  setCurrentMediaIndex(index !== -1 ? index : 0);
-  setMediaLightboxOpen(true);
-};
+  const openMediaLightbox = (mediaUrl, mediaType) => {
+    const allMedia = messages
+      .filter(
+        (msg) => msg.typeMessage === "image" || msg.typeMessage === "video",
+      )
+      .map((msg) => ({
+        url: msg.content,
+        type: msg.typeMessage,
+      }));
 
-// 🔥 FERMER LA LIGHTBOX
-const closeMediaLightbox = () => {
-  setMediaLightboxOpen(false);
-};
+    const index = allMedia.findIndex((m) => m.url === mediaUrl);
 
-// 🔥 MÉDIA PRÉCÉDENT
-const goToPreviousMedia = () => {
-  setCurrentMediaIndex((prev) => (prev === 0 ? mediaList.length - 1 : prev - 1));
-};
+    setMediaList(allMedia);
+    setCurrentMediaIndex(index !== -1 ? index : 0);
+    setMediaLightboxOpen(true);
+  };
 
-// 🔥 MÉDIA SUIVANT
-const goToNextMedia = () => {
-  setCurrentMediaIndex((prev) => (prev === mediaList.length - 1 ? 0 : prev + 1));
-};
+  // 🔥 FERMER LA LIGHTBOX
+  const closeMediaLightbox = () => {
+    setMediaLightboxOpen(false);
+  };
 
-  const handleFileSelect = (e) => { 
-    const file = e.target.files[0]; 
-    if (!file) return; 
-    
-    setSelectedFile(file); 
-    
-    if (file.type.startsWith("image/") || file.type.startsWith("video/")) { 
-      setFilePreview(URL.createObjectURL(file)); 
-    } else { 
-      setFilePreview(null); 
-    } 
+  // 🔥 MÉDIA PRÉCÉDENT
+  const goToPreviousMedia = () => {
+    setCurrentMediaIndex((prev) =>
+      prev === 0 ? mediaList.length - 1 : prev - 1,
+    );
+  };
+
+  // 🔥 MÉDIA SUIVANT
+  const goToNextMedia = () => {
+    setCurrentMediaIndex((prev) =>
+      prev === mediaList.length - 1 ? 0 : prev + 1,
+    );
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+      setFilePreview(URL.createObjectURL(file));
+    } else {
+      setFilePreview(null);
+    }
   };
 
   // Enregistrement audio
- // Enregistrement audio
-// Enregistrement audio
-const handleMicClick = async () => {
-  if (isRecording) {
-    // Arrêter et envoyer
-    try {
-      console.log('🛑 Arrêt de l\'enregistrement...');
-      
-      const result = await stopAndSend();
-      
-      if (result?.tempId) {
-        console.log('✅ Audio envoyé avec tempId:', result.tempId);
-        
-        // 🔥 Le message temporaire sera créé automatiquement via useMessages
-        // quand le serveur confirmera avec message_sent
+  const handleMicClick = async () => {
+    if (isRecording) {
+      try {
+        console.log("🛑 Arrêt de l'enregistrement...");
+
+        const result = await stopAndSend();
+
+        if (result?.tempId) {
+          console.log("✅ Audio envoyé avec tempId:", result.tempId);
+        }
+      } catch (error) {
+        console.error("❌ Erreur envoi vocal:", error);
+        alert("Erreur lors de l'envoi du message vocal");
       }
-      
-    } catch (error) {
-      console.error('❌ Erreur envoi vocal:', error);
-      alert("Erreur lors de l'envoi du message vocal");
-    }
-  } else {
-    // Démarrer l'enregistrement
-    console.log('▶️ Démarrage de l\'enregistrement...');
-    await startRecording();
-  }
-};/*
-  //imoji
- const onEmojiClick = (emojiObject) => {
-  setInputText((prevInput) => prevInput + emojiObject.emoji);
-  // Optionnel : fermer le picker après sélection
-  // setShowEmojiPicker(false);
-};*/
-//theme discution
- const applyTheme = React.useCallback(async (theme, save = true) => {
-  console.log("Thème sélectionné :", theme);
-  let style = {};
-  setThemeEmojis([]);
-
-
-  const emojisFromTheme = theme?.emojis ?? (theme?.emoji ? [theme.emoji] : null);
- 
- 
-
-  
-
-  // Gestion upload fichier
-  if (theme.type === "upload" && theme.value instanceof File) {
-    const base64 = await fileToBase64(theme.value);
-    style = {
-      backgroundImage: `url(${base64})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-    };
-    setThemeStyle(style);
-    setSendBtnColor("");
-    setBubbleBg("");
-    
-    if (save) {
-      localStorage.setItem(chatKey, JSON.stringify({ ...theme, value: base64 }));
-      // 🆕 SAUVEGARDER DANS LE BACKEND
-      await saveThemeToBackend({ ...theme, value: base64 });
-    }
-    return;
-  }
-
-  // Gestion image (URL ou base64)
-  if ((theme.type === "image" || theme.type === "upload") && typeof theme.value === "string") {
-    style = {
-      backgroundImage: `url(${theme.value})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-    };
-    setThemeStyle(style);
-    setSendBtnColor("");
-    setBubbleBg("");
-    
-    if (save) {
-      localStorage.setItem(chatKey, JSON.stringify(theme));
-      // 🆕 SAUVEGARDER DANS LE BACKEND
-      await saveThemeToBackend(theme);
-    }
-    return;
-  }
-
-  // Gestion couleurs, gradients, saisonniers
-  if (theme.type === "color" || theme.type === "gradient" || theme.type === "seasonal") {
-    style = { background: theme.value };
-    setThemeStyle(style);
-    setBubbleBg(theme.value || "");
-    setSendBtnColor(theme.value || "");
-
-    if (
-      theme.type === "seasonal" &&
-      emojisFromTheme &&
-      Array.isArray(emojisFromTheme) &&
-      emojisFromTheme.length > 0
-    ) {
-      setThemeEmojis(emojisFromTheme);
-      const count = 35;
-      const arr = Array.from({ length: count }).map((_, i) => ({
-        id: `${Date.now()}_${i}`,
-        left: Math.random() * 100,
-        top: Math.random() * 60,
-        size: 12 + Math.random() * 20,
-        speed: 0.25 + Math.random() * 0.6,
-        rotate: (Math.random() - 0.5) * 30,
-        direction: Math.random() > 0.5 ? 1 : -1,
-      }));
-      setFloatingEmojis(arr);
     } else {
+      console.log("▶️ Démarrage de l'enregistrement...");
+      await startRecording();
+    }
+  };
+
+  //theme discution
+  const applyTheme = React.useCallback(
+    async (theme, save = true) => {
+      console.log("Thème sélectionné :", theme);
+      let style = {};
       setThemeEmojis([]);
-      setFloatingEmojis([]);
-    }
 
-    if (save) {
-      localStorage.setItem(chatKey, JSON.stringify(theme));
-      // 🆕 SAUVEGARDER DANS LE BACKEND
-      await saveThemeToBackend(theme);
-    }
-  }
-}, [selectedChat?._id, chatKey]); // 🔥 Ajouter les dépendances
+      const emojisFromTheme =
+        theme?.emojis ?? (theme?.emoji ? [theme.emoji] : null);
 
-// 2️⃣ NOUVELLE FONCTION : Sauvegarder dans le backend
-const saveThemeToBackend = async (theme) => {
-  try {
-    const token = localStorage.getItem("token");
-    
-    console.log("💾 Sauvegarde thème backend:", {
-      conversationId: selectedChat._id,
-      type: theme.type,
-      hasEmojis: theme.emojis?.length > 0,
-    });
+      // Gestion upload fichier
+      if (theme.type === "upload" && theme.value instanceof File) {
+        const base64 = await fileToBase64(theme.value);
+        style = {
+          backgroundImage: `url(${base64})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        };
+        setThemeStyle(style);
+        setSendBtnColor("");
+        setBubbleBg("");
 
-    const response = await fetch("http://localhost:5000/api/themes", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
+        if (save) {
+          localStorage.setItem(
+            chatKey,
+            JSON.stringify({ ...theme, value: base64 }),
+          );
+          await saveThemeToBackend({ ...theme, value: base64 });
+        }
+        return;
+      }
+
+      // Gestion image (URL ou base64)
+      if (
+        (theme.type === "image" || theme.type === "upload") &&
+        typeof theme.value === "string"
+      ) {
+        style = {
+          backgroundImage: `url(${theme.value})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        };
+        setThemeStyle(style);
+        setSendBtnColor("");
+        setBubbleBg("");
+
+        if (save) {
+          localStorage.setItem(chatKey, JSON.stringify(theme));
+          await saveThemeToBackend(theme);
+        }
+        return;
+      }
+
+      // Gestion couleurs, gradients, saisonniers
+      if (
+        theme.type === "color" ||
+        theme.type === "gradient" ||
+        theme.type === "seasonal"
+      ) {
+        style = { background: theme.value };
+        setThemeStyle(style);
+        setBubbleBg(theme.value || "");
+        setSendBtnColor(theme.value || "");
+
+        if (
+          theme.type === "seasonal" &&
+          emojisFromTheme &&
+          Array.isArray(emojisFromTheme) &&
+          emojisFromTheme.length > 0
+        ) {
+          setThemeEmojis(emojisFromTheme);
+          const count = 35;
+          const arr = Array.from({ length: count }).map((_, i) => ({
+            id: `${Date.now()}_${i}`,
+            left: Math.random() * 100,
+            top: Math.random() * 60,
+            size: 12 + Math.random() * 20,
+            speed: 0.25 + Math.random() * 0.6,
+            rotate: (Math.random() - 0.5) * 30,
+            direction: Math.random() > 0.5 ? 1 : -1,
+          }));
+          setFloatingEmojis(arr);
+        } else {
+          setThemeEmojis([]);
+          setFloatingEmojis([]);
+        }
+
+        if (save) {
+          localStorage.setItem(chatKey, JSON.stringify(theme));
+          await saveThemeToBackend(theme);
+        }
+      }
+    },
+    [selectedChat?._id, chatKey],
+  );
+
+  // 2️⃣ NOUVELLE FONCTION : Sauvegarder dans le backend
+  const saveThemeToBackend = async (theme) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      console.log("💾 Sauvegarde thème backend:", {
         conversationId: selectedChat._id,
         type: theme.type,
-        value: theme.value,
-        emojis: theme.emojis || (theme.emoji ? [theme.emoji] : []),
-        name: theme.name || null,
-      }),
-    });
+        hasEmojis: theme.emojis?.length > 0,
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      console.error("❌ Erreur sauvegarde thème:", error);
-      return;
-    }
-
-    const data = await response.json();
-    console.log("✅ Thème sauvegardé avec succès:", data);
-  } catch (error) {
-    console.error("💥 Erreur réseau sauvegarde thème:", error);
-  }
-};
-
-// 3️⃣ NOUVELLE FONCTION : Charger depuis le backend
-const loadThemeFromBackend = React.useCallback(async () => {
-  try {
-    const token = localStorage.getItem("token");
-    
-    console.log("📥 Chargement thème backend pour:", selectedChat._id);
-
-    const response = await fetch(
-      `http://localhost:5000/api/themes/${selectedChat._id}`,
-      {
+      const response = await fetch("http://localhost:5000/api/themes", {
+        method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-      }
-    );
+        body: JSON.stringify({
+          conversationId: selectedChat._id,
+          type: theme.type,
+          value: theme.value,
+          emojis: theme.emojis || (theme.emoji ? [theme.emoji] : []),
+          name: theme.name || null,
+        }),
+      });
 
-    if (!response.ok) {
-      console.log("ℹ️ Pas de thème en backend, utilisation localStorage");
-      
-      // Fallback sur localStorage
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("❌ Erreur sauvegarde thème:", error);
+        return;
+      }
+
+      const data = await response.json();
+      console.log("✅ Thème sauvegardé avec succès:", data);
+    } catch (error) {
+      console.error("💥 Erreur réseau sauvegarde thème:", error);
+    }
+  };
+
+  // 3️⃣ NOUVELLE FONCTION : Charger depuis le backend
+  const loadThemeFromBackend = React.useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      console.log("📥 Chargement thème backend pour:", selectedChat._id);
+
+      const response = await fetch(
+        `http://localhost:5000/api/themes/${selectedChat._id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        console.log("ℹ️ Pas de thème en backend, utilisation localStorage");
+
+        const savedTheme = localStorage.getItem(chatKey);
+        if (savedTheme) {
+          const parsed = JSON.parse(savedTheme);
+          applyTheme(parsed, false);
+        }
+        return;
+      }
+
+      const data = await response.json();
+      console.log("✅ Thème chargé depuis backend:", data);
+
+      if (data.success && data.data) {
+        const theme = {
+          type: data.data.type,
+          value: data.data.value,
+          emojis: data.data.emojis,
+          name: data.data.name,
+        };
+
+        applyTheme(theme, false);
+
+        localStorage.setItem(chatKey, JSON.stringify(theme));
+      }
+    } catch (error) {
+      console.error("💥 Erreur chargement thème:", error);
+
       const savedTheme = localStorage.getItem(chatKey);
       if (savedTheme) {
         const parsed = JSON.parse(savedTheme);
         applyTheme(parsed, false);
       }
-      return;
     }
+  }, [selectedChat?._id, chatKey, applyTheme]);
 
-    const data = await response.json();
-    console.log("✅ Thème chargé depuis backend:", data);
-
-    if (data.success && data.data) {
-      const theme = {
-        type: data.data.type,
-        value: data.data.value,
-        emojis: data.data.emojis,
-        name: data.data.name,
-      };
-      
-      // Appliquer le thème SANS sauvegarder (déjà en DB)
-      applyTheme(theme, false);
-      
-      // Sync localStorage pour cohérence
-      localStorage.setItem(chatKey, JSON.stringify(theme));
-    }
-  } catch (error) {
-    console.error("💥 Erreur chargement thème:", error);
-    
-    // Fallback sur localStorage
-    const savedTheme = localStorage.getItem(chatKey);
-    if (savedTheme) {
-      const parsed = JSON.parse(savedTheme);
-      applyTheme(parsed, false);
-    }
-  }
-}, [selectedChat?._id, chatKey, applyTheme]); // 🔥 Ajouter les dépendances
-
-// 4️⃣ MODIFIER removeTheme pour supprimer aussi du backend
-const removeTheme = async () => {
-  setThemeStyle({});
-  setBubbleBg("");
-  setSendBtnColor("");
-  setThemeEmojis([]);
-  setFloatingEmojis([]);
-  localStorage.removeItem(chatKey);
-  
-  // 🆕 SUPPRIMER AUSSI DU BACKEND
-  try {
-    const token = localStorage.getItem("token");
-    
-    const response = await fetch(
-      `http://localhost:5000/api/themes/${selectedChat._id}`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (response.ok) {
-      console.log("✅ Thème supprimé du backend");
-    } else {
-      console.error("❌ Erreur suppression thème backend");
-    }
-  } catch (error) {
-    console.error("💥 Erreur réseau suppression thème:", error);
-  }
-};
-
-// 5️⃣ MODIFIER le useEffect de chargement (REMPLACER l'ancien)
-useEffect(() => {
-  if (selectedChat?._id) {
-    loadThemeFromBackend();
-  }
-}, [selectedChat?._id, loadThemeFromBackend]); // 🔥 Ajouter loadThemeFromBackend
-
-// 6️⃣ AJOUTER useEffect pour écouter les changements Socket.io (si pas déjà fait)
-useEffect(() => {
-  if (!socketService.socket || !selectedChat) return;
-
-  const handleThemeChanged = ({ conversationId, theme }) => {
-    if (conversationId === selectedChat._id) {
-      console.log("🎨 Thème reçu via socket:", theme);
-      
-      // Appliquer le thème reçu SANS sauvegarder (déjà fait par l'émetteur)
-      applyTheme(theme, false);
-      
-      // Sync localStorage
-      localStorage.setItem(chatKey, JSON.stringify(theme));
-    }
-  };
-
-
-  const handleThemeRemoved = ({ conversationId }) => {
-    if (conversationId === selectedChat._id) {
-      console.log("🗑️ Thème supprimé via socket");
-      
-      // Réinitialiser
-      setThemeStyle({});
-      setBubbleBg("");
-      setSendBtnColor("");
-      setThemeEmojis([]);
-      setFloatingEmojis([]);
-      localStorage.removeItem(chatKey);
-    }
-  };
-
-  socketService.socket.on("themeChanged", handleThemeChanged);
-  socketService.socket.on("themeRemoved", handleThemeRemoved);
-
-  return () => {
-    socketService.socket.off("themeChanged", handleThemeChanged);
-    socketService.socket.off("themeRemoved", handleThemeRemoved);
-  };
-}, [selectedChat, chatKey, applyTheme]); // 🔥 Ajouter les dépendances
-  
-  // Charger le thème sauvegardé
-  useEffect(() => {
-  // 🔥 RÉINITIALISER D'ABORD LE THÈME
-  const resetTheme = () => {
+  // 4️⃣ MODIFIER removeTheme pour supprimer aussi du backend
+  const removeTheme = async () => {
     setThemeStyle({});
     setBubbleBg("");
     setSendBtnColor("");
     setThemeEmojis([]);
     setFloatingEmojis([]);
+    localStorage.removeItem(chatKey);
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `http://localhost:5000/api/themes/${selectedChat._id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.ok) {
+        console.log("✅ Thème supprimé du backend");
+      } else {
+        console.error("❌ Erreur suppression thème backend");
+      }
+    } catch (error) {
+      console.error("💥 Erreur réseau suppression thème:", error);
+    }
   };
 
-  // Réinitialiser avant de charger le nouveau thème
-  resetTheme();
+  useEffect(() => {
+    if (selectedChat?._id) {
+      loadThemeFromBackend();
+    }
+  }, [selectedChat?._id, loadThemeFromBackend]);
 
-  // Charger le thème de la conversation actuelle
-  if (selectedChat?._id) {
-    loadThemeFromBackend();
-  }
-}, [selectedChat?._id, loadThemeFromBackend]);
+  useEffect(() => {
+    if (!socketService.socket || !selectedChat) return;
 
-  // Charger le thème sauvegardé jcp si je garde
+    const handleThemeChanged = ({ conversationId, theme }) => {
+      if (conversationId === selectedChat._id) {
+        console.log("🎨 Thème reçu via socket:", theme);
+
+        applyTheme(theme, false);
+
+        localStorage.setItem(chatKey, JSON.stringify(theme));
+      }
+    };
+
+    const handleThemeRemoved = ({ conversationId }) => {
+      if (conversationId === selectedChat._id) {
+        console.log("🗑️ Thème supprimé via socket");
+
+        setThemeStyle({});
+        setBubbleBg("");
+        setSendBtnColor("");
+        setThemeEmojis([]);
+        setFloatingEmojis([]);
+        localStorage.removeItem(chatKey);
+      }
+    };
+
+    socketService.socket.on("themeChanged", handleThemeChanged);
+    socketService.socket.on("themeRemoved", handleThemeRemoved);
+
+    return () => {
+      socketService.socket.off("themeChanged", handleThemeChanged);
+      socketService.socket.off("themeRemoved", handleThemeRemoved);
+    };
+  }, [selectedChat, chatKey, applyTheme]);
+
+  // Charger le thème sauvegardé
+  useEffect(() => {
+    const resetTheme = () => {
+      setThemeStyle({});
+      setBubbleBg("");
+      setSendBtnColor("");
+      setThemeEmojis([]);
+      setFloatingEmojis([]);
+    };
+
+    resetTheme();
+
+    if (selectedChat?._id) {
+      loadThemeFromBackend();
+    }
+  }, [selectedChat?._id, loadThemeFromBackend]);
+
+  // Charger le thème sauvegardé
   useEffect(() => {
     const savedTheme = localStorage.getItem(chatKey);
     if (savedTheme) {
@@ -1262,7 +1278,6 @@ useEffect(() => {
       }
     }
   }, [selectedChat]);
-
 
   // Animation des emojis flottants
   useEffect(() => {
@@ -1296,9 +1311,9 @@ useEffect(() => {
       ? "bg-myYellow2 dark:bg-mydarkYellow text-myBlack rounded-t-lg rounded-bl-lg rounded-br-none px-4 py-4 text-xs"
       : "bg-myGray4 dark:bg-[#2E2F2F] text-myBlack dark:!text-white rounded-t-lg rounded-br-lg rounded-bl-none px-4 py-4 text-xs";
 
- // 🔥 CORRECTION : Nom de la conversation
+  // 🔥 CORRECTION : Nom de la conversation
   const conversationName = React.useMemo(() => {
-    if (selectedChat?.type === 'group') {
+    if (selectedChat?.type === "group") {
       return selectedChat?.name || "Groupe";
     }
     return otherUserName || selectedChat?.name || "Utilisateur";
@@ -1306,373 +1321,436 @@ useEffect(() => {
 
   // 🔥 CORRECTION : Avatar de la conversation
   const conversationAvatar = React.useMemo(() => {
-    if (selectedChat?.type === 'group') {
-      return selectedChat?.groupPic || selectedChat?.avatar || "/group-avatar.png";
+    if (selectedChat?.type === "group") {
+      return (
+        selectedChat?.groupPic || selectedChat?.avatar || "/group-avatar.png"
+      );
     }
 
     if (selectedChat?.targetUser?.profilePicture) {
       return selectedChat.targetUser.profilePicture;
     }
 
-    const fromParticipants = selectedChat?.participants?.find(
-      (p) => {
-        const pid = p._id || p.id;
-        const uid = otherUserId;
-        return pid && uid && String(pid) === String(uid);
-      }
-    )?.profilePicture;
-    
+    const fromParticipants = selectedChat?.participants?.find((p) => {
+      const pid = p._id || p.id;
+      const uid = otherUserId;
+      return pid && uid && String(pid) === String(uid);
+    })?.profilePicture;
+
     if (fromParticipants) {
       console.log("✅ Photo trouvée dans participants:", fromParticipants);
       return fromParticipants;
     }
-    
+
     console.log("❌ Aucune photo trouvée, utilisation par défaut");
     return "/default-avatar.png";
   }, [selectedChat, otherUserId]);
-  
+
   // Avatar de l'autre utilisateur pour l'indicateur
   const otherUserAvatar = selectedChat?.isGroup
     ? "/group-avatar.png"
-    : selectedChat?.participants?.find(
-        participant => {
-          const participantId = participant._id || participant.id;
-          const currentUserId = user?._id || user?.id || user?.userId;
-          return String(participantId) !== String(currentUserId);
-        }
-      )?.profilePicture || "/default-avatar.png";
+    : selectedChat?.participants?.find((participant) => {
+        const participantId = participant._id || participant.id;
+        const currentUserId = user?._id || user?.id || user?.userId;
+        return String(participantId) !== String(currentUserId);
+      })?.profilePicture || "/default-avatar.png";
 
   // Composant MessageBubble
-  const MessageBubble = React.memo(({ msg, deletedMessages, setDeletedMessages }) => {
-     
-  const longPressTimer = useRef(null);
+  const MessageBubble = React.memo(
+    ({ msg, deletedMessages, setDeletedMessages }) => {
+      const longPressTimer = useRef(null);
 
-  const startLongPress = () => {
-    longPressTimer.current = setTimeout(() => {
-      setShowMessageMenu(msg._id);
-    }, 500); // ← Retire le ); en trop ici
-  };
+      const startLongPress = () => {
+        longPressTimer.current = setTimeout(() => {
+          setShowMessageMenu(msg._id);
+        }, 500); // ← Retire le ); en trop ici
+      };
 
-  const cancelLongPress = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
-
-    // Détermination robuste de l'expéditeur
-    const currentUserId = user?._id || user?.id || user?.userId;
-
-    const rawSender =
-      msg.senderId || msg.sender || msg.Id_sender || msg.Id_User || msg.userId;
-
-    const messageSenderId =
-      typeof rawSender === "object" && rawSender !== null ? rawSender._id : rawSender;
-
-    const fromMe =
-      currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
-
-    const { reactions, addReaction, removeReaction } = useReactions(msg._id);
-
-    const textColor = fromMe
-      ? bubbleBg
-        ? isDarkColor(bubbleBg)
-          ? "#fff"
-          : "#000"
-        : "#000"
-      : themeStyle.backgroundImage
-      ? "#000"
-      : themeStyle.background
-      ? isDarkColor(themeStyle.background)
-        ? "#fff"
-        : "#000"
-      : "#000";
-
-    const isMatch =
-      searchTerm && msg.content?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const messageTime = new Date(msg.createdAt).toLocaleTimeString("fr-FR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const handleAddReaction = async (emoji) => {
-      try {
-        await addReaction(emoji);
-        setShowReactionPicker(null);
-      } catch (error) {
-        console.error("Erreur ajout réaction:", error);
-      }
-    };
-
-    const handlePinMessage = async () => {
-      try {
-        if (msg.isPinned) {
-          await unpinMessage(msg._id);
-        } else {
-          await pinMessage(msg._id);
+      const cancelLongPress = () => {
+        if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
         }
-        setShowMessageMenu(null);
-      } catch (error) {
-        console.error("Erreur épinglage:", error);
-      }
-    };
-    
-    const handleDeleteMessage = (msgId) => {
-      if (window.confirm("Supprimer ce message pour moi ?")) {
-        setDeletedMessages(prev => [...prev, msgId]);
-        setShowMessageMenu(null);
-      }
-    };
+      };
 
-    return (
-      <div className={`flex ${fromMe ? "justify-end" : "justify-start"} group`}>
-        <div className="flex flex-col max-w-[85%] relative">
-          {!fromMe && selectedChat?.isGroup && (
-            <p className="text-[10px] ml-1 mb-1 text-gray-700 dark:text-gray-300">
-              {msg.senderUsername || msg.senderId?.username || "Utilisateur"}
-            </p>
-          )}
+      // Détermination robuste de l'expéditeur
+      const currentUserId = user?._id || user?.id || user?.userId;
 
-          <div className="relative">
-            <div
-              id={`message-${msg._id}`}
-              className={`${bubbleClasses(fromMe)} ${
-                isMatch ? "ring-2 ring-blue-400" : ""
-              } cursor-pointer`}
-       style={{
-  background: fromMe && !themeStyle.backgroundImage // ← Condition ajoutée
-    ? bubbleBg || themeStyle.background || "#FFECA1"
-    : undefined,
+      const rawSender =
+        msg.senderId ||
+        msg.sender ||
+        msg.Id_sender ||
+        msg.Id_User ||
+        msg.userId;
 
-  color: textColor,
+      const messageSenderId =
+        typeof rawSender === "object" && rawSender !== null
+          ? rawSender._id
+          : rawSender;
 
-  border: fromMe && !themeStyle.backgroundImage // ← Condition ajoutée
-    ? bubbleBg || themeStyle.background
-      ? `1px solid ${adjustColor(bubbleBg || themeStyle.background || "#FAFAFA", -40)}`
-      : undefined
-    : undefined,
+      const fromMe =
+        currentUserId &&
+        messageSenderId &&
+        String(currentUserId) === String(messageSenderId);
 
-  boxShadow: "none", // ← Enlever le boxShadow pour les images
-}}
+      const { reactions, addReaction, removeReaction } = useReactions(msg._id);
 
+      const textColor = fromMe
+        ? bubbleBg
+          ? isDarkColor(bubbleBg)
+            ? "#fff"
+            : "#000"
+          : "#000"
+        : themeStyle.backgroundImage
+          ? "#000"
+          : themeStyle.background
+            ? isDarkColor(themeStyle.background)
+              ? "#fff"
+              : "#000"
+            : "#000";
 
+      const isMatch =
+        searchTerm &&
+        msg.content?.toLowerCase().includes(searchTerm.toLowerCase());
 
-              onMouseDown={startLongPress}
-              onMouseUp={cancelLongPress}
-              onMouseLeave={cancelLongPress}
-              onTouchStart={startLongPress}
-              onTouchEnd={cancelLongPress}
-              onClick={() => {
-                if (showMessageMenu === msg._id) setShowMessageMenu(null);
-              }}
-            >
-              {msg.isPinned && (
-                <Pin
-                  size={12}
-                  className="absolute -top-1 -right-1 text-myYellow"
-                />
-              )}
+      const messageTime = new Date(msg.createdAt).toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 
-              {msg.typeMessage === "text" && msg.content}
+      const handleAddReaction = async (emoji) => {
+        try {
+          await addReaction(emoji);
+          setShowReactionPicker(null);
+        } catch (error) {
+          console.error("Erreur ajout réaction:", error);
+        }
+      };
 
-              {msg.typeMessage === "image" && (
-                <img
-                  src={msg.content} 
-                  alt="image"
-                  className="max-w-full rounded mt-1 cursor-pointer" 
-                  style={{ maxHeight: "300px" }}
-                  onClick={() => openMediaLightbox(msg.content, 'image')} 
-                />
-              )}
+      const handlePinMessage = async () => {
+        try {
+          if (msg.isPinned) {
+            await unpinMessage(msg._id);
+          } else {
+            await pinMessage(msg._id);
+          }
+          setShowMessageMenu(null);
+        } catch (error) {
+          console.error("Erreur épinglage:", error);
+        }
+      };
 
-              {msg.typeMessage === "video" && (
-                <video
-                  src={msg.content} 
-                  controls
-                   className="max-w-full rounded mt-1 cursor-pointer" 
-                  style={{ maxHeight: "300px" }}
-                  onClick={() => openMediaLightbox(msg.content, 'video')} 
+      const handleDeleteMessage = (msgId) => {
+        if (window.confirm("Supprimer ce message pour moi ?")) {
+          setDeletedMessages((prev) => [...prev, msgId]);
+          setShowMessageMenu(null);
+        }
+      };
 
-                />
-              )}
+      return (
+        <div
+          className={`flex ${fromMe ? "justify-end" : "justify-start"} group`}
+        >
+          <div className="flex flex-col max-w-[85%] relative">
+            {!fromMe && selectedChat?.isGroup && (
+              <p className="text-[10px] ml-1 mb-1 text-gray-700 dark:text-gray-300">
+                {msg.senderUsername || msg.senderId?.username || "Utilisateur"}
+              </p>
+            )}
 
-              {msg.typeMessage === "audio" && (
-                 
-                <AudioMessage   key={msg._id} src={msg.content || msg.fileUrl} />
-              )}
-              {msg.typeMessage === "file" && (
-<a
-  href={msg.content}
-  download={msg.fileName || t("file.default_name")}
-  className="flex items-center gap-1 p-1
+            <div className="relative">
+              <div
+                id={`message-${msg._id}`}
+                className={`${bubbleClasses(fromMe)} ${
+                  isMatch ? "ring-2 ring-blue-400" : ""
+                } cursor-pointer`}
+                style={{
+                  background:
+                    fromMe && !themeStyle.backgroundImage
+                      ? bubbleBg || themeStyle.background || "#FFECA1"
+                      : undefined,
+
+                  color: textColor,
+
+                  border:
+                    fromMe && !themeStyle.backgroundImage
+                      ? bubbleBg || themeStyle.background
+                        ? `1px solid ${adjustColor(bubbleBg || themeStyle.background || "#FAFAFA", -40)}`
+                        : undefined
+                      : undefined,
+
+                  boxShadow: "none",
+                }}
+                onMouseDown={startLongPress}
+                onMouseUp={cancelLongPress}
+                onMouseLeave={cancelLongPress}
+                onTouchStart={startLongPress}
+                onTouchEnd={cancelLongPress}
+                onClick={() => {
+                  if (showMessageMenu === msg._id) setShowMessageMenu(null);
+                }}
+              >
+                {msg.isPinned && (
+                  <Pin
+                    size={12}
+                    className="absolute -top-1 -right-1 text-myYellow"
+                  />
+                )}
+
+                {/* 🔥 AFFICHAGE DU SONDAGE */}
+                {msg.typeMessage === "poll" &&
+                  (() => {
+                    // Récupérer le sondage par son ID
+                    let pollId =
+                      msg.pollRef || msg.poll?._id || msg.content?.poll?._id;
+
+                    // Si pollId est un objet, extraire l'ID
+                    if (pollId && typeof pollId === "object") {
+                      pollId = pollId._id;
+                    }
+
+                    const poll = pollId ? getPollById(pollId) : null;
+
+                    if (!poll) {
+                      // Fallback : utiliser les données du message
+                      const pollData = msg.poll ||
+                        msg.content?.poll || {
+                          _id: msg._id,
+                          question: msg.content || "Sondage",
+                          options: [],
+                          isClosed: false,
+                          createdBy: msg.senderId || msg.Id_sender,
+                        };
+
+                      return (
+                        <PollMessage
+                          poll={pollData}
+                          onVote={(optionIndexes) =>
+                            handleVotePoll(pollData._id, optionIndexes)
+                          }
+                          currentUserId={user?._id || user?.id}
+                          onClose={() => closePoll(pollData._id)}
+                          onDelete={() => deletePoll(pollData._id)}
+                          isCreator={
+                            String(pollData.createdBy) ===
+                            String(user?._id || user?.id)
+                          }
+                        />
+                      );
+                    }
+
+                    return (
+                      <PollMessage
+                        poll={poll}
+                        onVote={(optionIndexes) =>
+                          handleVotePoll(poll._id, optionIndexes)
+                        }
+                        currentUserId={user?._id || user?.id}
+                        onClose={() => closePoll(poll._id)}
+                        onDelete={() => deletePoll(poll._id)}
+                        isCreator={
+                          String(poll.createdBy?._id || poll.createdBy) ===
+                          String(user?._id || user?.id)
+                        }
+                      />
+                    );
+                  })()}
+
+                {msg.typeMessage === "text" && msg.content}
+
+                {msg.typeMessage === "image" && (
+                  <img
+                    src={msg.content}
+                    alt="image"
+                    className="max-w-full rounded mt-1 cursor-pointer"
+                    style={{ maxHeight: "300px" }}
+                    onClick={() => openMediaLightbox(msg.content, "image")}
+                  />
+                )}
+
+                {msg.typeMessage === "video" && (
+                  <video
+                    src={msg.content}
+                    controls
+                    className="max-w-full rounded mt-1 cursor-pointer"
+                    style={{ maxHeight: "300px" }}
+                    onClick={() => openMediaLightbox(msg.content, "video")}
+                  />
+                )}
+
+                {msg.typeMessage === "audio" && (
+                  <AudioMessage
+                    key={msg._id}
+                    src={msg.content || msg.fileUrl}
+                  />
+                )}
+                {msg.typeMessage === "file" && (
+                  <a
+                    href={msg.content}
+                    download={msg.fileName || t("file.default_name")}
+                    className="flex items-center gap-1 p-1
              rounded-lg bg-gray-100 dark:bg-neutral-800
              border border-gray-300 dark:border-neutral-700
              shadow-sm hover:bg-gray-200 dark:hover:bg-neutral-700
              transition w-fit max-w-[230px]"
->
-  {/* Icône plus petite */}
-  <div className="text-lg">📄</div>
+                  >
+                    <div className="text-lg">📄</div>
 
-  {/* Texte */}
-  <div className="flex flex-col">
-    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[150px]">
-     {msg.fileName || t("file.default_name")}
-    </span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[150px]">
+                        {msg.fileName || t("file.default_name")}
+                      </span>
 
-    <span className="text-[10px] text-gray-500 dark:text-gray-400">
-      {t("file.download")}
-    </span>
-  </div>
-</a>
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                        {t("file.download")}
+                      </span>
+                    </div>
+                  </a>
+                )}
 
+                {msg.typeMessage === "call" && (
+                  <CallMessage
+                    callType={msg.callType}
+                    callResult={msg.callResult}
+                    duration={msg.duration}
+                    fromMe={fromMe}
+                  />
+                )}
+              </div>
+
+              {showMessageMenu === msg._id && (
+                <div
+                  className={`message-menu absolute ${
+                    fromMe ? "right-0" : "left-0"
+                  } top-full mt-1 bg-white dark:bg-neutral-800 rounded-lg shadow-xl z-50 py-1 min-w-[150px]`}
+                >
+                  <button
+                    onClick={() => {
+                      console.log("🟡 click Réagir pour", msg._id);
+                      setShowReactionPicker(msg._id);
+                      setShowMessageMenu(null);
+                    }}
+                    className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
+                  >
+                    <Smile size={16} /> {t("react")}
+                  </button>
+                  <button
+                    onClick={handlePinMessage}
+                    className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
+                  >
+                    <Pin size={16} /> {msg.isPinned ? t("unpin") : t("pin")}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMessageToForward(msg);
+                      setSelectedTargetConversation(null);
+                      setShowForwardModal(true);
+                      setShowMessageMenu(null);
+                    }}
+                    className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
+                  >
+                    <CornerUpRight size={16} /> {t("forward")}
+                  </button>
+                  {fromMe && (
+                    <button
+                      onClick={() => {
+                        setMessageToDelete(msg._id);
+                        setShowDeleteModal(true);
+                        setShowMessageMenu(null);
+                      }}
+                      className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
+                    >
+                      <Trash2 size={16} />
+                      {t("delete")}
+                    </button>
+                  )}
+                </div>
               )}
 
-              {msg.typeMessage === "call" && (
-                <CallMessage
-                  callType={msg.callType}
-                  callResult={msg.callResult}
-                  duration={msg.duration}
-                  fromMe={fromMe}
-                />
+              {showReactionPicker === msg._id && (
+                <div
+                  className={`reaction-picker absolute ${
+                    fromMe ? "right-0" : "left-0"
+                  } top-full mt-1 bg-white dark:bg-neutral-800 rounded-full shadow-xl z-50 px-2 py-1 flex gap-1`}
+                >
+                  {EMOJI_REACTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleAddReaction(emoji)}
+                      className="text-xl hover:scale-125 transition-transform p-1"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
-            {showMessageMenu === msg._id && (
-              <div
-                className={`message-menu absolute ${
-                  fromMe ? "right-0" : "left-0"
-                } top-full mt-1 bg-white dark:bg-neutral-800 rounded-lg shadow-xl z-50 py-1 min-w-[150px]`}
-              >
-                <button
-                  onClick={() => {
-                    console.log("🟡 click Réagir pour", msg._id);
-                    setShowReactionPicker(msg._id);
-                    setShowMessageMenu(null);
-                  }}
-                  className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
-                >
-                  <Smile size={16} /> {t("react")}
-                </button>
-                <button
-                  onClick={handlePinMessage}
-                  className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
-                >
-                  <Pin size={16} />{" "}
-                  
-                  {msg.isPinned ? t("unpin") : t("pin")}
-
-                </button>
-                <button
-                  onClick={() => {
-                    setMessageToForward(msg);
-                    setSelectedTargetConversation(null);
-                    setShowForwardModal(true);
-                    setShowMessageMenu(null);
-                  }}
-                  className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-white"
-                >
-                  <CornerUpRight size={16} /> {t("forward")}
-                </button>
-                {fromMe && (
-                  <button
-                    onClick={() => {
-                      setMessageToDelete(msg._id);           // On garde l'ID du message
-                      setShowDeleteModal(true);              // Ouvre le modal
-                      setShowMessageMenu(null);              // Ferme le menu contextuel
-                    }}
-                    className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
+            {reactions && reactions.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {reactions.map((reaction) => (
+                  <div
+                    key={reaction._id}
+                    className="bg-white dark:bg-neutral-700 rounded-full px-2 py-0.5 text-xs flex items-center gap-1 shadow-sm"
                   >
-                    <Trash2 size={16} />{t("delete")}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {showReactionPicker === msg._id && (
-              <div
-                className={`reaction-picker absolute ${
-                  fromMe ? "right-0" : "left-0"
-                } top-full mt-1 bg-white dark:bg-neutral-800 rounded-full shadow-xl z-50 px-2 py-1 flex gap-1`}
-              >
-                {EMOJI_REACTIONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => handleAddReaction(emoji)}
-                    className="text-xl hover:scale-125 transition-transform p-1"
-                  >
-                    {emoji}
-                  </button>
+                    <span>{reaction.emoji}</span>
+                    {reaction.id_user && (
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {reaction.id_user.username}
+                      </span>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
-          </div>
 
-          {reactions && reactions.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {reactions.map((reaction) => (
-                <div
-                  key={reaction._id}
-                  className="bg-white dark:bg-neutral-700 rounded-full px-2 py-0.5 text-xs flex items-center gap-1 shadow-sm"
-                >
-                  <span>{reaction.emoji}</span>
-                  {reaction.id_user && (
-                    <span className="text-gray-600 dark:text-gray-300">
-                      {reaction.id_user.username}
+            <div
+              className={`text-[10px] mt-1 flex items-center gap-1.5 ${
+                fromMe ? "justify-end" : "justify-start"
+              } text-gray-500 dark:text-gray-400`}
+            >
+              <span>{messageTime}</span>
+
+              {fromMe && (
+                <span className="flex items-center gap-1">
+                  {msg._id.startsWith("pending_") ||
+                  msg.status === "sending" ? (
+                    <span className="flex items-center gap-1 text-gray-400">
+                      ✓
                     </span>
+                  ) : msg.status === "seen" ||
+                    (msg.readBy && msg.readBy.length > 0) ? (
+                    <span className="text-blue-500">✓✓✓</span>
+                  ) : (
+                    <span className="text-gray-400">✓✓</span>
                   )}
-                </div>
-              ))}
+                </span>
+              )}
             </div>
-          )}
-
-          <div
-            className={`text-[10px] mt-1 flex items-center gap-1.5 ${
-              fromMe ? "justify-end" : "justify-start"
-            } text-gray-500 dark:text-gray-400`}
-          >
-            <span>{messageTime}</span>
-
-            {fromMe && (
-               <span className="flex items-center gap-1">
-                {msg._id.startsWith("pending_") || msg.status === "sending" ? (
-                  <span className="flex items-center gap-1 text-gray-400">
-                    ✓
-                  </span>
-                ) : msg.status === "seen" || (msg.readBy && msg.readBy.length > 0) ? (
-                  // 👁️ VU - DOUBLE COCHE BLEUE
-                  <span className="text-blue-500">✓✓✓</span>
-                ) : (
-                  // Envoyé - DOUBLE COCHE GRISE
-                  <span className="text-gray-400">✓✓</span>
-                )}
-              </span>
-            )}
           </div>
         </div>
-      </div>
-    );
-  },(prevProps, nextProps) => {
-    // 🔥 COMPARAISON STRICTE - ne re-render que si le message lui-même change
-    const msgUnchanged = 
-      prevProps.msg._id === nextProps.msg._id &&
-      prevProps.msg.content === nextProps.msg.content &&
-      prevProps.msg.status === nextProps.msg.status &&
-      prevProps.msg.typeMessage === nextProps.msg.typeMessage &&
-      prevProps.msg.isPinned === nextProps.msg.isPinned &&
-      prevProps.msg.createdAt === nextProps.msg.createdAt;
-    
-    // Ignorer deletedMessages pour les messages audio
-    if (prevProps.msg.typeMessage === 'audio') {
-      return msgUnchanged;
-    }
-    
-    // Pour les autres messages, vérifier aussi deletedMessages
-    return msgUnchanged && 
-      prevProps.deletedMessages.includes(prevProps.msg._id) === 
-      nextProps.deletedMessages.includes(nextProps.msg._id);
-  }
-   );
+      );
+    },
+    (prevProps, nextProps) => {
+      const msgUnchanged =
+        prevProps.msg._id === nextProps.msg._id &&
+        prevProps.msg.content === nextProps.msg.content &&
+        prevProps.msg.status === nextProps.msg.status &&
+        prevProps.msg.typeMessage === nextProps.msg.typeMessage &&
+        prevProps.msg.isPinned === nextProps.msg.isPinned &&
+        prevProps.msg.createdAt === nextProps.msg.createdAt;
+
+      if (prevProps.msg.typeMessage === "audio") {
+        return msgUnchanged;
+      }
+
+      return (
+        msgUnchanged &&
+        prevProps.deletedMessages.includes(prevProps.msg._id) ===
+          nextProps.deletedMessages.includes(nextProps.msg._id)
+      );
+    },
+  );
 
   if (loading) {
     return (
@@ -1720,7 +1798,6 @@ useEffect(() => {
           );
         })}
       </div>
-
       {/* HEADER */}
       <header className="flex items-center justify-between px-2 py-2 border-b border-gray-300 dark:border-gray-700 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
         <div className="flex items-center gap-2 min-w-0">
@@ -1744,7 +1821,9 @@ useEffect(() => {
                   {contactStatus.isOnline && (
                     <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
                   )}
-                  <span className="text-gray-500 text-xs">{getUserStatusText()}</span>
+                  <span className="text-gray-500 text-xs">
+                    {getUserStatusText()}
+                  </span>
                 </span>
               )}
             </div>
@@ -1756,8 +1835,8 @@ useEffect(() => {
             size={16}
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-green-500 dark:hover:text-green-400 transition-colors"
             onClick={() => {
-              console.log('📞 [ChatWindow] Lancement appel AUDIO');
-              
+              console.log("📞 [ChatWindow] Lancement appel AUDIO");
+
               setStartOutgoingCallType(null);
               setTimeout(() => {
                 setStartOutgoingCallType("audio");
@@ -1769,8 +1848,8 @@ useEffect(() => {
             size={16}
             className="text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
             onClick={() => {
-              console.log('🎬 [ChatWindow] Lancement appel VIDÉO');
-              
+              console.log("🎬 [ChatWindow] Lancement appel VIDÉO");
+
               setStartOutgoingCallType(null);
               setTimeout(() => {
                 setStartOutgoingCallType("video");
@@ -1778,8 +1857,28 @@ useEffect(() => {
             }}
           />
 
-          <button onClick={() => setShowPad(true)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Ouvrir le pad collaboratif" > <FileText size={16} className="text-gray-600 dark:text-gray-300" /> </button>
-          
+          {/* 🔥 BOUTON POUR CRÉER UN SONDAGE (VISIBLE UNIQUEMENT POUR LES GROUPES) */}
+          {(selectedChat?.isGroup || selectedChat?.type === "group") && (
+            <button
+              onClick={() => setShowPollModal(true)}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title="Créer un sondage"
+            >
+              <ChartBar
+                size={16}
+                className="text-gray-600 dark:text-gray-300"
+              />
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowPad(true)}
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Ouvrir le pad collaboratif"
+          >
+            <FileText size={16} className="text-gray-600 dark:text-gray-300" />
+          </button>
+
           <button onClick={() => setIsOptionsOpen(true)}>
             <MoreVertical
               size={16}
@@ -1788,7 +1887,6 @@ useEffect(() => {
           </button>
         </div>
       </header>
-
       {/* DEMANDE DE MESSAGE */}
       {isIncomingMessageRequest && (
         <MessageRequestBanner
@@ -1797,30 +1895,35 @@ useEffect(() => {
           onAccept={async () => {
             const token = localStorage.getItem("token");
             try {
-              console.log('🟢 Acceptation demande pour conversation:', selectedChat._id);
-              
-              const res = await fetch("http://localhost:5000/api/relations/accept-request", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
+              console.log(
+                "🟢 Acceptation demande pour conversation:",
+                selectedChat._id,
+              );
+
+              const res = await fetch(
+                "http://localhost:5000/api/relations/accept-request",
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ conversationId: selectedChat._id }),
                 },
-                body: JSON.stringify({ conversationId: selectedChat._id }),
-              });
+              );
 
               const data = await res.json();
-              console.log('✅ Réponse accept:', data);
+              console.log("✅ Réponse accept:", data);
 
               if (res.ok) {
                 window.location.reload();
               } else {
-                console.error('❌ Erreur accept:', data);
-               alert(data.error || t("accept_error"));
-
+                console.error("❌ Erreur accept:", data);
+                alert(data.error || t("accept_error"));
               }
             } catch (err) {
-              console.error('❌ Erreur réseau accept:', err);
-             alert(t("network_error"));
+              console.error("❌ Erreur réseau accept:", err);
+              alert(t("network_error"));
             }
           }}
           onDelete={async () => {
@@ -1828,34 +1931,39 @@ useEffect(() => {
 
             const token = localStorage.getItem("token");
             try {
-              console.log('🔴 Suppression demande pour conversation:', selectedChat._id);
-              
-              const res = await fetch("http://localhost:5000/api/relations/delete-request", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
+              console.log(
+                "🔴 Suppression demande pour conversation:",
+                selectedChat._id,
+              );
+
+              const res = await fetch(
+                "http://localhost:5000/api/relations/delete-request",
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ conversationId: selectedChat._id }),
                 },
-                body: JSON.stringify({ conversationId: selectedChat._id }),
-              });
+              );
 
               const data = await res.json();
-              console.log('✅ Réponse delete:', data);
+              console.log("✅ Réponse delete:", data);
 
               if (res.ok) {
                 onBack();
               } else {
-                console.error('❌ Erreur delete:', data);
+                console.error("❌ Erreur delete:", data);
                 alert(data.error || "Erreur lors de la suppression");
               }
             } catch (err) {
-              console.error('❌ Erreur réseau delete:', err);
-             alert(t("network_error"));
+              console.error("❌ Erreur réseau delete:", err);
+              alert(t("network_error"));
             }
           }}
         />
       )}
-
       {/* PINNED MESSAGES SECTION */}
       {showPinnedSection && pinnedMessages.length > 0 && (
         <div className="border-b border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/40 z-20">
@@ -1863,7 +1971,8 @@ useEffect(() => {
             <div className="flex items-center gap-1.5">
               <Pin size={14} className="text-yellow-600 dark:text-yellow-400" />
               <span className="text-xs font-medium text-yellow-800 dark:text-yellow-300">
-                {pinnedMessages.length} {t("messages.pinned")}{pinnedMessages.length > 1 ?  t("messages.plural") : ""}
+                {pinnedMessages.length} {t("messages.pinned")}
+                {pinnedMessages.length > 1 ? t("messages.plural") : ""}
               </span>
             </div>
             <button
@@ -1880,11 +1989,20 @@ useEffect(() => {
                 <button
                   key={msg._id}
                   onClick={() => {
-                    const element = document.getElementById(`message-${msg._id}`);
+                    const element = document.getElementById(
+                      `message-${msg._id}`,
+                    );
                     if (element) {
-                      element.scrollIntoView({ behavior: "smooth", block: "center" });
+                      element.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
                       element.classList.add("ring-3", "ring-yellow-400");
-                      setTimeout(() => element.classList.remove("ring-3", "ring-yellow-400"), 1500);
+                      setTimeout(
+                        () =>
+                          element.classList.remove("ring-3", "ring-yellow-400"),
+                        1500,
+                      );
                     }
                   }}
                   className="w-full text-left bg-white dark:bg-gray-800 rounded shadow-sm hover:shadow transition p-2 text-xs border border-yellow-200 dark:border-yellow-700 block"
@@ -1894,7 +2012,9 @@ useEffect(() => {
                     {msg.typeMessage === "image" && "📷 Photo"}
                     {msg.typeMessage === "video" && "🎥 Vidéo"}
                     {msg.typeMessage === "audio" && "🎤 Vocal"}
-                    {msg.typeMessage === "file" && `📎 ${msg.fileName || "Fichier"}`}
+                    {msg.typeMessage === "file" &&
+                      `📎 ${msg.fileName || "Fichier"}`}
+                    {msg.typeMessage === "poll" && "📊 Sondage"}
                   </div>
                   <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
                     {new Date(msg.createdAt).toLocaleTimeString("fr-FR", {
@@ -1908,7 +2028,6 @@ useEffect(() => {
           </div>
         </div>
       )}
-
       {/* THEME SELECTOR */}
       {showThemeSelector && (
         <ThemeSelector
@@ -1917,7 +2036,6 @@ useEffect(() => {
           onClose={() => setShowThemeSelector(false)}
         />
       )}
-
       {/* MESSAGES */}
       <main
         ref={messagesContainerRef}
@@ -1933,73 +2051,84 @@ useEffect(() => {
           setShowReactionPicker(null);
         }}
       >
-
         {/*Modifier pour supprimer  */}
         {messages.map((msg, i) => {
-  const showDate =
-    i === 0 ||
-    messages[i - 1]?.createdAt?.split("T")[0] !== msg.createdAt?.split("T")[0];
+          const showDate =
+            i === 0 ||
+            messages[i - 1]?.createdAt?.split("T")[0] !==
+              msg.createdAt?.split("T")[0];
 
-  const isDeletedByMe = deletedMessages.includes(msg._id);
-  const isDeletedForEveryone = deletedForEveryone.includes(msg._id);
+          const isDeletedByMe = deletedMessages.includes(msg._id);
+          const isDeletedForEveryone = deletedForEveryone.includes(msg._id);
 
-  // Déterminer si le message était "de moi" avant suppression
-  // (on utilise la logique déjà existante dans MessageBubble)
-  const currentUserId = user?._id || user?.id || user?.userId;
-  const rawSender = msg.senderId || msg.sender || msg.Id_sender || msg.Id_User || msg.userId;
-  const messageSenderId = typeof rawSender === "object" && rawSender?._id ? rawSender._id : rawSender;
-  const wasFromMe = currentUserId && messageSenderId && String(currentUserId) === String(messageSenderId);
+          const currentUserId = user?._id || user?.id || user?.userId;
+          const rawSender =
+            msg.senderId ||
+            msg.sender ||
+            msg.Id_sender ||
+            msg.Id_User ||
+            msg.userId;
+          const messageSenderId =
+            typeof rawSender === "object" && rawSender?._id
+              ? rawSender._id
+              : rawSender;
+          const wasFromMe =
+            currentUserId &&
+            messageSenderId &&
+            String(currentUserId) === String(messageSenderId);
 
-  // Si supprimé → placeholder avec alignement correct
-  if (isDeletedByMe || isDeletedForEveryone) {
-    return (
-      <div key={msg._id}>
-        {showDate && (
-          <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
-            <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
-              {formatDateLabel(msg.createdAt, t)}
-            </span>
-          </div>
-        )}
-        <div className={`flex ${wasFromMe ? "justify-end" : "justify-start"}`}>
-          <div
-            className={`
+          if (isDeletedByMe || isDeletedForEveryone) {
+            return (
+              <div key={msg._id}>
+                {showDate && (
+                  <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
+                    <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
+                      {formatDateLabel(msg.createdAt, t)}
+                    </span>
+                  </div>
+                )}
+                <div
+                  className={`flex ${wasFromMe ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`
               max-w-[85%] px-4 py-3 rounded-lg text-sm italic text-gray-500 dark:text-gray-400
-              ${wasFromMe 
-                ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none" 
-                : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"}
+              ${
+                wasFromMe
+                  ? "bg-myYellow2 dark:bg-mydarkYellow/30 rounded-t-lg rounded-bl-lg rounded-br-none"
+                  : "bg-myGray4 dark:bg-[#2E2F2F] rounded-t-lg rounded-br-lg rounded-bl-none"
+              }
             `}
-          >
-           {t("messageDeletedForYou")}
-          </div>
-        </div>
-      </div>
-    );
-  }
+                  >
+                    {t("messageDeletedForYou")}
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
-  // Message normal (non supprimé)
-  return (
-    <div key={msg._id}>
-      {showDate && (
-        <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
-          <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
-            {formatDateLabel(msg.createdAt, t)}
-          </span>
-        </div>
-      )}
-      <MessageBubble
-        msg={msg}
-        index={i}
-        deletedMessages={deletedMessages}
-        setDeletedMessages={setDeletedMessages}
-      />
-    </div>
-  );
-})}
+          return (
+            <div key={msg._id}>
+              {showDate && (
+                <div className="text-center text-[10px] text-gray-700 dark:text-gray-400 my-2">
+                  <span className="bg-myYellow2 px-5 py-2 dark:bg-myYellow rounded-lg">
+                    {formatDateLabel(msg.createdAt, t)}
+                  </span>
+                </div>
+              )}
+              <MessageBubble
+                msg={msg}
+                index={i}
+                deletedMessages={deletedMessages}
+                setDeletedMessages={setDeletedMessages}
+              />
+            </div>
+          );
+        })}
 
         {/* 🔥 INDICATEUR "EN TRAIN D'ÉCRIRE" */}
         {isTyping && typingUsers.length > 0 && (
-          <TypingIndicator 
+          <TypingIndicator
             avatar={otherUserAvatar}
             username={selectedChat?.isGroup ? typingUsers[0]?.username : null}
           />
@@ -2007,63 +2136,62 @@ useEffect(() => {
 
         <div ref={messagesEndRef} />
       </main>
-
       {/* INPUT */}
-
-
-
-<footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
-  {isBlocked && blockedBy === 'me' ? (
-    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-      <div className="text-center space-y-3">
-        <p className="text-sm text-red-800 dark:text-red-200 font-medium">
-          {t("chat.youBlocked") || "Vous avez bloqué"} {otherUserName || "cet utilisateur"}
-        </p>
-        <p className="text-xs text-red-600 dark:text-red-300">
-          {t("chat.blockMessage") || "Vous ne pouvez pas contacter cette personne."}
-        </p>
-        <button
-          onClick={() => setIsConfirmUnblockModalOpen(true)}
-          className="px-4 py-2 bg-myYellow hover:bg-yellow-400 text-white rounded-lg text-sm font-medium transition-colors"
-        >
-          {t("chat.unblock") || "Débloquer"}
-        </button>
-      </div>
-    </div>
-  ) : isBlocked && blockedBy === 'them' ? (
-    <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-      <p className="text-sm text-center text-gray-600 dark:text-gray-400">
-        {t("chat.blockedByOther") || "Vous ne pouvez pas envoyer de message à cette personne"}
-      </p>    
-    </div>
-  ) : (
-    <ChatInput
-      onSendMessage={handleSendMessage}
-      isRecording={isRecording}
-      recordingTime={recordingTime}
-      onMicClick={handleMicClick}
-      onCancelRecording={cancelRecording}
-      selectedFile={selectedFile}
-      filePreview={filePreview}
-      onFileSelect={(file) => {
-        setSelectedFile(file);
-        if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
-          setFilePreview(URL.createObjectURL(file));
-        } else {
-          setFilePreview(null);
-        }
-      }}
-      onClearFile={() => {
-        setSelectedFile(null);
-        setFilePreview(null);
-      }}
-      t={t}
-    />
-  )}
-</footer>
-
-     
-
+      <footer className="px-2 py-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 z-20">
+        {isBlocked && blockedBy === "me" ? (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+            <div className="text-center space-y-3">
+              <p className="text-sm text-red-800 dark:text-red-200 font-medium">
+                {t("chat.youBlocked") || "Vous avez bloqué"}{" "}
+                {otherUserName || "cet utilisateur"}
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-300">
+                {t("chat.blockMessage") ||
+                  "Vous ne pouvez pas contacter cette personne."}
+              </p>
+              <button
+                onClick={() => setIsConfirmUnblockModalOpen(true)}
+                className="px-4 py-2 bg-myYellow hover:bg-yellow-400 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                {t("chat.unblock") || "Débloquer"}
+              </button>
+            </div>
+          </div>
+        ) : isBlocked && blockedBy === "them" ? (
+          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+            <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+              {t("chat.blockedByOther") ||
+                "Vous ne pouvez pas envoyer de message à cette personne"}
+            </p>
+          </div>
+        ) : (
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            isRecording={isRecording}
+            recordingTime={recordingTime}
+            onMicClick={handleMicClick}
+            onCancelRecording={cancelRecording}
+            selectedFile={selectedFile}
+            filePreview={filePreview}
+            onFileSelect={(file) => {
+              setSelectedFile(file);
+              if (
+                file.type.startsWith("image/") ||
+                file.type.startsWith("video/")
+              ) {
+                setFilePreview(URL.createObjectURL(file));
+              } else {
+                setFilePreview(null);
+              }
+            }}
+            onClearFile={() => {
+              setSelectedFile(null);
+              setFilePreview(null);
+            }}
+            t={t}
+          />
+        )}
+      </footer>
       {/* Search Modal */}
       {/* ✅ VIDEO CALL SCREEN - UNE SEULE FOIS */}
       {startOutgoingCallType && selectedChat && (
@@ -2077,10 +2205,23 @@ useEffect(() => {
           }}
         />
       )}
-
-      {/* MODAL PAD */} {showPad && selectedChat?._id && ( <PadModal conversationId={selectedChat._id} isOpen={showPad} onClose={() => setShowPad(false)} /> )}
-
-
+      {/* MODAL PAD */}{" "}
+      {showPad && selectedChat?._id && (
+        <PadModal
+          conversationId={selectedChat._id}
+          isOpen={showPad}
+          onClose={() => setShowPad(false)}
+        />
+      )}
+      {/* 🔥 MODAL DE CRÉATION DE SONDAGE */}
+      {showPollModal && (
+        <PollModal
+          isOpen={showPollModal}
+          onClose={() => setShowPollModal(false)}
+          onCreate={handleCreatePoll}
+          loading={isCreatingPoll}
+        />
+      )}
       {openSearch && (
         <>
           <div
@@ -2103,7 +2244,6 @@ useEffect(() => {
           </motion.div>
         </>
       )}
-
       {/* Confirm Unblock Modal */}
       <ConfirmBlockModal
         isOpen={isConfirmUnblockModalOpen}
@@ -2115,10 +2255,9 @@ useEffect(() => {
         actionType="unblock"
         userInfo={{
           name: otherUserName,
-          avatar: conversationAvatar
+          avatar: conversationAvatar,
         }}
       />
-
       {/* Forward Modal */}
       <ForwardModal
         isOpen={showForwardModal}
@@ -2133,123 +2272,120 @@ useEffect(() => {
           forwardMessage(messageToForward?._id, targetConversationId);
         }}
       />
-
       {/* Delete Modal */}
       {showDeleteModal && (
-  <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
-    <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-5 border-b border-gray-200 dark:border-neutral-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {t("deleteMessageTitle")}
-        </h3>
-      </div>
-
-      {/* Corps */}
-      <div className="px-6 py-6 space-y-6">
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-           {t("deleteMessageQuestion")}
-        </p>
-
-        <div className="space-y-3">
-          {/* Supprimer pour moi */}
-          <button
-            onClick={() => {
-              handleDeleteForMe(messageToDelete);
-              setShowDeleteModal(false);
-            }}
-            className="w-full px-4 py-3 text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
-          >
-            <div className="font-medium">{t("deleteForMe")}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-               {t("deleteForMeInfo")}
-            </div>
-          </button>
-
-          {/* Supprimer pour tout le monde */}
-          <button
-            onClick={async () => {
-              await handleDeleteForEveryone(messageToDelete);
-              setShowDeleteModal(false);
-            }}
-            className="w-full px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-          >
-            <div className="font-medium">{t("deleteForEveryone")}</div>
-            <div className="text-xs text-red-500/80 dark:text-red-400/80">
-                {t("deleteWarningAll")}
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="px-6 py-4 bg-gray-50 dark:bg-neutral-900 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-3">
-        <button
-          onClick={() => setShowDeleteModal(false)}
-          className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
         >
-        {t("cancel")}
-        </button>
-      </div>
-    </div>
-  </Modal>
-)}
-       {isOptionsOpen && (
-  <>
-    <div
-      className="fixed inset-0 bg-black/30 z-30"
-      onClick={() => setIsOptionsOpen(false)}
-    ></div>
-    <ChatOptionsMenu
-      selectedChat={{
-        ...selectedChat,
-        //  AJOUTER le userId de l'autre utilisateur
-        userId: selectedChat?.isGroup 
-          ? null // Pas de blocage pour les groupes
-          : selectedChat?.participants?.find(
-              participant => {
-                const participantId = participant._id || participant.id;
-                const currentUserId = user?._id || user?.id || user?.userId;
-                return String(participantId) !== String(currentUserId);
-              }
-            )?._id,
-        openInfo: () => setIsInfoOpen(true),
-        openTheme: () => {
-          setShowThemeSelector(true);
-          setIsOptionsOpen(false);
-        },
-      }}
-      onClose={() => setIsOptionsOpen(false)}
-      onOpenSearch={() => setOpenSearch(true)}
-      // ✅ Ajouter le callback pour refresh
-      onBlockStatusChange={() => refresh()}
-    />
-  </>
-)}
-        {isInfoOpen && (
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-200 dark:border-neutral-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {t("deleteMessageTitle")}
+              </h3>
+            </div>
 
-  <InfoContactModal
-    chat={{
-      ...selectedChat,
-      openTheme: () => setShowThemeSelector(true),
-      onArchive: async () => {
-        try {
-          if (isArchived) {
-            await unarchiveConversation(selectedChat._id);
-          } else {
-            await archiveConversation(selectedChat._id);
-          }
-        } catch (err) {
-          alert("Erreur lors de l'opération");
-        }
-      },
-      isArchived: isArchived,
-    }}
-    onClose={() => setIsInfoOpen(false)}
-      onBlockStatusChange={() => refresh()}
-  />
-)}
-{/* 🔥 LIGHTBOX MODAL POUR MÉDIAS */}
+            {/* Corps */}
+            <div className="px-6 py-6 space-y-6">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                {t("deleteMessageQuestion")}
+              </p>
+
+              <div className="space-y-3">
+                {/* Supprimer pour moi */}
+                <button
+                  onClick={() => {
+                    handleDeleteForMe(messageToDelete);
+                    setShowDeleteModal(false);
+                  }}
+                  className="w-full px-4 py-3 text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+                >
+                  <div className="font-medium">{t("deleteForMe")}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {t("deleteForMeInfo")}
+                  </div>
+                </button>
+
+                {/* Supprimer pour tout le monde */}
+                <button
+                  onClick={async () => {
+                    await handleDeleteForEveryone(messageToDelete);
+                    setShowDeleteModal(false);
+                  }}
+                  className="w-full px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                >
+                  <div className="font-medium">{t("deleteForEveryone")}</div>
+                  <div className="text-xs text-red-500/80 dark:text-red-400/80">
+                    {t("deleteWarningAll")}
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 dark:bg-neutral-900 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+              >
+                {t("cancel")}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {isOptionsOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/30 z-30"
+            onClick={() => setIsOptionsOpen(false)}
+          ></div>
+          <ChatOptionsMenu
+            selectedChat={{
+              ...selectedChat,
+              userId: selectedChat?.isGroup
+                ? null
+                : selectedChat?.participants?.find((participant) => {
+                    const participantId = participant._id || participant.id;
+                    const currentUserId = user?._id || user?.id || user?.userId;
+                    return String(participantId) !== String(currentUserId);
+                  })?._id,
+              openInfo: () => setIsInfoOpen(true),
+              openTheme: () => {
+                setShowThemeSelector(true);
+                setIsOptionsOpen(false);
+              },
+            }}
+            onClose={() => setIsOptionsOpen(false)}
+            onOpenSearch={() => setOpenSearch(true)}
+            onBlockStatusChange={() => refresh()}
+          />
+        </>
+      )}
+      {isInfoOpen && (
+        <InfoContactModal
+          chat={{
+            ...selectedChat,
+            openTheme: () => setShowThemeSelector(true),
+            onArchive: async () => {
+              try {
+                if (isArchived) {
+                  await unarchiveConversation(selectedChat._id);
+                } else {
+                  await archiveConversation(selectedChat._id);
+                }
+              } catch (err) {
+                alert("Erreur lors de l'opération");
+              }
+            },
+            isArchived: isArchived,
+          }}
+          onClose={() => setIsInfoOpen(false)}
+          onBlockStatusChange={() => refresh()}
+        />
+      )}
+      {/* 🔥 LIGHTBOX MODAL POUR MÉDIAS */}
       {mediaLightboxOpen && mediaList.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
           {/* Bouton Fermer */}
@@ -2272,7 +2408,7 @@ useEffect(() => {
 
           {/* Image ou Vidéo */}
           <div className="max-w-[90vw] max-h-[90vh] flex items-center justify-center">
-            {mediaList[currentMediaIndex]?.type === 'image' ? (
+            {mediaList[currentMediaIndex]?.type === "image" ? (
               <img
                 src={mediaList[currentMediaIndex]?.url}
                 alt="Image en grand"
@@ -2303,7 +2439,6 @@ useEffect(() => {
           </div>
         </div>
       )}
-
       {/* Info Contact Modal */}
       {isInfoOpen && (
         <InfoContactModal
@@ -2314,8 +2449,8 @@ useEffect(() => {
               try {
                 if (isArchived) {
                   await unarchiveConversation(selectedChat._id);
-                  
-                  if (typeof onConversationDeleted === 'function') {
+
+                  if (typeof onConversationDeleted === "function") {
                     onConversationDeleted();
                   }
                 } else {
@@ -2332,7 +2467,6 @@ useEffect(() => {
           onConversationDeleted={onConversationDeleted}
         />
       )}
-
       {showGroupInfo && (
         <GroupManagerModal
           groupId={selectedChat._id}
@@ -2340,16 +2474,19 @@ useEffect(() => {
           members={groupMembers}
           onClose={() => setShowGroupInfo(false)}
           onMembersUpdated={() => {
-            const token = localStorage.getItem('token');
-            fetch(`http://localhost:5000/api/groups/${selectedChat._id}/members`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            })
-            .then(res => res.json())
-            .then(data => {
-              if (data.success) {
-                setGroupMembers(data.members || []);
-              }
-            });
+            const token = localStorage.getItem("token");
+            fetch(
+              `http://localhost:5000/api/groups/${selectedChat._id}/members`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              },
+            )
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.success) {
+                  setGroupMembers(data.members || []);
+                }
+              });
           }}
         />
       )}
