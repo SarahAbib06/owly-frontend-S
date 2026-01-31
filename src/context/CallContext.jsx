@@ -96,56 +96,34 @@ const acceptCall = useCallback(() => {
 /* 🎧 Socket global */
 useEffect(() => {
   const socket = socketService.socket;
-  if (!socket) {
-    console.error('❌ Socket non disponible dans CallContext');
-    return;
-  }
+  if (!socket) return;
 
-  console.log('🎧 Installation listeners CallContext');
-
-  const handleIncomingCall = (data) => {
-    console.log('📞 INCOMING-CALL reçu:', data);
-    setIncomingCall(data);
-    setShowIncomingCallModal(true);
-    playRingtone();
-  };
-
-  // ✅ AJOUTER ces handlers cruciaux
-  const handleCallCancelled = (data) => {
-    console.log('🚫 CALL-CANCELLED:', data);
-    stopRingtone();
-    setShowIncomingCallModal(false);
-    setIncomingCall(null);
-  };
-
-  const handleCallTimeout = (data) => {
-    console.log('⏱️ CALL-TIMEOUT:', data);
-    stopRingtone();
-    setShowIncomingCallModal(false);
-    setIncomingCall(null);
-  };
-
-  const handleCallFailed = (data) => {
-    console.log('❌ CALL-FAILED:', data);
-    stopRingtone();
-    setShowIncomingCallModal(false);
-    setIncomingCall(null);
-    // ✅ Optionnel : afficher une notification à l'utilisateur
-  };
-
-  // ✅ S'abonner à TOUS les événements
   socket.on("incoming-call", handleIncomingCall);
+  
+  // 🔥 CORRIGER ICI - Ajouter les handlers complets
+  const handleCallCancelled = () => {
+    console.log("🚫 Appel annulé reçu");
+    stopRingtone();
+    setShowIncomingCallModal(false);
+    setIncomingCall(null);
+  };
+  
+  const handleCallTimeout = () => {
+    console.log("⏱️ Timeout appel reçu");
+    stopRingtone();
+    setShowIncomingCallModal(false);
+    setIncomingCall(null);
+  };
+
   socket.on("call-cancelled", handleCallCancelled);
   socket.on("call-timeout", handleCallTimeout);
-  socket.on("call-failed", handleCallFailed);
 
   return () => {
     socket.off("incoming-call", handleIncomingCall);
     socket.off("call-cancelled", handleCallCancelled);
     socket.off("call-timeout", handleCallTimeout);
-    socket.off("call-failed", handleCallFailed);
   };
-}, []); // ✅ Dependencies vides pour éviter les re-renders // ← Ajouter handleIncomingCall dans les dépendances
+}, [handleIncomingCall]); // ← Ajouter handleIncomingCall dans les dépendances
 
   /* 🔄 Utilitaires */
   const getActiveCall = () => {
