@@ -19,7 +19,7 @@ export const CallProvider = ({ children }) => {
   const ringtoneRef = useRef(null);
   const navigate = useNavigate();
 
-  /* 🔔 Sonnerie */
+  /* 🔔 Sonnerief */
   const playRingtone = () => {
     if (!ringtoneRef.current) {
       ringtoneRef.current = new Audio("/sounds/ringtone.mp3");
