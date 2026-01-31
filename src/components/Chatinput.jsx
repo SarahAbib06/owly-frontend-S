@@ -1,10 +1,11 @@
 // frontend/src/components/ChatInput.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { Smile, Paperclip, Mic, Send } from "lucide-react";
+import { Smile, Paperclip, Mic, Clock, Send } from "lucide-react";
 import EmojiPicker from 'emoji-picker-react';
 
 const ChatInput = React.memo(({ 
   onSendMessage,
+  onScheduleMessage,
   isRecording,
   recordingTime,
   onMicClick,
@@ -112,6 +113,16 @@ const ChatInput = React.memo(({
               className="text-gray-700 dark:text-gray-300 cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
             />
+                        {onScheduleMessage && (
+              <button
+                type="button"
+                onClick={onScheduleMessage}
+                className="text-gray-700 dark:text-gray-300 hover:text-myYellow dark:hover:text-myYellow transition"
+                title="Programmer un message"
+              >
+                <Clock size={18} />
+              </button>
+            )}
             <input
               type="file"
               ref={fileInputRef}

@@ -47,6 +47,7 @@ import MessageRequestBanner from "./MessageRequestBanner";
 import PadModal from "./PadModal";
 import Modal from "./Modal";
 import api from '../services/api';
+import ScheduleMessageModal from './ScheduleMessageModal';
 
 // 🔥 AJOUT DES IMPORTS POUR LES SONDAGEShh
 import PollModal from "./PollModal";
@@ -319,6 +320,9 @@ export default function ChatWindow({
   // 🔥 AJOUT DES ÉTATS POUR LES SONDAGES
   const [showPollModal, setShowPollModal] = useState(false);
   const [isCreatingPoll, setIsCreatingPoll] = useState(false);
+    // 🆕 message programme  
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduledMessages, setScheduledMessages] = useState([]);
 
   const { conversations: myConversations, loading: convLoading } =
     useConversations();
@@ -406,6 +410,22 @@ export default function ChatWindow({
     return () => clearInterval(interval);
   }, [contactStatus.lastSeen, contactStatus.isOnline]);
 
+    // 🆕 Charger les messages programmés
+  useEffect(() => {
+    if (selectedChat?._id) {
+      loadScheduledMessages();
+    }
+  }, [selectedChat?._id]);
+
+  const loadScheduledMessages = async () => {
+    try {
+      const response = await api.get(`/scheduled-messages/${selectedChat._id}`);
+      setScheduledMessages(response.data.scheduledMessages || []);
+    } catch (error) {
+      console.error('Erreur chargement messages programmés:', error);
+    }
+  };
+
   // 🔥 CORRECTION : Charger membres du groupe
   useEffect(() => {
     if (selectedChat?.isGroup && selectedChat._id) {
@@ -467,6 +487,38 @@ api.get(`/users/${contactId}/status`)
     deletePoll,
     getPollById,
   } = usePolls(selectedChat?._id);
+
+    // 🆕 Programmer un message
+  const handleScheduleMessage = async (data) => {
+    try {
+      await api.post('/scheduled-messages', {
+        conversationId: selectedChat._id,
+        content: data.content,
+        typeMessage: 'text',
+        scheduledFor: data.scheduledFor
+      });
+
+      alert('Message programmé avec succès !');
+      loadScheduledMessages();
+    } catch (error) {
+      console.error('Erreur programmation message:', error);
+      throw error;
+    }
+  };
+
+  // 🆕 Annuler un message programmé
+  const handleCancelScheduledMessage = async (messageId) => {
+    if (!confirm('Annuler ce message programmé ?')) return;
+
+    try {
+      await api.delete(`/scheduled-messages/${messageId}`);
+      loadScheduledMessages();
+    } catch (error) {
+      console.error('Erreur annulation:', error);
+      alert('Erreur lors de l\'annulation');
+    }
+  };
+
 
   // 🔥 FONCTION POUR CRÉER UN SONDAGE
   const handleCreatePoll = async (pollData) => {
@@ -2068,6 +2120,7 @@ const res = await api.post('/relations/delete-request', {
         ) : (
           <ChatInput
             onSendMessage={handleSendMessage}
+            onScheduleMessage={() => setShowScheduleModal(true)}
             isRecording={isRecording}
             recordingTime={recordingTime}
             onMicClick={handleMicClick}
@@ -2093,6 +2146,8 @@ const res = await api.post('/relations/delete-request', {
           />
         )}
       </footer>
+
+      
       {/* Search Modal */}
       {/* ✅ VIDEO CALL SCREEN - UNE SEULE FOIS */}
       {startOutgoingCallType && selectedChat && (
@@ -2123,6 +2178,15 @@ const res = await api.post('/relations/delete-request', {
           loading={isCreatingPoll}
         />
       )}
+
+      {/* 🔥 MODAL DE PROGRAMMATION DE MESSAGE */}
+{showScheduleModal && (
+  <ScheduleMessageModal
+    isOpen={showScheduleModal}
+    onClose={() => setShowScheduleModal(false)}
+    onSchedule={handleScheduleMessage}
+  />
+)}
       {openSearch && (
         <>
           <div
