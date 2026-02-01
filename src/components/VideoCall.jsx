@@ -609,16 +609,31 @@ export default function VideoCall() {
       isInitializedRef.current = callKey;
       try {
         setCallState('initiating');
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
+        // 🆕 UNIFICATION: Adapter les constraints média selon le type d'appel
+        const isAudioCall = callType === 'audio';
+        const mediaConstraints = {
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        };
+
+        // Demander la vidéo seulement si c'est un appel vidéo
+        if (!isAudioCall) {
+          mediaConstraints.video = {
             width: { ideal: 640, max: 1280 },
             height: { ideal: 480, max: 720 },
             frameRate: { ideal: 24, max: 30 }
-          }, // 🆕 Optimisé pour réduire la latence
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-        });
+          };
+        }
+
+        console.log(`🎥 [VideoCall] Initialisation appel ${callType.toUpperCase()}`, mediaConstraints);
+        const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
         localStreamRef.current = stream;
         if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+        // 🆕 Pour les appels audio, désactiver la caméra par défaut (pas de track vidéo)
+        if (isAudioCall) {
+          setCameraOff(true);
+          console.log('🔇 [VideoCall] Appel audio: caméra désactivée par défaut');
+        }
 
         createPeerConnection();
 
@@ -657,7 +672,11 @@ export default function VideoCall() {
     return () => cleanupResources();
   }, [currentCall, user]);
 
-  if (!currentCall || callType !== 'video') return null;
+  // 🆕 UNIFICATION: Accepter les deux types d'appels (audio ET vidéo)
+  if (!currentCall) return null;
+
+  // Déterminer si c'est un appel audio uniquement
+  const isAudioOnly = callType === 'audio';
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-50">
@@ -714,41 +733,91 @@ export default function VideoCall() {
           </div>
         )}
 
-        {/* MAIN VIDEO (REMOTE) */}
+        {/* MAIN VIDEO (REMOTE) - Pour vidéo / AVATAR CENTRÉ - Pour audio */}
         {!isMinimized ? (
-          <div className="w-full h-full bg-black relative">
+          <div className={`w-full h-full ${isAudioOnly ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center' : 'bg-black'} relative`}>
+            {isAudioOnly ? (
+              /* Interface pour appel AUDIO uniquement */
+              <div className="flex flex-col items-center gap-6 z-10">
+                {/* Avatar avec anneau animé */}
+                <div className="relative">
+                  <div className={`absolute inset-0 rounded-full border-4 border-white/30 ${isPeerConnected ? 'animate-ping' : ''}`}></div>
+                  <img
+                    src={safeChat.avatar}
+                    className="w-32 h-32 rounded-full border-4 border-white shadow-xl object-cover"
+                    alt={safeChat.name}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(safeChat.name)}&background=F9EE34&color=000&bold=true&size=128`;
+                    }}
+                  />
+                </div>
+
+                {/* Nom et statut */}
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-white mb-2 shadow-sm">{safeChat.name}</h2>
+                  <p className="text-white/80 font-medium">{status}</p>
+                  {/* Timer */}
+                  {callDuration > 0 && (
+                    <p className="text-xl text-black font-bold mt-2 font-mono bg-white/90 px-4 py-1 rounded-full inline-block">
+                      {formatDuration(callDuration)}
+                    </p>
+                  )}
+                </div>
+
+                {/* Audio distant (invisible mais nécessaire) */}
+                <audio ref={remoteVideoRef} autoPlay />
+              </div>
+            ) : (
+              /* Interface pour appel VIDÉO */
+              <>
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                {!isPeerConnected && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white z-10 flex-col gap-4">
+                    <img
+                      src={safeChat.avatar}
+                      className="w-24 h-24 rounded-full animate-pulse"
+                      alt={safeChat.name}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(safeChat.name)}&background=F9EE34&color=000&bold=true&size=128`;
+                      }}
+                    />
+                    <p className="text-xl font-medium">{status}</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          isAudioOnly ? (
+            /* Minimisé pour audio */
+            <div className="w-full h-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
+              <img
+                src={safeChat.avatar}
+                className="w-16 h-16 rounded-full border-2 border-white"
+                alt={safeChat.name}
+              />
+              <audio ref={remoteVideoRef} autoPlay />
+            </div>
+          ) : (
+            /* Minimisé pour vidéo */
             <video
               ref={remoteVideoRef}
               autoPlay
               playsInline
               className="w-full h-full object-cover"
             />
-            {!isPeerConnected && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white z-10 flex-col gap-4">
-                <img
-                  src={safeChat.avatar}
-                  className="w-24 h-24 rounded-full animate-pulse"
-                  alt={safeChat.name}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(safeChat.name)}&background=F9EE34&color=000&bold=true&size=128`;
-                  }}
-                />
-                <p className="text-xl font-medium">{status}</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover"
-          />
+          )
         )}
 
-        {/* SELF VIDEO (LOCAL) - Only shown if not minimized */}
-        {!isMinimized && (
+        {/* SELF VIDEO (LOCAL) - Only shown if not minimized AND not audio-only call */}
+        {!isMinimized && !isAudioOnly && (
           <div className="absolute right-6 top-1/2 -translate-y-1/2 
             w-32 h-44 bg-black rounded-xl shadow-md overflow-hidden border-2 border-white/20 z-20"
           >
@@ -767,8 +836,8 @@ export default function VideoCall() {
           </div>
         )}
 
-        {/* INFO BAR */}
-        {!isMinimized && (
+        {/* INFO BAR - Only for video calls, audio calls have info in main content */}
+        {!isMinimized && !isAudioOnly && (
           <div className="
             absolute left-1/2 -translate-x-1/2 top-4
             px-6 py-2 bg-black/30 text-white bg-white/10 backdrop-blur-md 
@@ -811,22 +880,26 @@ export default function VideoCall() {
               {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
             </button>
 
-            {/* Camera */}
-            <button
-              onClick={toggleCamera}
-              className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all ${cameraOff ? 'bg-red-500 text-white' : 'bg-white text-black hover:bg-gray-200'}`}
-            >
-              {cameraOff ? <VideoOff size={22} /> : <Video size={22} />}
-            </button>
+            {/* Camera - Only for video calls */}
+            {!isAudioOnly && (
+              <button
+                onClick={toggleCamera}
+                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all ${cameraOff ? 'bg-red-500 text-white' : 'bg-white text-black hover:bg-gray-200'}`}
+              >
+                {cameraOff ? <VideoOff size={22} /> : <Video size={22} />}
+              </button>
+            )}
 
-            {/* 🆕 Partage d'écran */}
-            <button
-              onClick={isScreenSharing ? stopScreenShare : startScreenShare}
-              className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all ${isScreenSharing ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-gray-200'
-                }`}
-            >
-              <Monitor size={22} />
-            </button>
+            {/* 🆕 Partage d'écran - Only for video calls */}
+            {!isAudioOnly && (
+              <button
+                onClick={isScreenSharing ? stopScreenShare : startScreenShare}
+                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all ${isScreenSharing ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-gray-200'
+                  }`}
+              >
+                <Monitor size={22} />
+              </button>
+            )}
 
             {/* HANGUP */}
             <button

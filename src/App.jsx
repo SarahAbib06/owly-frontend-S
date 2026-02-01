@@ -5,7 +5,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { AppelProvider } from "./context/AppelContext";
 import IncomingCallModal from "./components/IncomingCallModal.jsx";
 import VideoCall from './components/VideoCall.jsx';
-import AudioCall from './components/AudioCall.jsx';
+// 🆕 AudioCall supprimé - VideoCall gère maintenant les deux types d'appels
 import ProfilPic from "./pages/ProfilPic.jsx";
 import TicTacToe2 from "./components/TicTacToe2.jsx";
 
@@ -56,10 +56,9 @@ export default function App() {
     <Router>
       <AuthProvider>
         <AppelProvider>
-          {/* 🆕 Modals d'appel globaux - toujours montés */}
+          {/* 🆕 Modals d'appel globaux - VideoCall gère audio ET vidéo */}
           <IncomingCallModal />
           <VideoCall />
-          <AudioCall />
 
           <ChatProvider>
             <Routes>
